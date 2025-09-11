@@ -1,0 +1,45 @@
+import { NextRequest } from 'next/server';
+
+const APP_HOST = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+
+const LOG_API_URL = `${APP_HOST}/api/scim/v2/logs`;
+
+
+function isExternalRequest(request: NextRequest): boolean {
+    const origin = request.headers.get('origin');
+    const referer = request.headers.get('referer');
+    
+    if (!origin && !referer) {
+        return true;
+    }
+
+    if (origin && !origin.startsWith(APP_HOST)) {
+        return true;
+    }
+    
+    if (referer && !referer.startsWith(APP_HOST)) {
+        return true;
+    }
+
+    return false;
+}
+
+export function logExternalRequest(request: NextRequest): void {
+    if (isExternalRequest(request)) {
+        const logPayload = {
+            timestamp: new Date().toISOString(),
+            method: request.method,
+            path: request.nextUrl.pathname,
+            userAgent: request.headers.get('user-agent') || 'unknown',
+        };
+
+        fetch(LOG_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(logPayload),
+        }).catch(err => {
+            console.error('Failed to send log to internal endpoint:', err);
+        });
+    }
+}
+

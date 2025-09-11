@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GroupService } from '@/lib/scim/services/groupService';
 import { ScimError } from '@/lib/scim/models/scimSchemas';
+import { logExternalRequest } from '@/lib/scim/logging'; // 1. Import the logger
 
 const groupService = new GroupService();
 
@@ -23,6 +24,7 @@ const notFoundResponse = (): NextResponse<ScimError> => {
  * @description Retrieves a single group by ID.
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
+    logExternalRequest(request)
     try {
         const group = await groupService.getGroupById(params.id);
         if (!group) {
@@ -39,6 +41,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  * @description Replaces a group's content.
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
+    logExternalRequest(request)
     try {
         const body = await request.json();
         const updatedGroup = await groupService.updateGroup(params.id, body);
@@ -56,6 +59,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
  * @description Deletes a group.
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
+    logExternalRequest(request)
     try {
         const success = await groupService.deleteGroup(params.id);
         if (!success) {

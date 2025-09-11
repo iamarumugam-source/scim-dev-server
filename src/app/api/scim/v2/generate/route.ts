@@ -3,12 +3,6 @@ import { supabase } from '@/lib/scim/db';
 import { faker } from '@faker-js/faker';
 import { ScimUser, ScimGroup } from '@/lib/scim/models/scimSchemas';
 
-/**
- * API route to trigger the database seeding process.
- * This endpoint will add new users and groups without clearing existing data.
- * @param request The incoming Next.js request object.
- * @returns A JSON response indicating success or failure.
- */
 export async function POST(request: NextRequest) {
     try {
         const userCount = 50;
@@ -17,10 +11,10 @@ export async function POST(request: NextRequest) {
 
         console.log('Starting database seeding...');
 
-        // 1. Fetch existing users to avoid conflicts and for group assignment
         const { data: existingUsersData, error: fetchError } = await supabase
             .from('scim_users')
             .select('resource');
+        
         
         if (fetchError) {
             throw new Error(`Failed to fetch existing users: ${fetchError.message}`);
@@ -30,7 +24,6 @@ export async function POST(request: NextRequest) {
         console.log(`Found ${existingUsers.length} existing users.`);
 
 
-        // 2. Generate new Users
         const users: ScimUser[] = [];
         for (let i = 0; i < userCount; i++) {
             const firstName = faker.person.firstName();

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { UserService } from '@/lib/scim/services/userService';
 import { ScimError } from '@/lib/scim/models/scimSchemas';
+import { logExternalRequest } from '@/lib/scim/logging'; // 1. Import the logger
 
 const userService = new UserService();
 
@@ -23,6 +24,8 @@ const notFoundResponse = (): NextResponse<ScimError> => {
  * @description Retrieves a single user by their ID.
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
+    logExternalRequest(request);
+
     try {
         const user = await userService.getUserById(params.id);
         if (!user) {
@@ -39,6 +42,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  * @description Replaces a user's content.
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
+    logExternalRequest(request);
+
     try {
         const body = await request.json();
         const updatedUser = await userService.updateUser(params.id, body);
@@ -56,6 +61,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
  * @description Deletes a user.
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
+    logExternalRequest(request);
+
     try {
         const success = await userService.deleteUser(params.id);
         if (!success) {

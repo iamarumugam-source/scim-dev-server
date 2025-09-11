@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GroupService } from '@/lib/scim/services/groupService';
 import { ScimListResponse, ScimGroup } from '@/lib/scim/models/scimSchemas';
+import { logExternalRequest } from '@/lib/scim/logging'; // 1. Import the logger
 
 const groupService = new GroupService();
 
@@ -9,6 +10,7 @@ const groupService = new GroupService();
  * @description Retrieves a list of groups.
  */
 export async function GET(request: NextRequest) {
+    logExternalRequest(request)
     const { searchParams } = new URL(request.url);
     const startIndex = parseInt(searchParams.get('startIndex') || '1', 10);
     const count = parseInt(searchParams.get('count') || '10', 10);
@@ -33,6 +35,7 @@ export async function GET(request: NextRequest) {
  * @description Creates a new group.
  */
 export async function POST(request: NextRequest) {
+    logExternalRequest(request)
     try {
         const body = await request.json();
         const newGroup = await groupService.createGroup(body);
@@ -46,13 +49,14 @@ export async function POST(request: NextRequest) {
 }
 
 
-export async function DELETE(request: NextRequest) {
-    try {
-        const deleteGroup = await groupService.deleteAllGroups()
-        return NextResponse.json(deleteGroup, {status: 200})
+// export async function DELETE(request: NextRequest) {
+//     try {
+//         const body = await request.json();
+//         const deleteGroup = await groupService.deleteAllGroups()
+//         return NextResponse.json(deleteGroup, {status: 200})
         
-    } catch (error: any) {
-        return NextResponse.json({ schemas: ["urn:ietf:params:scim:api:2.0:Error"], detail: error.message, status: "400" }, { status: 400 });
-    }
-}
+//     } catch (error: any) {
+//         return NextResponse.json({ schemas: ["urn:ietf:params:scim:api:2.0:Error"], detail: error.message, status: "400" }, { status: 400 });
+//     }
+// }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { UserService } from '@/lib/scim/services/userService';
 import { ScimListResponse, ScimUser } from '@/lib/scim/models/scimSchemas';
+import { logExternalRequest } from '@/lib/scim/logging'; // 1. Import the logger
 
 const userService = new UserService();
 
@@ -10,6 +11,8 @@ const userService = new UserService();
  * @see https://tools.ietf.org/html/rfc7644#section-3.4.2
  */
 export async function GET(request: NextRequest) {
+    logExternalRequest(request);
+
     const { searchParams } = new URL(request.url);
     const startIndex = parseInt(searchParams.get('startIndex') || '1', 10);
     const count = parseInt(searchParams.get('count') || '10', 10);
@@ -35,6 +38,8 @@ export async function GET(request: NextRequest) {
  * @see https://tools.ietf.org/html/rfc7644#section-3.3
  */
 export async function POST(request: NextRequest) {
+    logExternalRequest(request);
+
     try {
         const body = await request.json();
         const newUser = await userService.createUser(body);
