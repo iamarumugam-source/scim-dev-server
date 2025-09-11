@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
                     familyName: lastName,
                     formatted: `${firstName} ${lastName}`,
                 },
-                emails: [{ primary: true, value: faker.internet.email({ firstName, lastName }) }],
+                emails: [{ primary: true, value: faker.internet.exampleEmail({ firstName, lastName }) }],
                 active: true,
                 meta: {
                     resourceType: 'User',

@@ -45,3 +45,14 @@ export async function POST(request: NextRequest) {
     }
 }
 
+
+export async function DELETE(request: NextRequest) {
+    try {
+        const deleteGroup = await groupService.deleteAllGroups()
+        return NextResponse.json(deleteGroup, {status: 200})
+        
+    } catch (error: any) {
+        return NextResponse.json({ schemas: ["urn:ietf:params:scim:api:2.0:Error"], detail: error.message, status: "400" }, { status: 400 });
+    }
+}
+

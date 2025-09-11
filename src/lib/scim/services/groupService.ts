@@ -147,5 +147,15 @@ export class GroupService {
     
     return count !== null && count > 0;
   }
+
+  public async deleteAllGroups(id: string): Promise<boolean> {
+
+    const {error, count} = await supabase.from(TABLE_NAME).delete().neq('id', id)
+
+    if(error) {
+        throw new Error(`Supabase error deleting group: ${error.message}`);
+    }
+    return true;
+  }
 }
 
