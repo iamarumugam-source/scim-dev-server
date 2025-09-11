@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 
-const APP_HOST = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+const APP_HOST = process.env.VERCEL_PROJECT_PRODUCTION_URL || 'http://localhost:3000';
 
 const LOG_API_URL = `${APP_HOST}/api/scim/v2/logs`;
 
