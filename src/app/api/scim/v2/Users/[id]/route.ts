@@ -1,22 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { UserService } from '@/lib/scim/services/userService';
+import { ScimError } from '@/lib/scim/models/scimSchemas';
 
 const userService = new UserService();
 
+// Defines the expected shape of the route's parameters.
 interface RouteParams {
     params: { id: string };
 }
 
+// Helper to create a consistent 404 Not Found response.
+const notFoundResponse = (): NextResponse<ScimError> => {
+    return NextResponse.json({
+        schemas: ["urn:ietf:params:scim:api:2.0:Error"],
+        detail: "User not found",
+        status: "404",
+    }, { status: 404 });
+};
+
 /**
  * GET /api/scim/v2/Users/{id}
- * @description Retrieves a single user by ID.
- * @see https://tools.ietf.org/html/rfc7644#section-3.4.1
+ * @description Retrieves a single user by their ID.
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
     try {
         const user = await userService.getUserById(params.id);
         if (!user) {
-            return NextResponse.json({ schemas: ["urn:ietf:params:scim:api:2.0:Error"], detail: 'User not found', status: "404" }, { status: 404 });
+            return notFoundResponse();
         }
         return NextResponse.json(user);
     } catch (error: any) {
@@ -27,14 +37,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 /**
  * PUT /api/scim/v2/Users/{id}
  * @description Replaces a user's content.
- * @see https://tools.ietf.org/html/rfc7644#section-3.5.1
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
     try {
         const body = await request.json();
         const updatedUser = await userService.updateUser(params.id, body);
         if (!updatedUser) {
-            return NextResponse.json({ schemas: ["urn:ietf:params:scim:api:2.0:Error"], detail: 'User not found', status: "404" }, { status: 404 });
+            return notFoundResponse();
         }
         return NextResponse.json(updatedUser);
     } catch (error: any) {
@@ -42,17 +51,15 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 }
 
-
 /**
  * DELETE /api/scim/v2/Users/{id}
  * @description Deletes a user.
- * @see https://tools.ietf.org/html/rfc7644#section-3.6
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
     try {
         const success = await userService.deleteUser(params.id);
         if (!success) {
-            return NextResponse.json({ schemas: ["urn:ietf:params:scim:api:2.0:Error"], detail: 'User not found', status: "404" }, { status: 404 });
+            return notFoundResponse();
         }
         return new NextResponse(null, { status: 204 });
     } catch (error: any) {

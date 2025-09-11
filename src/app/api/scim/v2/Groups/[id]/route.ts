@@ -1,11 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GroupService } from '@/lib/scim/services/groupService';
+import { ScimError } from '@/lib/scim/models/scimSchemas';
 
 const groupService = new GroupService();
 
+// Defines the expected shape of the route's parameters.
 interface RouteParams {
     params: { id: string };
 }
+
+// Helper to create a consistent 404 Not Found response.
+const notFoundResponse = (): NextResponse<ScimError> => {
+    return NextResponse.json({
+        schemas: ["urn:ietf:params:scim:api:2.0:Error"],
+        detail: "Group not found",
+        status: "404",
+    }, { status: 404 });
+};
 
 /**
  * GET /api/scim/v2/Groups/{id}
@@ -15,7 +26,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     try {
         const group = await groupService.getGroupById(params.id);
         if (!group) {
-            return NextResponse.json({ schemas: ["urn:ietf:params:scim:api:2.0:Error"], detail: 'Group not found', status: "404" }, { status: 404 });
+            return notFoundResponse();
         }
         return NextResponse.json(group);
     } catch (error: any) {
@@ -32,7 +43,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         const body = await request.json();
         const updatedGroup = await groupService.updateGroup(params.id, body);
         if (!updatedGroup) {
-            return NextResponse.json({ schemas: ["urn:ietf:params:scim:api:2.0:Error"], detail: 'Group not found', status: "404" }, { status: 404 });
+            return notFoundResponse();
         }
         return NextResponse.json(updatedGroup);
     } catch (error: any) {
@@ -48,7 +59,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     try {
         const success = await groupService.deleteGroup(params.id);
         if (!success) {
-            return NextResponse.json({ schemas: ["urn:ietf:params:scim:api:2.0:Error"], detail: 'Group not found', status: "404" }, { status: 404 });
+            return notFoundResponse();
         }
         return new NextResponse(null, { status: 204 });
     } catch (error: any) {
