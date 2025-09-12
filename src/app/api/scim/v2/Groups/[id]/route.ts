@@ -2,15 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GroupService } from '@/lib/scim/services/groupService';
 import { ScimError } from '@/lib/scim/models/scimSchemas';
 import { logExternalRequest } from '@/lib/scim/logging'; // 1. Import the logger
-
+import { protectWithApiKey } from '@/lib/scim/apiHelper';
 const groupService = new GroupService();
 
-// Defines the expected shape of the route's parameters.
+
 interface RouteParams {
     params: { id: string };
 }
 
-// Helper to create a consistent 404 Not Found response.
+
 const notFoundResponse = (): NextResponse<ScimError> => {
     return NextResponse.json({
         schemas: ["urn:ietf:params:scim:api:2.0:Error"],
@@ -19,11 +19,11 @@ const notFoundResponse = (): NextResponse<ScimError> => {
     }, { status: 404 });
 };
 
-/**
- * GET /api/scim/v2/Groups/{id}
- * @description Retrieves a single group by ID.
- */
 export async function GET(request: NextRequest, { params }: RouteParams) {
+    const unauthorizedResponse = await protectWithApiKey(request);
+    if (unauthorizedResponse) {
+        return unauthorizedResponse; 
+    }
     logExternalRequest(request)
     try {
         const group = await groupService.getGroupById(params.id);
@@ -36,11 +36,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 }
 
-/**
- * PUT /api/scim/v2/Groups/{id}
- * @description Replaces a group's content.
- */
+
 export async function PUT(request: NextRequest, { params }: RouteParams) {
+    const unauthorizedResponse = await protectWithApiKey(request);
+    if (unauthorizedResponse) {
+        return unauthorizedResponse; 
+    }
     logExternalRequest(request)
     try {
         const body = await request.json();
@@ -54,11 +55,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 }
 
-/**
- * DELETE /api/scim/v2/Groups/{id}
- * @description Deletes a group.
- */
+
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
+    const unauthorizedResponse = await protectWithApiKey(request);
+    
+    if (unauthorizedResponse) {
+        return unauthorizedResponse; 
+    }
     logExternalRequest(request)
     try {
         const success = await groupService.deleteGroup(params.id);

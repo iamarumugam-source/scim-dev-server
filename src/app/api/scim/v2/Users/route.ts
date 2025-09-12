@@ -2,15 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { UserService } from '@/lib/scim/services/userService';
 import { ScimListResponse, ScimUser } from '@/lib/scim/models/scimSchemas';
 import { logExternalRequest } from '@/lib/scim/logging'; // 1. Import the logger
+import { protectWithApiKey } from '@/lib/scim/apiHelper';
 
 const userService = new UserService();
 
-/**
- * GET /api/scim/v2/Users
- * @description Retrieves a list of users (paginated).
- * @see https://tools.ietf.org/html/rfc7644#section-3.4.2
- */
+
 export async function GET(request: NextRequest) {
+    const unauthorizedResponse = await protectWithApiKey(request);
+    if (unauthorizedResponse) {
+        return unauthorizedResponse; 
+    }
     logExternalRequest(request);
 
     const { searchParams } = new URL(request.url);
@@ -32,12 +33,12 @@ export async function GET(request: NextRequest) {
     }
 }
 
-/**
- * POST /api/scim/v2/Users
- * @description Creates a new user.
- * @see https://tools.ietf.org/html/rfc7644#section-3.3
- */
+
 export async function POST(request: NextRequest) {
+    const unauthorizedResponse = await protectWithApiKey(request);
+    if (unauthorizedResponse) {
+        return unauthorizedResponse; 
+    }
     logExternalRequest(request);
 
     try {

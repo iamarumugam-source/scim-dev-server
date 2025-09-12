@@ -1,16 +1,18 @@
 "use client";
-import { Home, Search, Settings, UserCircle, UsersRound } from "lucide-react";
+import { UsersRound, KeyIcon } from "lucide-react";
 
 import {
   IconCirclePlusFilled,
   IconInnerShadowTop,
   IconClearAll,
   IconDashboard,
+  IconListDetails,
 } from "@tabler/icons-react";
 
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
@@ -19,23 +21,29 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { Button } from "./ui/button";
+import NavUser from "./user-menu";
 
 // Menu items.
 const items = [
   {
     title: "Dashboard",
-    url: "#",
+    url: "/",
     icon: IconDashboard,
   },
   {
     title: "Users",
     url: "#",
-    icon: UserCircle,
+    icon: IconListDetails,
   },
   {
     title: "Groups",
     url: "#",
     icon: UsersRound,
+  },
+  {
+    title: "API Keys",
+    url: "/keys",
+    icon: KeyIcon,
   },
 ];
 
@@ -107,6 +115,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter>
+        <NavUser />
+      </SidebarFooter>
     </Sidebar>
   );
 }

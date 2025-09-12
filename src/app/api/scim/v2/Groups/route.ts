@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GroupService } from '@/lib/scim/services/groupService';
 import { ScimListResponse, ScimGroup } from '@/lib/scim/models/scimSchemas';
-import { logExternalRequest } from '@/lib/scim/logging'; // 1. Import the logger
-
+import { logExternalRequest } from '@/lib/scim/logging'; 
+import { protectWithApiKey } from '@/lib/scim/apiHelper';
 const groupService = new GroupService();
 
-/**
- * GET /api/scim/v2/Groups
- * @description Retrieves a list of groups.
- */
+
 export async function GET(request: NextRequest) {
+
+    const unauthorizedResponse = await protectWithApiKey(request);
+    if (unauthorizedResponse) {
+        return unauthorizedResponse; 
+    }
     logExternalRequest(request)
     const { searchParams } = new URL(request.url);
     const startIndex = parseInt(searchParams.get('startIndex') || '1', 10);
@@ -30,11 +32,12 @@ export async function GET(request: NextRequest) {
     }
 }
 
-/**
- * POST /api/scim/v2/Groups
- * @description Creates a new group.
- */
+
 export async function POST(request: NextRequest) {
+    const unauthorizedResponse = await protectWithApiKey(request);
+    if (unauthorizedResponse) {
+        return unauthorizedResponse; 
+    }
     logExternalRequest(request)
     try {
         const body = await request.json();

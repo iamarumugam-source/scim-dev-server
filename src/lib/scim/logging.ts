@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 
-const APP_HOST = `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` || 'http://localhost:3000';
+const APP_HOST = process.env.NEXT_PUBLIC_BASE_URL!;
 
 const LOG_API_URL = `${APP_HOST}/api/scim/v2/logs`;
 
@@ -26,7 +26,6 @@ function isExternalRequest(request: NextRequest): boolean {
 
 export function logExternalRequest(request: NextRequest): void {
     if (isExternalRequest(request)) {
-        console.log(request)
         const logPayload = {
             timestamp: new Date().toISOString(),
             method: request.method,

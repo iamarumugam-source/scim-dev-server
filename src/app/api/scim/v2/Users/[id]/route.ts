@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { UserService } from '@/lib/scim/services/userService';
 import { ScimError } from '@/lib/scim/models/scimSchemas';
 import { logExternalRequest } from '@/lib/scim/logging'; // 1. Import the logger
+import { protectWithApiKey } from '@/lib/scim/apiHelper';
 
 const userService = new UserService();
 
@@ -19,11 +20,13 @@ const notFoundResponse = (): NextResponse<ScimError> => {
     }, { status: 404 });
 };
 
-/**
- * GET /api/scim/v2/Users/{id}
- * @description Retrieves a single user by their ID.
- */
+
 export async function GET(request: NextRequest, { params }: RouteParams) {
+    const unauthorizedResponse = await protectWithApiKey(request);
+    console.log(unauthorizedResponse)
+        if (unauthorizedResponse) {
+            return unauthorizedResponse; 
+        }
     logExternalRequest(request);
 
     try {
@@ -37,11 +40,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 }
 
-/**
- * PUT /api/scim/v2/Users/{id}
- * @description Replaces a user's content.
- */
+
 export async function PUT(request: NextRequest, { params }: RouteParams) {
+    const unauthorizedResponse = await protectWithApiKey(request);
+    if (unauthorizedResponse) {
+        return unauthorizedResponse; 
+    }
     logExternalRequest(request);
 
     try {
@@ -56,11 +60,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 }
 
-/**
- * DELETE /api/scim/v2/Users/{id}
- * @description Deletes a user.
- */
+
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
+    const unauthorizedResponse = await protectWithApiKey(request);
+    if (unauthorizedResponse) {
+        return unauthorizedResponse; 
+    }
     logExternalRequest(request);
 
     try {

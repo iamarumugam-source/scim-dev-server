@@ -14,11 +14,52 @@ export const authOptions: AuthOptions = {
       clientId: process.env.OKTA_CLIENT_ID,
       clientSecret: process.env.OKTA_CLIENT_SECRET,
       issuer: process.env.OKTA_ISSUER,
+      authorization: {
+        params: {
+          scope: "openid profile email" // Ensure these scopes are requested
+        }
+      }
     }),
   ],
+  session: {
+    strategy: "jwt", // Using JWTs is required for this callback approach
+  },
+  callbacks: {
+    /**
+     * This callback is called whenever a JWT is created or updated.
+     * It runs on sign-in and when the session is accessed.
+     */
+    async jwt({ token, user, account }) {
+      // This block only runs on the initial sign-in
+      // console.log(token)
+      if (account && user) {
+        // Persist the OIDC access_token and user's ID (sub) to the token
+        token.accessToken = account.access_token;
+        token.id = user.id; // user.id from Okta is the 'sub' claim
+      }
+      return token;
+    },
+
+    /**
+     * This callback is called whenever a session is checked.
+     * It runs on every `useSession()` or `getServerSession()` call.
+     */
+    async session({ session, token }) {
+      // Send properties to the client, like an access_token and user ID from the token.
+      // The `token` object here is what was returned from the `jwt` callback.
+      session.accessToken = token.accessToken as string | undefined;
+      
+      if (session.user) {
+        session.user.id = token.id as string;
+      }
+      
+      return session;
+    },
+  },
   secret: process.env.NEXTAUTH_SECRET,
 };
 
 const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };
+
