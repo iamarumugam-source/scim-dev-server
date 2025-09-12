@@ -24,14 +24,23 @@ function isExternalRequest(request: NextRequest): boolean {
     return false;
 }
 
-export function logExternalRequest(request: NextRequest): void {
+export async function logExternalRequest(request: NextRequest): Promise<void> {
+     let payload: any = null;
+        if (request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH') {
+            try {
+                payload = await request.clone().json();
+            } catch (error) {
+                payload = { error: "Could not parse request body as JSON." };
+            }
+        }
     if (isExternalRequest(request)) {
         const logPayload = {
             timestamp: new Date().toISOString(),
             method: request.method,
             path: request.nextUrl.pathname,
             userAgent: request.headers.get('user-agent') || 'unknown',
-            ip: (request.headers.get('x-forwarded-for') ?? '127.0.0.1').split(',')[0].trim()
+            ip: (request.headers.get('x-forwarded-for') ?? '127.0.0.1').split(',')[0].trim(),
+            payload: payload
         };
 
         fetch(LOG_API_URL, {

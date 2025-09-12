@@ -9,7 +9,14 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@radix-ui/react-accordion";
 
 interface LogEntry {
   timestamp: string;
@@ -17,7 +24,24 @@ interface LogEntry {
   path: string;
   ip: string;
   userAgent: string;
+  payload: any;
 }
+
+const getMethodBadgeVariant = (method: string) => {
+  switch (method.toUpperCase()) {
+    case "GET":
+      return "bg-blue-500 hover:bg-blue-500 font-semibold";
+    case "POST":
+      return "bg-green-600 hover:bg-green-600 font-semibold";
+    case "PUT":
+    case "PATCH":
+      return "bg-yellow-500 hover:bg-yellow-500 text-black font-semibold";
+    case "DELETE":
+      return "bg-red-600 hover:bg-red-600 font-semibold";
+    default:
+      return "bg-gray-500 hover:bg-gray-500 font-semibold";
+  }
+};
 
 const LogViewer: FC = () => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -52,7 +76,7 @@ const LogViewer: FC = () => {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>External API Requests</CardTitle>
+          <CardTitle>Request Logs</CardTitle>
           <CardDescription>
             Feed of incoming requests from third-party applications.
           </CardDescription>
@@ -67,38 +91,53 @@ const LogViewer: FC = () => {
         </Button>
       </CardHeader>
       <CardContent>
-        <div className="bg-muted/50 rounded-lg p-4 h-[480px] overflow-y-auto font-mono text-sm space-y-3">
+        <div className="space-y-4">
           {logs.length > 0 ? (
-            logs.map((log, index) => (
-              <div key={index} className="border-b border-border/50 pb-2">
-                <div className="flex justify-between items-center">
-                  <p>
-                    <span
-                      className={
-                        log.method === "GET"
-                          ? "text-blue-400"
-                          : log.method === "POST"
-                          ? "text-green-400"
-                          : log.method === "PUT"
-                          ? "text-yellow-400"
-                          : log.method === "DELETE"
-                          ? "text-red-400"
-                          : ""
-                      }
-                    >
-                      <strong>{log.method}</strong>
-                    </span>
-                    <span className="text-foreground/80"> {log.path}</span>
-                  </p>
-                  <span className="text-muted-foreground text-xs">
-                    {new Date(log.timestamp).toLocaleTimeString()}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground truncate">
-                  IP: {log.ip} | User-Agent: {log.userAgent}
-                </p>
-              </div>
-            ))
+            <Accordion type="single" collapsible className="w-full">
+              {logs.map((log, index) => (
+                <AccordionItem value={`item-${index}`} key={index}>
+                  <div key={index} className="border-b border-border/50 pb-2">
+                    <AccordionTrigger className="w-full">
+                      <div className="flex items-center gap-4 text-sm">
+                        <Badge
+                          className={`${getMethodBadgeVariant(
+                            log.method
+                          )} w-16 justify-center text-primary-foreground`}
+                        >
+                          {log.method}
+                        </Badge>
+                        <span className="font-mono text-muted-foreground flex-1 text-left">
+                          {log.path}
+                        </span>
+                        <span className="text-xs font-mono text-muted-foreground hidden sm:inline">
+                          {new Date(log.timestamp).toLocaleTimeString()}
+                        </span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="text-xs text-muted-foreground space-y-2 p-4 bg-muted/50 rounded-md">
+                        <p>
+                          <strong>IP Address:</strong> {log.ip}
+                        </p>
+                        <p>
+                          <strong>User Agent:</strong> {log.userAgent}
+                        </p>
+                        {log.payload && (
+                          <div>
+                            <strong>Payload:</strong>
+                            <pre className="mt-2 p-3 bg-background rounded-md text-foreground overflow-x-auto">
+                              <code>
+                                {JSON.stringify(log.payload, null, 2)}
+                              </code>
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    </AccordionContent>
+                  </div>
+                </AccordionItem>
+              ))}
+            </Accordion>
           ) : (
             <div className="flex items-center justify-center h-full">
               <p className="text-muted-foreground">

@@ -239,7 +239,7 @@ export default function ScimDashboard() {
                                 </TableCell>
                                 <TableCell>
                                   <Badge
-                                    className="text-foreground"
+                                    className="text-primary-foreground"
                                     variant={
                                       user.active ? "default" : "destructive"
                                     }
