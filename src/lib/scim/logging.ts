@@ -26,11 +26,13 @@ function isExternalRequest(request: NextRequest): boolean {
 
 export function logExternalRequest(request: NextRequest): void {
     if (isExternalRequest(request)) {
+        console.log(request)
         const logPayload = {
             timestamp: new Date().toISOString(),
             method: request.method,
             path: request.nextUrl.pathname,
             userAgent: request.headers.get('user-agent') || 'unknown',
+            ip: (request.headers.get('x-forwarded-for') ?? '127.0.0.1').split(',')[0].trim()
         };
 
         fetch(LOG_API_URL, {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, FC } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -45,16 +45,16 @@ export default function ScimDashboard() {
   const getUserCacheKey = (page: number) => `scim_users_page_${page}`;
   const getGroupCacheKey = (page: number) => `scim_groups_page_${page}`;
 
-  const clearCache = () => {
+  const clearCache = useCallback(() => {
     Object.keys(sessionStorage).forEach((key) => {
       if (key.startsWith("scim_users_") || key.startsWith("scim_groups_")) {
         sessionStorage.removeItem(key);
       }
     });
     toast.info("Data cache has been cleared.");
-  };
+  }, []);
 
-  const fetchUsers = async (page = 1) => {
+  const fetchUsers = useCallback(async (page = 1) => {
     const cacheKey = getUserCacheKey(page);
     const cachedData = sessionStorage.getItem(cacheKey);
 
@@ -89,9 +89,9 @@ export default function ScimDashboard() {
     } finally {
       setIsUsersLoading(false);
     }
-  };
+  }, []);
 
-  const fetchGroups = async (page = 1) => {
+  const fetchGroups = useCallback(async (page = 1) => {
     const cacheKey = getGroupCacheKey(page);
     const cachedData = sessionStorage.getItem(cacheKey);
 
@@ -126,25 +126,12 @@ export default function ScimDashboard() {
     } finally {
       setIsGroupsLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchUsers(1);
   }, []);
 
-  const handleTabChange = (value: string) => {
-    if (value === "users") {
-      fetchUsers(1);
-    } else if (value === "groups") {
-      fetchGroups(1);
-    }
-  };
+  const handleGenerateData = useCallback(async () => {
+    // Prevent multiple clicks while generating
+    if (isGenerating) return;
 
-  const toggleGroupExpansion = (groupId: string) => {
-    setExpandedGroupId((prevId) => (prevId === groupId ? null : groupId));
-  };
-
-  const handleGenerateData = async () => {
     setIsGenerating(true);
     toast.info("Generating new sample data...");
     try {
@@ -159,37 +146,51 @@ export default function ScimDashboard() {
       toast.success(
         "New data generated successfully! Fetching updated lists..."
       );
+      // Refetch data for both tabs to ensure UI is up to date
       await Promise.all([fetchUsers(1), fetchGroups(1)]);
     } catch (e: any) {
       toast.error(`Error generating data: ${e.message}`);
     } finally {
       setIsGenerating(false);
     }
+  }, [isGenerating, clearCache, fetchUsers, fetchGroups]); // Add fetch functions as dependencies
+
+  useEffect(() => {
+    // Listen for custom events dispatched from the sidebar
+    document.addEventListener("generateData", handleGenerateData);
+    document.addEventListener("clearCache", clearCache);
+
+    // Initial fetch for the first tab
+    fetchUsers(1);
+
+    // Cleanup listeners when the component unmounts to prevent memory leaks
+    return () => {
+      document.removeEventListener("generateData", handleGenerateData);
+      document.removeEventListener("clearCache", clearCache);
+    };
+  }, [handleGenerateData, clearCache, fetchUsers]); // Add fetchUsers to the dependency array
+
+  const handleTabChange = (value: string) => {
+    if (value === "users") {
+      fetchUsers(userPage); // Fetch the current page for users
+    } else if (value === "groups") {
+      fetchGroups(groupPage); // Fetch the current page for groups
+    }
+    // No action needed for 'logs' tab as it handles its own state
+  };
+
+  const toggleGroupExpansion = (groupId: string) => {
+    setExpandedGroupId((prevId) => (prevId === groupId ? null : groupId));
   };
 
   const userTotalPages = Math.ceil(totalUsers / ITEMS_PER_PAGE);
   const groupTotalPages = Math.ceil(totalGroups / ITEMS_PER_PAGE);
 
   return (
-    <main className="min-h-screen bg-background text-foreground p-4 md:p-8">
+    <>
       <Toaster richColors />
       <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-          <div className="text-center md:text-left">
-            <h1 className="text-3xl font-bold">SCIM Administration</h1>
-            <p className="text-muted-foreground">
-              Manage your users and groups.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button onClick={handleGenerateData} disabled={isGenerating}>
-              {isGenerating ? "Generating..." : "Generate New Data"}
-            </Button>
-            <Button variant="outline" onClick={clearCache}>
-              Clear Cache
-            </Button>
-          </div>
-        </div>
+        <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4"></div>
 
         {error && <ErrorDisplay message={error} />}
 
@@ -215,46 +216,48 @@ export default function ScimDashboard() {
                   <LoadingSpinner />
                 ) : (
                   <>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Username</TableHead>
-                          <TableHead>Full Name</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {users.length > 0 ? (
-                          users.map((user) => (
-                            <TableRow key={user.id}>
-                              <TableCell className="font-medium">
-                                {user.userName}
-                              </TableCell>
-                              <TableCell>{user.name?.formatted}</TableCell>
-                              <TableCell>
-                                {user.emails?.find((e) => e.primary)?.value}
-                              </TableCell>
-                              <TableCell>
-                                <Badge
-                                  variant={
-                                    user.active ? "default" : "destructive"
-                                  }
-                                >
-                                  {user.active ? "Active" : "Inactive"}
-                                </Badge>
+                    <div className="overflow-hidden rounded-lg border">
+                      <Table>
+                        <TableHeader className="bg-muted sticky top-0 z-10">
+                          <TableRow>
+                            <TableHead>Username</TableHead>
+                            <TableHead>Full Name</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {users.length > 0 ? (
+                            users.map((user) => (
+                              <TableRow key={user.id}>
+                                <TableCell className="font-medium">
+                                  {user.userName}
+                                </TableCell>
+                                <TableCell>{user.name?.formatted}</TableCell>
+                                <TableCell>
+                                  {user.emails?.find((e) => e.primary)?.value}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge
+                                    variant={
+                                      user.active ? "default" : "destructive"
+                                    }
+                                  >
+                                    {user.active ? "Active" : "Inactive"}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          ) : (
+                            <TableRow>
+                              <TableCell colSpan={4} className="text-center">
+                                No users found.
                               </TableCell>
                             </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={4} className="text-center">
-                              No users found.
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
                     <DashboardPagination
                       currentPage={userPage}
                       totalPages={userTotalPages}
@@ -349,6 +352,6 @@ export default function ScimDashboard() {
           <LogViewer />
         </div>
       </div>
-    </main>
+    </>
   );
 }
