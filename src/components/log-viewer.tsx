@@ -102,7 +102,7 @@ const LogViewer: FC = () => {
                         <Badge
                           className={`${getMethodBadgeVariant(
                             log.method
-                          )} w-16 justify-center text-primary-foreground`}
+                          )} w-16 justify-center text-primary-foreground dark:text-foreground`}
                         >
                           {log.method}
                         </Badge>
