@@ -25,7 +25,7 @@ export class ApiKeyService {
    * Stores a hashed version of the key in the database.
    * Returns the raw (un-hashed) key to be displayed to the user ONCE.
    */
-  public async generateKey(name: string): Promise<{ rawKey: string, id: string }> {
+  public async generateKey(name: string, userId: string): Promise<{ rawKey: string, id: string }> {
     if (!name) throw new Error('API key name is required.');
 
     // Generate a new random key
@@ -40,6 +40,7 @@ export class ApiKeyService {
         name,
         hashed_key: hashedKey,
         key_prefix: keyPrefix,
+        tenantId: userId
       })
       .select('id')
       .single();
@@ -80,10 +81,11 @@ export class ApiKeyService {
    * Retrieves all API keys from the database.
    * Does NOT return the actual key, only safe-to-display information.
    */
-  public async getKeys(): Promise<{ id: string, name: string, key_prefix: string, created_at: string }[]> {
+  public async getKeys(userId: string): Promise<{ id: string, name: string, key_prefix: string, created_at: string }[]> {
     const { data, error } = await supabase
       .from(TABLE_NAME)
       .select('id, name, key_prefix, created_at')
+      .eq('tenantId', userId)
       .order('created_at', { ascending: false });
 
     if (error) {

@@ -25,7 +25,8 @@ function isExternalRequest(request: NextRequest): boolean {
 }
 
 export async function logExternalRequest(request: NextRequest): Promise<void> {
-     let payload: any = null;
+
+     let payload: any;
         if (request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH') {
             try {
                 payload = await request.clone().json();

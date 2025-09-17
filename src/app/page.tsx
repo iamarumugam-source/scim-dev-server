@@ -10,7 +10,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -25,14 +24,17 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { LoadingSpinner, ErrorDisplay } from "@/components/helper-components";
 import DashboardPagination from "@/components/padination-handler";
 import LogViewer from "@/components/log-viewer";
+import { useSession } from "next-auth/react";
 
 export default function ScimDashboard() {
+  const { data: session } = useSession();
   const [users, setUsers] = useState<ScimUser[]>([]);
   const [groups, setGroups] = useState<ScimGroup[]>([]);
   const [isUsersLoading, setIsUsersLoading] = useState(true);
   const [isGroupsLoading, setIsGroupsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // const [userId, setUserId] = useState<string>(""); This logic can be implementd if needed in the future. For now simply fetching userId is more than enough
 
   const [userPage, setUserPage] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
@@ -40,8 +42,8 @@ export default function ScimDashboard() {
   const [totalGroups, setTotalGroups] = useState(0);
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
   const ITEMS_PER_PAGE = 10;
+  const userId = session?.user?.id;
 
-  // --- Caching Logic ---
   const getUserCacheKey = (page: number) => `scim_users_page_${page}`;
   const getGroupCacheKey = (page: number) => `scim_groups_page_${page}`;
 
@@ -54,79 +56,85 @@ export default function ScimDashboard() {
     toast.info("Data cache has been cleared.");
   }, []);
 
-  const fetchUsers = useCallback(async (page = 1) => {
-    const cacheKey = getUserCacheKey(page);
-    const cachedData = sessionStorage.getItem(cacheKey);
+  const fetchUsers = useCallback(
+    async (page = 1) => {
+      const cacheKey = getUserCacheKey(page);
+      const cachedData = sessionStorage.getItem(cacheKey);
 
-    if (cachedData) {
-      const usersData = JSON.parse(cachedData);
-      setUsers(usersData.Resources || []);
-      setTotalUsers(usersData.totalResults || 0);
-      setUserPage(page);
-      setIsUsersLoading(false);
-      return;
-    }
+      if (cachedData) {
+        const usersData = JSON.parse(cachedData);
+        setUsers(usersData.Resources || []);
+        setTotalUsers(usersData.totalResults || 0);
+        setUserPage(page);
+        setIsUsersLoading(false);
+        return;
+      }
 
-    setIsUsersLoading(true);
-    setError(null);
-    try {
-      const startIndex = (page - 1) * ITEMS_PER_PAGE + 1;
-      const usersRes = await fetch(
-        `/api/scim/v2/Users?startIndex=${startIndex}&count=${ITEMS_PER_PAGE}`
-      );
-      if (!usersRes.ok)
-        throw new Error(`Failed to fetch users: ${usersRes.statusText}`);
-      const usersData = await usersRes.json();
+      setIsUsersLoading(true);
+      setError(null);
+      try {
+        const startIndex = (page - 1) * ITEMS_PER_PAGE + 1;
+        const usersRes = await fetch(
+          `/api/${userId}/scim/v2/Users?startIndex=${startIndex}&count=${ITEMS_PER_PAGE}`
+        );
+        if (!usersRes.ok)
+          throw new Error(`Failed to fetch users: ${usersRes.statusText}`);
+        const usersData = await usersRes.json();
 
-      sessionStorage.setItem(cacheKey, JSON.stringify(usersData));
+        sessionStorage.setItem(cacheKey, JSON.stringify(usersData));
 
-      setUsers(usersData.Resources || []);
-      setTotalUsers(usersData.totalResults || 0);
-      setUserPage(page);
-    } catch (e: any) {
-      setError(e.message);
-      toast.error(`Failed to fetch users: ${e.message}`);
-    } finally {
-      setIsUsersLoading(false);
-    }
-  }, []);
+        setUsers(usersData.Resources || []);
+        setTotalUsers(usersData.totalResults || 0);
+        setUserPage(page);
+      } catch (e: any) {
+        setError(e.message);
+        toast.error(`Failed to fetch users: ${e.message}`);
+      } finally {
+        setIsUsersLoading(false);
+      }
+    },
+    [userId]
+  );
 
-  const fetchGroups = useCallback(async (page = 1) => {
-    const cacheKey = getGroupCacheKey(page);
-    const cachedData = sessionStorage.getItem(cacheKey);
+  const fetchGroups = useCallback(
+    async (page = 1) => {
+      const cacheKey = getGroupCacheKey(page);
+      const cachedData = sessionStorage.getItem(cacheKey);
 
-    if (cachedData) {
-      const groupsData = JSON.parse(cachedData);
-      setGroups(groupsData.Resources || []);
-      setTotalGroups(groupsData.totalResults || 0);
-      setGroupPage(page);
-      setIsGroupsLoading(false);
-      return;
-    }
+      if (cachedData) {
+        const groupsData = JSON.parse(cachedData);
+        setGroups(groupsData.Resources || []);
+        setTotalGroups(groupsData.totalResults || 0);
+        setGroupPage(page);
+        setIsGroupsLoading(false);
+        return;
+      }
 
-    setIsGroupsLoading(true);
-    setError(null);
-    try {
-      const startIndex = (page - 1) * ITEMS_PER_PAGE + 1;
-      const groupsRes = await fetch(
-        `/api/scim/v2/Groups?startIndex=${startIndex}&count=${ITEMS_PER_PAGE}`
-      );
-      if (!groupsRes.ok)
-        throw new Error(`Failed to fetch groups: ${groupsRes.statusText}`);
-      const groupsData = await groupsRes.json();
+      setIsGroupsLoading(true);
+      setError(null);
+      try {
+        const startIndex = (page - 1) * ITEMS_PER_PAGE + 1;
+        const groupsRes = await fetch(
+          `/api/${userId}/scim/v2/Groups?startIndex=${startIndex}&count=${ITEMS_PER_PAGE}`
+        );
+        if (!groupsRes.ok)
+          throw new Error(`Failed to fetch groups: ${groupsRes.statusText}`);
+        const groupsData = await groupsRes.json();
 
-      sessionStorage.setItem(cacheKey, JSON.stringify(groupsData));
+        sessionStorage.setItem(cacheKey, JSON.stringify(groupsData));
 
-      setGroups(groupsData.Resources || []);
-      setTotalGroups(groupsData.totalResults || 0);
-      setGroupPage(page);
-    } catch (e: any) {
-      setError(e.message);
-      toast.error(`Failed to fetch groups: ${e.message}`);
-    } finally {
-      setIsGroupsLoading(false);
-    }
-  }, []);
+        setGroups(groupsData.Resources || []);
+        setTotalGroups(groupsData.totalResults || 0);
+        setGroupPage(page);
+      } catch (e: any) {
+        setError(e.message);
+        toast.error(`Failed to fetch groups: ${e.message}`);
+      } finally {
+        setIsGroupsLoading(false);
+      }
+    },
+    [userId]
+  );
 
   const handleGenerateData = useCallback(async () => {
     // Prevent multiple clicks while generating
@@ -135,7 +143,9 @@ export default function ScimDashboard() {
     setIsGenerating(true);
     toast.info("Generating new sample data...");
     try {
-      const res = await fetch("/api/scim/v2/generate", { method: "POST" });
+      const res = await fetch(`/api/${userId}/scim/v2/generate`, {
+        method: "POST",
+      });
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.detail || "An unknown error occurred.");

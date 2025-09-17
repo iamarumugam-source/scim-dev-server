@@ -17,6 +17,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@radix-ui/react-accordion";
+import { useSession } from "next-auth/react";
 
 interface LogEntry {
   timestamp: string;
@@ -45,11 +46,14 @@ const getMethodBadgeVariant = (method: string) => {
 
 const LogViewer: FC = () => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const { data: session } = useSession();
+
+  const userId = session?.user?.id;
 
   useEffect(() => {
     const fetchLogs = async () => {
       try {
-        const res = await fetch("/api/scim/v2/logs");
+        const res = await fetch(`/api/${userId}/scim/v2/logs`);
         if (!res.ok) {
           console.error("Failed to fetch logs");
           return;
@@ -61,11 +65,11 @@ const LogViewer: FC = () => {
       }
     };
 
-    fetchLogs(); // Fetch immediately on component mount
-    const intervalId = setInterval(fetchLogs, 3000); // Poll every 3 seconds
+    fetchLogs();
+    const intervalId = setInterval(fetchLogs, 60000); // Poll every 60 seconds
 
     return () => clearInterval(intervalId); // Cleanup interval
-  }, []);
+  }, [userId]);
 
   const handleClearLogs = () => {
     setLogs([]);

@@ -1,31 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { UserService } from '@/lib/scim/services/userService';
-import { ScimListResponse, ScimUser } from '@/lib/scim/models/scimSchemas';
-import { logExternalRequest } from '@/lib/scim/logging'; // 1. Import the logger
+import { GroupService } from '@/lib/scim/services/groupService';
+import { ScimListResponse, ScimGroup } from '@/lib/scim/models/scimSchemas';
+import { logExternalRequest } from '@/lib/scim/logging'; 
 import { protectWithApiKey } from '@/lib/scim/apiHelper';
+const groupService = new GroupService();
 
-const userService = new UserService();
+interface RouteParams {
+    params: { userId: string };
+}
+export async function GET(request: NextRequest, { params }: RouteParams) {
 
-
-export async function GET(request: NextRequest) {
     const unauthorizedResponse = await protectWithApiKey(request);
+    const { userId } = await params
     if (unauthorizedResponse) {
         return unauthorizedResponse; 
     }
-    logExternalRequest(request);
-
+    logExternalRequest(request)
     const { searchParams } = new URL(request.url);
     const startIndex = parseInt(searchParams.get('startIndex') || '1', 10);
     const count = parseInt(searchParams.get('count') || '10', 10);
-    
+
     try {
-        const { users, total } = await userService.getUsers(startIndex, count);
-        const listResponse: ScimListResponse<ScimUser> = {
+        const { groups, total } = await groupService.getGroups(startIndex, count, userId);
+        const listResponse: ScimListResponse<ScimGroup> = {
             schemas: ["urn:ietf:params:scim:api:2.0:ListResponse"],
             totalResults: total,
-            itemsPerPage: users.length,
+            itemsPerPage: groups.length,
             startIndex: startIndex,
-            Resources: users,
+            Resources: groups,
         };
         return NextResponse.json(listResponse);
     } catch (error: any) {
@@ -39,12 +41,11 @@ export async function POST(request: NextRequest) {
     if (unauthorizedResponse) {
         return unauthorizedResponse; 
     }
-    logExternalRequest(request);
-
+    logExternalRequest(request)
     try {
         const body = await request.json();
-        const newUser = await userService.createUser(body);
-        return NextResponse.json(newUser, { status: 201 });
+        const newGroup = await groupService.createGroup(body);
+        return NextResponse.json(newGroup, { status: 201 });
     } catch (error: any) {
          if (error.message.includes('already exists')) {
             return NextResponse.json({ schemas: ["urn:ietf:params:scim:api:2.0:Error"], detail: error.message, status: "409" }, { status: 409 });
@@ -53,12 +54,15 @@ export async function POST(request: NextRequest) {
     }
 }
 
+
 // export async function DELETE(request: NextRequest) {
 //     try {
-//         const deleteUsers = await userService.deleteAllUsers()
-//         return NextResponse.json(deleteUsers, {status: 200})
+//         const body = await request.json();
+//         const deleteGroup = await groupService.deleteAllGroups()
+//         return NextResponse.json(deleteGroup, {status: 200})
         
 //     } catch (error: any) {
 //         return NextResponse.json({ schemas: ["urn:ietf:params:scim:api:2.0:Error"], detail: error.message, status: "400" }, { status: 400 });
 //     }
 // }
+

@@ -23,7 +23,6 @@ const notFoundResponse = (): NextResponse<ScimError> => {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
     const unauthorizedResponse = await protectWithApiKey(request);
-    console.log(unauthorizedResponse)
         if (unauthorizedResponse) {
             return unauthorizedResponse; 
         }

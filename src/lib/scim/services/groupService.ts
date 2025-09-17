@@ -61,10 +61,11 @@ export class GroupService {
   /**
    * Retrieves all groups from Supabase with pagination.
    */
-  public async getGroups(startIndex: number = 1, count: number = 10): Promise<{ groups: ScimGroup[], total: number }> {
+  public async getGroups(startIndex: number = 1, count: number = 10, userId: string): Promise<{ groups: ScimGroup[], total: number }> {
     const { data, error, count: total } = await supabase
         .from(TABLE_NAME)
         .select('resource', { count: 'exact' })
+        .eq('tenantId', userId)
         .range(startIndex - 1, startIndex - 1 + count - 1);
     
     if (error) {

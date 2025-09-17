@@ -65,10 +65,11 @@ export class UserService {
   /**
    * Retrieves all users from Supabase with pagination.
    */
-  public async getUsers(startIndex: number = 1, count: number = 10): Promise<{ users: ScimUser[], total: number }> {
+  public async getUsers(startIndex: number = 1, count: number = 10, userId: string): Promise<{ users: ScimUser[], total: number }> {
     const { data, error, count: total } = await supabase
         .from(TABLE_NAME)
         .select('resource', { count: 'exact' })
+        .eq('tenantId', userId)
         .range(startIndex - 1, startIndex - 1 + count - 1);
     
     if (error) {

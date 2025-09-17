@@ -3,19 +3,24 @@ import { supabase } from '@/lib/scim/db';
 import { faker } from '@faker-js/faker';
 import { ScimUser, ScimGroup } from '@/lib/scim/models/scimSchemas';
 
-export async function POST(request: NextRequest) {
-    try {
-        const userCount = 50;
-        const groupCount = 10;
-        const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+interface RouteParams {
+    params: { userId: string };
+}
 
+export async function POST(request: NextRequest, { params }: RouteParams) {
+    try {
+        const userCount = 20;
+        const groupCount = 5;
+        const { userId } = await params
+        const BASE_URL = (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000') + userId;
         console.log('Starting database seeding...');
 
         const { data: existingUsersData, error: fetchError } = await supabase
             .from('scim_users')
-            .select('resource');
+            .select('resource')
+            .eq('tenantId', userId);
         
-        
+        // return;
         if (fetchError) {
             throw new Error(`Failed to fetch existing users: ${fetchError.message}`);
         }
@@ -102,12 +107,14 @@ export async function POST(request: NextRequest) {
             username: user.userName,
             active: user.active,
             resource: user,
+            tenantId: userId
         }));
 
         const groupsToInsert = groups.map(group => ({
             id: group.id,
             display_name: group.displayName,
             resource: group,
+            tenantId: userId
         }));
 
         // 6. Insert new data into Supabase

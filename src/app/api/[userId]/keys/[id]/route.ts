@@ -8,7 +8,7 @@ interface RouteContext {
 }
 
 export async function DELETE(req: NextRequest, context: RouteContext) {
-    const { id } = context.params;
+    const { id } = await context.params;
     try {
         const success = await apiKeyService.revokeKey(id);
         if (!success) {

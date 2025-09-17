@@ -21,6 +21,7 @@ import {
 } from "./ui/table";
 import { LoadingSpinner } from "./helper-components";
 import { Copy, Trash2 } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 interface ApiKey {
   id: string;
@@ -35,11 +36,13 @@ export default function ApiKeyManager() {
   const [generatedKey, setGeneratedKey] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
-
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
   const fetchKeys = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/keys");
+      if (!userId) return;
+      const res = await fetch(`/api/${userId}/keys`);
       if (!res.ok) throw new Error("Failed to fetch API keys.");
       const data = await res.json();
       setKeys(data);
@@ -49,10 +52,9 @@ export default function ApiKeyManager() {
       setIsLoading(false);
     }
   };
-
   useEffect(() => {
     fetchKeys();
-  }, []);
+  }, [userId]);
 
   const handleGenerateKey = async () => {
     if (!newKeyName.trim()) {
@@ -61,7 +63,7 @@ export default function ApiKeyManager() {
     }
     setIsGenerating(true);
     try {
-      const res = await fetch("/api/keys", {
+      const res = await fetch(`/api/${userId}/keys`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newKeyName }),
@@ -91,7 +93,9 @@ export default function ApiKeyManager() {
       return;
     }
     try {
-      const res = await fetch(`/api/keys/${keyId}`, { method: "DELETE" });
+      const res = await fetch(`/api/${userId}/keys/${keyId}`, {
+        method: "DELETE",
+      });
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.detail || "Failed to revoke key.");

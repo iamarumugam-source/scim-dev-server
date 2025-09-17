@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/scim/db';
 
 const LOG_TABLE = 'scim_logs';
-export async function POST(request: NextRequest) {
+interface RouteParams {
+    params: { userId: string };
+}
+
+export async function POST(request: NextRequest, { params }: RouteParams) {
     try {
+        const { userId } = await params
         const logPayload = await request.json();
         
         const { error } = await supabase.from(LOG_TABLE).insert({
@@ -22,8 +27,9 @@ export async function POST(request: NextRequest) {
     }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest, { params }: RouteParams) {
     try {
+        const { userId } = await params;
         const { data, error } = await supabase
             .from(LOG_TABLE)
             .select('log_data')
