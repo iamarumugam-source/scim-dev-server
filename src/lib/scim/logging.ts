@@ -1,8 +1,12 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 const APP_HOST = process.env.NEXT_PUBLIC_BASE_URL!;
 
-const LOG_API_URL = `${APP_HOST}/api/scim/v2/logs`;
+
+
+function getLogApiUrl(userId: string) {
+return `${APP_HOST}/api/${userId}/scim/v2/logs`;
+}
 
 
 function isExternalRequest(request: NextRequest): boolean {
@@ -24,7 +28,8 @@ function isExternalRequest(request: NextRequest): boolean {
     return false;
 }
 
-export async function logExternalRequest(request: NextRequest): Promise<void> {
+export async function logExternalRequest(request: NextRequest, response: NextResponse, responseData: any,  userId: string): Promise<void> {
+    const LOG_API_URL = getLogApiUrl(userId)
 
      let payload: any;
         if (request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH') {
@@ -41,7 +46,9 @@ export async function logExternalRequest(request: NextRequest): Promise<void> {
             path: request.nextUrl.pathname,
             userAgent: request.headers.get('user-agent') || 'unknown',
             ip: (request.headers.get('x-forwarded-for') ?? '127.0.0.1').split(',')[0].trim(),
-            payload: payload
+            payload: payload,
+            request: serializeRequest(request, payload),
+            response: serializeResponse(response, responseData)
         };
 
         fetch(LOG_API_URL, {
@@ -54,3 +61,33 @@ export async function logExternalRequest(request: NextRequest): Promise<void> {
     }
 }
 
+export function serializeResponse(response: NextResponse, data: any) {
+    const headers: { [key: string]: string } = {};
+    response.headers.forEach((value, key) => {
+        headers[key] = value;
+    });
+
+    return {
+        status: response.status,
+        statusText: response.statusText,
+        headers: headers,
+        body: data, 
+    };
+}
+
+
+export function serializeRequest(request: NextRequest, body: any) {
+    const headers: { [key: string]: string } = {};
+    request.headers.forEach((value, key) => {
+        headers[key] = value;
+    });
+
+    return {
+        url: request.url,
+        method: request.method,
+        headers: headers,
+        ip: (request.headers.get('x-forwarded-for') ?? '127.0.0.1').split(',')[0].trim(),
+        userAgent: request.headers.get('user-agent') || 'unknown',
+        body: body,
+    };
+}

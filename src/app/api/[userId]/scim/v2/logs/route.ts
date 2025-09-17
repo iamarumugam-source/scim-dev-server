@@ -12,7 +12,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         const logPayload = await request.json();
         
         const { error } = await supabase.from(LOG_TABLE).insert({
-            log_data: logPayload
+            log_data: logPayload,
+            tenantId: userId
         });
 
         if (error) {
@@ -33,6 +34,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         const { data, error } = await supabase
             .from(LOG_TABLE)
             .select('log_data')
+            .eq('tenantId', userId)
             .order('created_at', { ascending: false }) // Get the newest logs first
             .limit(100); // Limit to the last 100 logs for performance
 

@@ -26,6 +26,8 @@ interface LogEntry {
   ip: string;
   userAgent: string;
   payload: any;
+  request: any;
+  response: any;
 }
 
 const getMethodBadgeVariant = (method: string) => {
@@ -132,6 +134,27 @@ const LogViewer: FC = () => {
                             <pre className="mt-2 p-3 bg-background rounded-md text-foreground overflow-x-auto">
                               <code>
                                 {JSON.stringify(log.payload, null, 2)}
+                              </code>
+                            </pre>
+                          </div>
+                        )}
+
+                        {log.request && (
+                          <div>
+                            <strong>Request:</strong>
+                            <pre className="mt-2 p-3 bg-background rounded-md text-foreground overflow-x-auto">
+                              <code>
+                                {JSON.stringify(log.request, null, 2)}
+                              </code>
+                            </pre>
+                          </div>
+                        )}
+                        {log.response && (
+                          <div>
+                            <strong>Response:</strong>
+                            <pre className="mt-2 p-3 bg-background rounded-md text-foreground overflow-x-auto">
+                              <code>
+                                {JSON.stringify(log.response, null, 2)}
                               </code>
                             </pre>
                           </div>

@@ -38,11 +38,15 @@ export default function ApiKeyManager() {
   const [isGenerating, setIsGenerating] = useState(false);
   const { data: session } = useSession();
   const userId = session?.user?.id;
+  const [apiEndpoint, setApiEndpoint] = useState("");
   const fetchKeys = async () => {
     setIsLoading(true);
     try {
       if (!userId) return;
       const res = await fetch(`/api/${userId}/keys`);
+      setApiEndpoint(
+        `https://okta-inbound-scim.vercel.app/api/${userId}/scim/v2`
+      );
       if (!res.ok) throw new Error("Failed to fetch API keys.");
       const data = await res.json();
       setKeys(data);
@@ -107,9 +111,10 @@ export default function ApiKeyManager() {
     }
   };
 
-  const copyToClipboard = (text: string) => {
+  const copyToClipboard = (text: string, isKey: boolean) => {
     navigator.clipboard.writeText(text);
-    toast.success("Key copied to clipboard!");
+    const toastMessage = isKey ? "Key" : "API URL";
+    toast.success(`${toastMessage} copied to clipboard!`);
   };
 
   return (
@@ -129,7 +134,13 @@ export default function ApiKeyManager() {
               onChange={(e) => setNewKeyName(e.target.value)}
               disabled={isGenerating}
             />
-            <Button onClick={handleGenerateKey} disabled={isGenerating}>
+            <Button
+              onClick={handleGenerateKey}
+              disabled={isGenerating}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground dark:text-sidebar-accent-foreground 
+                  dark:hover:text-sidebar-accent-foreground dark:active:text-sidebar-accent-foreground
+                  min-w-8 duration-200 ease-linear"
+            >
               {isGenerating ? "Generating..." : "Generate Key"}
             </Button>
           </div>
@@ -147,7 +158,24 @@ export default function ApiKeyManager() {
                 <Button
                   size="icon"
                   variant="ghost"
-                  onClick={() => copyToClipboard(generatedKey)}
+                  onClick={() => copyToClipboard(generatedKey, true)}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+          {apiEndpoint && (
+            <div className="mt-4 p-4 bg-blue-100 dark:bg-blue-900/50 border border-blue-400 rounded-lg">
+              <p className="text-sm text-muted-foreground my-2">
+                Your API endpoint.
+              </p>
+              <div className="flex items-center gap-2 p-2 bg-background rounded-md">
+                <code className="flex-1 font-mono text-sm">{apiEndpoint}</code>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => copyToClipboard(apiEndpoint, false)}
                 >
                   <Copy className="h-4 w-4" />
                 </Button>
