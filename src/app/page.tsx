@@ -137,7 +137,6 @@ export default function ScimDashboard() {
   );
 
   const handleGenerateData = useCallback(async () => {
-    // Prevent multiple clicks while generating
     if (isGenerating) return;
 
     setIsGenerating(true);
@@ -145,6 +144,11 @@ export default function ScimDashboard() {
     try {
       const res = await fetch(`/api/${userId}/scim/v2/generate`, {
         method: "POST",
+        body: JSON.stringify({
+          deleteExisting: true,
+          userCount: 5,
+          groupCount: 1,
+        }),
       });
       if (!res.ok) {
         const errorData = await res.json();
@@ -156,24 +160,19 @@ export default function ScimDashboard() {
       toast.success(
         "New data generated successfully! Fetching updated lists..."
       );
-      // Refetch data for both tabs to ensure UI is up to date
       await Promise.all([fetchUsers(1), fetchGroups(1)]);
     } catch (e: any) {
       toast.error(`Error generating data: ${e.message}`);
     } finally {
       setIsGenerating(false);
     }
-  }, [isGenerating, clearCache, fetchUsers, fetchGroups]); // Add fetch functions as dependencies
+  }, [isGenerating, clearCache, fetchUsers, fetchGroups]);
 
   useEffect(() => {
-    // Listen for custom events dispatched from the sidebar
     document.addEventListener("generateData", handleGenerateData);
     document.addEventListener("clearCache", clearCache);
 
-    // Initial fetch for the first tab
     fetchUsers(1);
-
-    // Cleanup listeners when the component unmounts to prevent memory leaks
     return () => {
       document.removeEventListener("generateData", handleGenerateData);
       document.removeEventListener("clearCache", clearCache);
@@ -182,11 +181,10 @@ export default function ScimDashboard() {
 
   const handleTabChange = (value: string) => {
     if (value === "users") {
-      fetchUsers(userPage); // Fetch the current page for users
+      fetchUsers(userPage);
     } else if (value === "groups") {
-      fetchGroups(groupPage); // Fetch the current page for groups
+      fetchGroups(groupPage);
     }
-    // No action needed for 'logs' tab as it handles its own state
   };
 
   const toggleGroupExpansion = (groupId: string) => {
