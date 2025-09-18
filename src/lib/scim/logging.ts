@@ -42,13 +42,8 @@ export async function logExternalRequest(request: NextRequest, response: NextRes
     if (isExternalRequest(request)) {
         const logPayload = {
             timestamp: new Date().toISOString(),
-            method: request.method,
             path: request.nextUrl.pathname,
-            userAgent: request.headers.get('user-agent') || 'unknown',
-            ip: (request.headers.get('x-forwarded-for') ?? '127.0.0.1').split(',')[0].trim(),
-            payload: payload,
             request: serializeRequest(request, payload),
-            response: serializeResponse(response, responseData)
         };
 
         fetch(LOG_API_URL, {
@@ -61,25 +56,12 @@ export async function logExternalRequest(request: NextRequest, response: NextRes
     }
 }
 
-export function serializeResponse(response: NextResponse, data: any) {
-    const headers: { [key: string]: string } = {};
-    response.headers.forEach((value, key) => {
-        headers[key] = value;
-    });
-
-    return {
-        status: response.status,
-        statusText: response.statusText,
-        headers: headers,
-        body: data, 
-    };
-}
-
 
 export function serializeRequest(request: NextRequest, body: any) {
     const headers: { [key: string]: string } = {};
     request.headers.forEach((value, key) => {
-        headers[key] = value;
+        // Remove all headers related to Vercel
+        if(!key.includes('vercel') && !key.includes('authorization')) headers[key] = value;
     });
 
     return {
