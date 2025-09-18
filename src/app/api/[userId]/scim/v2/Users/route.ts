@@ -60,7 +60,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     try {
         const body = await request.json();
-        const newUser = await userService.createUser(body);
+        const newUser = await userService.createUser(body, userId);
         return createAndLogResponse(request, newUser, { status: 201 }, userId);
     } catch (error: any) {
          if (error.message.includes('already exists')) {

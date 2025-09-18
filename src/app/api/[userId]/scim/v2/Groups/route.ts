@@ -60,7 +60,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     
     try {
         const body = await request.json();
-        const newGroup = await groupService.createGroup(body);
+        const newGroup = await groupService.createGroup(body, userId);
         return createAndLogResponse(request, newGroup, { status: 201 }, userId);
     } catch (error: any) {
          if (error.message.includes('already exists')) {

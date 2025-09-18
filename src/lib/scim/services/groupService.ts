@@ -13,7 +13,7 @@ export class GroupService {
   /**
    * Creates a new group in Supabase.
    */
-  public async createGroup(groupData: Partial<ScimGroup>): Promise<ScimGroup> {
+  public async createGroup(groupData: Partial<ScimGroup>, userId: string): Promise<ScimGroup> {
     if (!groupData.displayName) {
       throw new Error('displayName is a required field.');
     }
@@ -48,7 +48,8 @@ export class GroupService {
     const { error } = await supabase.from(TABLE_NAME).insert({
         id: newGroup.id,
         display_name: newGroup.displayName,
-        resource: newGroup
+        resource: newGroup,
+        tenantId: userId
     });
     
     if (error) {
@@ -58,9 +59,7 @@ export class GroupService {
     return newGroup;
   }
 
-  /**
-   * Retrieves all groups from Supabase with pagination.
-   */
+ 
   public async getGroups(startIndex: number = 1, count: number = 10, userId: string): Promise<{ groups: ScimGroup[], total: number }> {
     const { data, error, count: total } = await supabase
         .from(TABLE_NAME)
@@ -76,9 +75,6 @@ export class GroupService {
     return { groups, total: total || 0 };
   }
 
-    /**
-   * Finds a group by its ID from Supabase.
-   */
   public async getGroupById(id: string): Promise<ScimGroup | undefined> {
     const { data, error } = await supabase
       .from(TABLE_NAME)
@@ -94,9 +90,6 @@ export class GroupService {
     return data ? data.resource as ScimGroup : undefined;
   }
 
-  /**
-   * Updates a group (PUT) in Supabase.
-   */
   public async updateGroup(id: string, groupData: Partial<ScimGroup>): Promise<ScimGroup | null> {
       const originalGroup = await this.getGroupById(id);
 
@@ -133,9 +126,6 @@ export class GroupService {
     return updatedGroup;
   }
 
-  /**
-   * Deletes a group by its ID from Supabase.
-   */
   public async deleteGroup(id: string): Promise<boolean> {
     const { error, count } = await supabase
       .from(TABLE_NAME)

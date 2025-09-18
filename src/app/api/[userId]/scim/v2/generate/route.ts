@@ -95,8 +95,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         }
         console.log(`Generated ${groups.length} new groups.`);
 
-        // 6. ASSIGN USERS TO GROUPS
-        // If we deleted users, `existingUsers` will be empty. Otherwise, it will contain the old users.
+    
         const allUsers = [...existingUsers, ...users];
         if (allUsers.length > 0) {
             groups.forEach(group => {
@@ -116,7 +115,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             console.log('Assigned users to new groups.');
         }
 
-        // 7. INSERT NEW DATA INTO DATABASE
+
         const usersToInsert = users.map(user => ({
             id: user.id, username: user.userName, active: user.active, resource: user, tenantId: userId
         }));
@@ -134,7 +133,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             if (groupError) throw new Error(`Group insertion failed: ${groupError.message}`);
         }
         
-        // 8. RETURN DYNAMIC SUCCESS RESPONSE
         const message = `Database seeding completed. Deleted existing data: ${deleteExisting}. Generated: ${users.length} users, ${groups.length} groups.`;
         console.log(message);
         return NextResponse.json({ message });

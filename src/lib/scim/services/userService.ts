@@ -2,18 +2,12 @@ import { supabase } from '../db';
 import { ScimUser } from '../models/scimSchemas';
 import { v4 as uuidv4 } from 'uuid';
 
-/**
- * @file Handles the business logic for SCIM User resources using Supabase.
- */
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 const TABLE_NAME = 'scim_users';
 
 export class UserService {
-  /**
-   * Creates a new user in Supabase.
-   */
-  public async createUser(userData: Partial<ScimUser>): Promise<ScimUser> {
+  public async createUser(userData: Partial<ScimUser>, userId: string): Promise<ScimUser> {
     if (!userData.userName) {
       throw new Error('userName is a required field.');
     }
@@ -52,7 +46,8 @@ export class UserService {
         id: newUser.id,
         username: newUser.userName,
         active: newUser.active,
-        resource: newUser
+        resource: newUser,
+        tenantId: userId
     });
 
     if (error) {
