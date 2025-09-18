@@ -59,7 +59,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     try {
-        const body = await request.json();
+        const body = await request.clone().json();
         const newUser = await userService.createUser(body, userId);
         return createAndLogResponse(request, newUser, { status: 201 }, userId);
     } catch (error: any) {

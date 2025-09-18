@@ -33,10 +33,14 @@ export async function logExternalRequest(request: NextRequest, response: NextRes
 
      let payload: any;
         if (request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH') {
+            // console.log(request.clone().json())
             try {
                 payload = await request.clone().json();
+                console.log(payload)
+
             } catch (error) {
                 payload = { error: "Could not parse request body as JSON." };
+                console.log(error)
             }
         }
     if (isExternalRequest(request)) {
