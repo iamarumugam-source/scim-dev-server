@@ -11,7 +11,7 @@ import {
 import { Toggle } from "@/components/ui/toggle";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { RefreshCw, Trash, Play } from "lucide-react";
+import { RefreshCw, Trash, Repeat } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -21,6 +21,21 @@ import {
 import { useSession } from "next-auth/react";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "./ui/button";
+import { getIconForLanguageExtension } from "./icons";
+import { CopyButton } from "./copy-button";
+import { highlightCode } from "./lib/highlight-code";
+import { IconJson } from "@tabler/icons-react";
+import { Input } from "./ui/input";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface LogEntry {
   timestamp: string;
@@ -50,6 +65,7 @@ const LogViewer: FC = () => {
   const [isLive, setIsLive] = useState(false);
 
   const userId = session?.user?.id;
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const fetchLogs = useCallback(async () => {
     if (!userId) return;
@@ -118,7 +134,7 @@ const LogViewer: FC = () => {
       <CardContent>
         <div className="space-y-4">
           {logs.length > 0 ? (
-            <Accordion type="single" collapsible className="w-full">
+            <Accordion type="single" collapsible className="">
               {logs.map((log, index) => (
                 <AccordionItem value={`item-${index}`} key={index}>
                   <div key={index} className="border-b border-border/50 pb-2">
@@ -154,45 +170,68 @@ const LogViewer: FC = () => {
                         </span>
                       </div>
                     </AccordionTrigger>
-                    <AccordionContent>
+                    <AccordionContent className="w-3xl">
                       <div className="text-xs text-muted-foreground space-y-2 p-4 bg-muted/50 rounded-md mt-2">
-                        <p>
+                        {/* <p>
                           <strong>IP Address:</strong> {log.request.ip}
-                        </p>
-                        <p>
-                          <strong>User Agent:</strong> {log.request.userAgent}
-                        </p>
+                        </p> */}
+                        <div className="flex items-center justify-between">
+                          <div className="font-bold w-1/4">
+                            Replay this request:
+                          </div>
+                          <Input
+                            disabled
+                            placeholder={log.request.url}
+                            className="w-234"
+                          />
+                          <Dialog
+                            open={isDialogOpen}
+                            onOpenChange={setIsDialogOpen}
+                          >
+                            <DialogTrigger asChild>
+                              <Button variant="outline">
+                                <Repeat />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>
+                                  Here is the replay of the last request
+                                </DialogTitle>
+                              </DialogHeader>
+
+                              <PlayLastResponse url={log.request.url} />
+
+                              <DialogFooter>
+                                <DialogClose asChild>
+                                  <Button variant="outline">Close</Button>
+                                </DialogClose>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+
                         {log.request.body && (
-                          <div>
+                          <div className="text-xs rounded-md overflow-x-auto whitespace-pre">
                             <strong>Payload:</strong>
-                            <pre className="mt-2 p-3 bg-background rounded-md text-foreground overflow-x-auto">
-                              <code>
-                                {JSON.stringify(log.request.body, null, 2)}
-                              </code>
-                            </pre>
+                            <ComponentCode
+                              code={JSON.stringify(log.request.body, null, 2)}
+                              language="json"
+                              title="Request"
+                            />
                           </div>
                         )}
 
                         {log.request && (
-                          <div>
+                          <div className="text-xs rounded-md overflow-x-auto whitespace-pre">
                             <strong>Request:</strong>
-                            <pre className="mt-2 p-3 bg-background rounded-md text-foreground overflow-x-auto">
-                              <code>
-                                {JSON.stringify(log.request, null, 2)}
-                              </code>
-                            </pre>
+                            <ComponentCode
+                              code={JSON.stringify(log.request, null, 2)}
+                              language="json"
+                              title="Request"
+                            />
                           </div>
                         )}
-                        {/* {log.response && (
-                          <div>
-                            <strong>Response:</strong>
-                            <pre className="mt-2 p-3 bg-background rounded-md text-foreground overflow-x-auto">
-                              <code>
-                                {JSON.stringify(log.response, null, 2)}
-                              </code>
-                            </pre>
-                          </div>
-                        )} */}
                       </div>
                     </AccordionContent>
                   </div>
@@ -211,5 +250,79 @@ const LogViewer: FC = () => {
     </Card>
   );
 };
+
+const PlayLastResponse = ({ url }: { url: string }) => {
+  const [code, setCode] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`Request failed with status ${res.status}`);
+      }
+      const data = await res.json();
+      setCode(data);
+    } catch (e: any) {
+      setError(e.message);
+      toast.error(`Replay failed: ${e.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [url]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  if (isLoading) {
+    return <div>Loading replay...</div>;
+  }
+
+  if (error) {
+    return <div className="text-red-500">Error: {error}</div>;
+  }
+
+  return (
+    <div className="text-xs rounded-md overflow-x-auto whitespace-pre max-h-80">
+      <ComponentCode
+        code={JSON.stringify(code || {}, null, 2)}
+        language="json"
+        title="Request"
+      />
+    </div>
+  );
+};
+
+function ComponentCode({
+  code,
+  title,
+}: {
+  code: string;
+  language: string;
+  title: string | undefined;
+}) {
+  const [highlightedRequest, setHighlightedRequest] = useState("");
+
+  useEffect(() => {
+    const generateHighlight = async () => {
+      if (code) {
+        const highlighted = await highlightCode(code, "json");
+        setHighlightedRequest(highlighted);
+      }
+    };
+
+    generateHighlight();
+  }, []);
+  return (
+    <div data-rehype-pretty-code-title="" className="relative overflow-hidden">
+      <CopyButton value={code} />
+      <div dangerouslySetInnerHTML={{ __html: highlightedRequest }} />
+    </div>
+  );
+}
 
 export default LogViewer;
