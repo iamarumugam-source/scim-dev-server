@@ -22,6 +22,7 @@ import {
 import { LoadingSpinner } from "./helper-components";
 import { Copy, Trash2 } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { Toaster } from "./ui/sonner";
 
 interface ApiKey {
   id: string;

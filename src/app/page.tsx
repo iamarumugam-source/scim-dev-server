@@ -19,12 +19,12 @@ import {
 } from "@/components/ui/card";
 import { ScimUser, ScimGroup } from "@/lib/scim/models/scimSchemas";
 import { Badge } from "@/components/ui/badge";
-import { Toaster, toast } from "sonner";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { LoadingSpinner, ErrorDisplay } from "@/components/helper-components";
 import DashboardPagination from "@/components/padination-handler";
 import LogViewer from "@/components/log-viewer";
 import { useSession } from "next-auth/react";
+import { toast } from "sonner";
 
 export default function ScimDashboard() {
   const { data: session } = useSession();
@@ -196,8 +196,7 @@ export default function ScimDashboard() {
 
   return (
     <>
-      <Toaster richColors />
-      <div className="max-w-8xl mx-auto">
+      <div className="w-full max-w-8xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4"></div>
 
         {error && <ErrorDisplay message={error} />}

@@ -159,6 +159,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const handleClearCacheClick = () => {
     clearCache();
+    toast.success("Successfully local storage has been cleared");
   };
 
   return (

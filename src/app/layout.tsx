@@ -8,6 +8,7 @@ import AuthProvider from "@/components/AuthProvider";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/app-header";
+import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -56,7 +57,13 @@ export default function RootLayout({
               <AppSidebar variant="inset" />
               <SidebarInset>
                 <SiteHeader />
-                {children}
+                {/**
+                 * The following container class fixes issues with resizing. Picked from Shadcn Blocks
+                 */}
+                <div className="@container/main flex flex-1 flex-col">
+                  {children}
+                </div>
+                <Toaster richColors position="bottom-right" />
               </SidebarInset>
             </SidebarProvider>
           </ThemeProvider>

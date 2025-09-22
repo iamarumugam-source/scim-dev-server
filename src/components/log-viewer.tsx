@@ -21,10 +21,8 @@ import {
 import { useSession } from "next-auth/react";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "./ui/button";
-import { getIconForLanguageExtension } from "./icons";
 import { CopyButton } from "./copy-button";
 import { highlightCode } from "./lib/highlight-code";
-import { IconJson } from "@tabler/icons-react";
 import { Input } from "./ui/input";
 import {
   Dialog,
@@ -114,7 +112,6 @@ const LogViewer: FC = () => {
               aria-label="Toggle live logs"
               variant="outline"
               className="cursor-pointer"
-              // onClick={toggle}
               pressed={isLive}
               onPressedChange={handleToggleChange}
             >
@@ -131,15 +128,18 @@ const LogViewer: FC = () => {
           Feed of incoming requests from third-party applications.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="w-full">
         <div className="space-y-4">
           {logs.length > 0 ? (
             <Accordion type="single" collapsible className="">
               {logs.map((log, index) => (
                 <AccordionItem value={`item-${index}`} key={index}>
-                  <div key={index} className="border-b border-border/50 pb-2">
+                  <div
+                    key={index}
+                    className="w-full border-b border-border/50 pb-2"
+                  >
                     <AccordionTrigger className="w-full cursor-pointer p-1 items-center">
-                      <div className="flex items-center gap-4 text-sm">
+                      <div className="flex items-center gap-4 text-sm justify-between">
                         <Badge
                           className={`${getMethodBadgeVariant(
                             log.request.method
@@ -151,38 +151,36 @@ const LogViewer: FC = () => {
                           orientation="vertical"
                           className="mx-2 data-[orientation=vertical]:h-4"
                         />
-                        <span className="text-xs font-mono text-muted-foreground flex-1 text-left">
+                        <div className="text-xs font-mono text-muted-foreground text-left">
                           {log.path}
-                        </span>
+                        </div>
                         <Separator
                           orientation="vertical"
                           className="mx-2 data-[orientation=vertical]:h-4"
                         />
-                        <span className="font-mono text-muted-foreground flex-1 text-left">
+                        <div className="text-xs font-mono text-muted-foreground text-left w-70">
                           {log.request.userAgent}
-                        </span>
+                        </div>
                         <Separator
                           orientation="vertical"
                           className="mx-2 data-[orientation=vertical]:h-4"
                         />
-                        <span className="text-xs font-mono text-muted-foreground hidden sm:inline">
+                        <div className="text-xs font-mono text-muted-foreground hidden sm:inline">
                           {new Date(log.timestamp).toLocaleTimeString()}
-                        </span>
+                        </div>
                       </div>
                     </AccordionTrigger>
-                    <AccordionContent className="w-3xl">
-                      <div className="text-xs text-muted-foreground space-y-2 p-4 bg-muted/50 rounded-md mt-2">
-                        {/* <p>
-                          <strong>IP Address:</strong> {log.request.ip}
-                        </p> */}
+                    <AccordionContent className="w-full">
+                      <div className="text-xs text-muted-foreground space-y-2 p-4 bg-muted/50 rounded-md mt-2 max-w-9/10">
                         <div className="flex items-center justify-between">
                           <div className="font-bold w-1/4">
                             Replay this request:
                           </div>
+                          <Button disabled>GET</Button>
                           <Input
                             disabled
                             placeholder={log.request.url}
-                            className="w-234"
+                            className="mr-2"
                           />
                           <Dialog
                             open={isDialogOpen}
@@ -190,7 +188,7 @@ const LogViewer: FC = () => {
                           >
                             <DialogTrigger asChild>
                               <Button variant="outline">
-                                <Repeat />
+                                <Repeat /> Replay
                               </Button>
                             </DialogTrigger>
                             <DialogContent>
@@ -212,7 +210,7 @@ const LogViewer: FC = () => {
                         </div>
 
                         {log.request.body && (
-                          <div className="text-xs rounded-md overflow-x-auto whitespace-pre">
+                          <div className="text-xs rounded-md overflow-x-auto">
                             <strong>Payload:</strong>
                             <ComponentCode
                               code={JSON.stringify(log.request.body, null, 2)}
@@ -223,7 +221,7 @@ const LogViewer: FC = () => {
                         )}
 
                         {log.request && (
-                          <div className="text-xs rounded-md overflow-x-auto whitespace-pre">
+                          <div className="text-xs rounded-md overflow-x-auto relative truncate w-full max-w-9/10">
                             <strong>Request:</strong>
                             <ComponentCode
                               code={JSON.stringify(log.request, null, 2)}
@@ -287,9 +285,9 @@ const PlayLastResponse = ({ url }: { url: string }) => {
   }
 
   return (
-    <div className="text-xs rounded-md overflow-x-auto whitespace-pre max-h-80">
+    <div className="text-xs rounded-md overflow-hidden whitespace-pre max-h-80 max-w-80">
       <ComponentCode
-        code={JSON.stringify(code || {}, null, 2)}
+        code={JSON.stringify(code, null, 2)}
         language="json"
         title="Request"
       />
@@ -320,7 +318,10 @@ function ComponentCode({
   return (
     <div data-rehype-pretty-code-title="" className="relative overflow-hidden">
       <CopyButton value={code} />
-      <div dangerouslySetInnerHTML={{ __html: highlightedRequest }} />
+      <div
+        dangerouslySetInnerHTML={{ __html: highlightedRequest }}
+        className="overflow-x-auto"
+      />
     </div>
   );
 }
