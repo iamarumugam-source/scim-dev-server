@@ -113,7 +113,7 @@ export default function JWE() {
         <Button
           onClick={handleClick}
           disabled={isDecrypting}
-          className="w-full"
+          className="w-50 ml-auto"
         >
           {isDecrypting ? "Decrypting..." : "Decrypt"}
         </Button>
@@ -142,6 +142,7 @@ export default function JWE() {
                   code={JSON.stringify(payload, null, 2)}
                 />
               )}
+              <h3 className="text-sm font-semibold mb-2">TOKEN</h3>
               <div className="p-4 bg-muted rounded-md text-muted-foreground overflow-x-auto whitespace-pre text-xs whitespace-pre-wrap break-all">
                 {rawJWK}
               </div>
