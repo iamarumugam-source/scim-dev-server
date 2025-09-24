@@ -16,6 +16,12 @@ export function SiteHeader() {
   let pageTitle = "Dashboard";
   if (pathname === "/keys") {
     pageTitle = "API Keys";
+  } else if (pathname == "/users") {
+    pageTitle = "Users";
+  } else if (pathname == "/logs") {
+    pageTitle = "Logs";
+  } else {
+    pageTitle = "JWE Decoder";
   }
 
   const toggleTheme = () => {

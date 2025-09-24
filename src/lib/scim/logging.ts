@@ -36,7 +36,6 @@ export async function logExternalRequest(request: NextRequest, response: NextRes
             // console.log(request.clone().json())
             try {
                 payload = await request.clone().json();
-                console.log(payload)
 
             } catch (error) {
                 payload = { error: "Could not parse request body as JSON." };
@@ -44,11 +43,20 @@ export async function logExternalRequest(request: NextRequest, response: NextRes
             }
         }
     if (isExternalRequest(request)) {
+
+        // console.log(response)
         const logPayload = {
             timestamp: new Date().toISOString(),
             path: request.nextUrl.pathname,
             request: serializeRequest(request, payload),
+            responseStatus: {
+                status: response.status,
+                statusText: response.statusText
+            },
+            responseData
         };
+
+        // console.log(logPayload)
 
         fetch(LOG_API_URL, {
             method: 'POST',

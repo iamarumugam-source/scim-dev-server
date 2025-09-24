@@ -264,6 +264,7 @@
     background-color: var(--color-code);
     position: sticky;
     left: 0;
+    font-size: var(--text-xs);
   }
 
   [data-line-numbers] [data-highlighted-line][data-line]::before {
@@ -280,6 +281,7 @@
 
   [data-line] span {
     color: var(--shiki-light);
+
 
     @variant dark {
       color: var(--shiki-dark) !important;

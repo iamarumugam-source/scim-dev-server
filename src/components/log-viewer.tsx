@@ -21,25 +21,29 @@ import {
 import { useSession } from "next-auth/react";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "./ui/button";
-import { CopyButton } from "./copy-button";
-import { highlightCode } from "./lib/highlight-code";
-import { Input } from "./ui/input";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+// import { Input } from "./ui/input";
+// import {
+//   Dialog,
+//   DialogClose,
+//   DialogContent,
+//   DialogFooter,
+//   DialogHeader,
+//   DialogTitle,
+//   DialogTrigger,
+// } from "@/components/ui/dialog";
+import ComponentCode from "./Code";
 
 interface LogEntry {
-  timestamp: string;
-  path: string;
-  request: any;
+  log_data: any;
+  response: any;
 }
+
+import CodeMirror from "@uiw/react-codemirror";
+import { javascript } from "@codemirror/lang-javascript";
+import { dracula } from "@uiw/codemirror-theme-dracula";
+import { githubLight } from "@uiw/codemirror-theme-github";
+import { useTheme } from "next-themes";
 
 const getMethodBadgeVariant = (method: string) => {
   switch (method.toUpperCase()) {
@@ -58,12 +62,12 @@ const getMethodBadgeVariant = (method: string) => {
 };
 
 const LogViewer: FC = () => {
+  const { theme, setTheme } = useTheme();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const { data: session } = useSession();
   const [isLive, setIsLive] = useState(false);
 
   const userId = session?.user?.id;
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const fetchLogs = useCallback(async () => {
     if (!userId) return;
@@ -80,7 +84,6 @@ const LogViewer: FC = () => {
     }
   }, [userId]);
 
-  // Fetch during initial page load
   useEffect(() => {
     fetchLogs();
   }, [fetchLogs]);
@@ -142,95 +145,77 @@ const LogViewer: FC = () => {
                       <div className="flex items-center gap-4 text-sm justify-between">
                         <Badge
                           className={`${getMethodBadgeVariant(
-                            log.request.method
+                            log.log_data.method
                           )} w-16 justify-center text-primary-foreground dark:text-foreground`}
                         >
-                          {log.request.method}
+                          {log.log_data.method}
                         </Badge>
                         <Separator
                           orientation="vertical"
                           className="mx-2 data-[orientation=vertical]:h-4"
                         />
                         <div className="text-xs font-mono text-muted-foreground text-left">
-                          {log.path}
+                          {log.log_data.url}
                         </div>
                         <Separator
                           orientation="vertical"
                           className="mx-2 data-[orientation=vertical]:h-4"
                         />
                         <div className="text-xs font-mono text-muted-foreground text-left w-70">
-                          {log.request.userAgent}
+                          {log.log_data.userAgent}
                         </div>
                         <Separator
                           orientation="vertical"
                           className="mx-2 data-[orientation=vertical]:h-4"
                         />
                         <div className="text-xs font-mono text-muted-foreground hidden sm:inline">
-                          {new Date(log.timestamp).toLocaleTimeString()}
+                          {new Date(
+                            log.log_data.timestamp
+                          ).toLocaleTimeString()}
                         </div>
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="w-full">
-                      <div className="text-xs text-muted-foreground space-y-2 p-4 bg-muted/50 rounded-md mt-2 max-w-9/10">
-                        <div className="flex items-center justify-between">
-                          <div className="font-bold w-1/4">
-                            Replay this request:
+                      {/* <div className="flex w-full max-w-sm flex-col gap-6"> */}
+                      <Tabs defaultValue="request">
+                        <TabsList>
+                          <TabsTrigger value="request">Request</TabsTrigger>
+                          <TabsTrigger value="response">Response</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="request" className="w-full">
+                          <div className="text-xs text-muted-foreground space-y-2 p-4 rounded-md mt-2 border w-full">
+                            {log.log_data && (
+                              <div className="text-xs rounded-md relative truncate w-full">
+                                <CodeMirror
+                                  value={JSON.stringify(log.log_data, null, 2)}
+                                  height="400px"
+                                  theme={
+                                    theme == "dark" ? dracula : githubLight
+                                  }
+                                  extensions={[javascript({ jsx: true })]}
+                                />
+                              </div>
+                            )}
                           </div>
-                          <Button disabled>GET</Button>
-                          <Input
-                            disabled
-                            placeholder={log.request.url}
-                            className="mr-2"
-                          />
-                          <Dialog
-                            open={isDialogOpen}
-                            onOpenChange={setIsDialogOpen}
-                          >
-                            <DialogTrigger asChild>
-                              <Button variant="outline">
-                                <Repeat /> Replay
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>
-                                  Here is the replay of the last request
-                                </DialogTitle>
-                              </DialogHeader>
-
-                              <PlayLastResponse url={log.request.url} />
-
-                              <DialogFooter>
-                                <DialogClose asChild>
-                                  <Button variant="outline">Close</Button>
-                                </DialogClose>
-                              </DialogFooter>
-                            </DialogContent>
-                          </Dialog>
-                        </div>
-
-                        {log.request.body && (
-                          <div className="text-xs rounded-md overflow-x-auto">
-                            <strong>Payload:</strong>
-                            <ComponentCode
-                              code={JSON.stringify(log.request.body, null, 2)}
-                              language="json"
-                              title="Request"
-                            />
+                        </TabsContent>
+                        <TabsContent value="response">
+                          <div className="text-xs text-muted-foreground space-y-2 p-4 rounded-md mt-2 border w-full">
+                            {log.response && (
+                              <div className="text-xs rounded-md relative truncate w-full">
+                                <CodeMirror
+                                  value={JSON.stringify(log.response, null, 2)}
+                                  height="400px"
+                                  theme={
+                                    theme == "dark" ? dracula : githubLight
+                                  }
+                                  extensions={[javascript({ jsx: true })]}
+                                />
+                              </div>
+                            )}
                           </div>
-                        )}
-
-                        {log.request && (
-                          <div className="text-xs rounded-md overflow-x-auto relative truncate w-full max-w-9/10">
-                            <strong>Request:</strong>
-                            <ComponentCode
-                              code={JSON.stringify(log.request, null, 2)}
-                              language="json"
-                              title="Request"
-                            />
-                          </div>
-                        )}
-                      </div>
+                        </TabsContent>
+                      </Tabs>
+                      {/* </div> */}
                     </AccordionContent>
                   </div>
                 </AccordionItem>
@@ -249,81 +234,46 @@ const LogViewer: FC = () => {
   );
 };
 
-const PlayLastResponse = ({ url }: { url: string }) => {
-  const [code, setCode] = useState<any | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+// const PlayLastResponse = ({ url }: { url: string }) => {
+//   const [code, setCode] = useState<any | null>(null);
+//   const [isLoading, setIsLoading] = useState(true);
+//   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(url);
-      if (!res.ok) {
-        throw new Error(`Request failed with status ${res.status}`);
-      }
-      const data = await res.json();
-      setCode(data);
-    } catch (e: any) {
-      setError(e.message);
-      toast.error(`Replay failed: ${e.message}`);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [url]);
+//   const fetchData = useCallback(async () => {
+//     setIsLoading(true);
+//     setError(null);
+//     try {
+//       const res = await fetch(url);
+//       if (!res.ok) {
+//         throw new Error(`Request failed with status ${res.status}`);
+//       }
+//       const data = await res.json();
+//       setCode(data);
+//     } catch (e: any) {
+//       setError(e.message);
+//       toast.error(`Replay failed: ${e.message}`);
+//     } finally {
+//       setIsLoading(false);
+//     }
+//   }, [url]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+//   useEffect(() => {
+//     fetchData();
+//   }, [fetchData]);
 
-  if (isLoading) {
-    return <div>Loading replay...</div>;
-  }
+//   if (isLoading) {
+//     return <div>Loading replay...</div>;
+//   }
 
-  if (error) {
-    return <div className="text-red-500">Error: {error}</div>;
-  }
+//   if (error) {
+//     return <div className="text-red-500">Error: {error}</div>;
+//   }
 
-  return (
-    <div className="text-xs rounded-md overflow-hidden whitespace-pre max-h-80 max-w-80">
-      <ComponentCode
-        code={JSON.stringify(code, null, 2)}
-        language="json"
-        title="Request"
-      />
-    </div>
-  );
-};
-
-function ComponentCode({
-  code,
-  title,
-}: {
-  code: string;
-  language: string;
-  title: string | undefined;
-}) {
-  const [highlightedRequest, setHighlightedRequest] = useState("");
-
-  useEffect(() => {
-    const generateHighlight = async () => {
-      if (code) {
-        const highlighted = await highlightCode(code, "json");
-        setHighlightedRequest(highlighted);
-      }
-    };
-
-    generateHighlight();
-  }, []);
-  return (
-    <div data-rehype-pretty-code-title="" className="relative overflow-hidden">
-      <CopyButton value={code} />
-      <div
-        dangerouslySetInnerHTML={{ __html: highlightedRequest }}
-        className="overflow-x-auto"
-      />
-    </div>
-  );
-}
+//   return (
+//     <div className="text-xs rounded-md overflow-hidden whitespace-pre max-h-80 max-w-80">
+//       <ComponentCode code={JSON.stringify(code, null, 2)} />
+//     </div>
+//   );
+// };
 
 export default LogViewer;

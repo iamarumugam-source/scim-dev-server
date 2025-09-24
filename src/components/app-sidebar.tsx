@@ -1,5 +1,5 @@
 "use client";
-import { UsersRound, KeyIcon } from "lucide-react";
+import { UsersRound, KeyIcon, RadarIcon, IdCardIcon } from "lucide-react";
 
 import {
   IconCirclePlusFilled,
@@ -7,6 +7,8 @@ import {
   IconClearAll,
   IconDashboard,
   IconListDetails,
+  IconRadarOff,
+  IconLogs,
 } from "@tabler/icons-react";
 
 import {
@@ -50,7 +52,6 @@ import NavUser from "./user-menu";
 
 import { Input } from "./ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
@@ -75,13 +76,23 @@ const items = [
   },
   {
     title: "Users",
-    url: "#",
+    url: "/users",
     icon: IconListDetails,
   },
   {
     title: "Groups",
     url: "#",
     icon: UsersRound,
+  },
+  {
+    title: "Logs",
+    url: "/logs",
+    icon: IconLogs,
+  },
+  {
+    title: "JWE Decoder",
+    url: "/jwe",
+    icon: IdCardIcon,
   },
 ];
 type FormValues = z.infer<typeof FormSchema>;

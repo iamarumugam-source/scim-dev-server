@@ -10,10 +10,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     try {
         const { userId } = await params
         const logPayload = await request.json();
-        
+        let requestData = logPayload['request']
+        requestData['timestamp'] = logPayload['timestamp']
+        let responseData = logPayload['responseData'];
+        responseData['status'] = logPayload['responseStatus']
+       
         const { error } = await supabase.from(LOG_TABLE).insert({
-            log_data: logPayload,
-            tenantId: userId
+            log_data: requestData,
+            tenantId: userId,
+            response: responseData
         });
 
         if (error) {
@@ -33,17 +38,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         const { userId } = await params;
         const { data, error } = await supabase
             .from(LOG_TABLE)
-            .select('log_data')
+            .select('log_data, response')
             .eq('tenantId', userId)
-            .order('created_at', { ascending: false }) // Get the newest logs first
-            .limit(100); // Limit to the last 100 logs for performance
+            .order('created_at', { ascending: false }) 
+            .limit(100); 
 
         if (error) {
             throw new Error(`Supabase error fetching logs: ${error.message}`);
         }
 
         // The log data is stored in the `log_data` column
-        const logs = data.map(item => item.log_data);
+        const logs = data.map(item => {return {log_data: item.log_data, response: item.response}});
         
         return NextResponse.json(logs);
 

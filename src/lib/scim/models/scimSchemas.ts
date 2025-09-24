@@ -78,3 +78,4 @@ export interface ScimError {
     detail: string;
     status: string;
 }
+
