@@ -1,38 +1,14 @@
 "use client";
 
-import { useEffect, useState, FC, useCallback } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { useEffect, useState, FC, useCallback, Fragment } from "react";
+
 import { Toggle } from "@/components/ui/toggle";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { RefreshCw, Trash, Repeat } from "lucide-react";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@radix-ui/react-accordion";
+import { ChevronDown, ChevronRight, RefreshCw, Trash } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "./ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-// import { Input } from "./ui/input";
-// import {
-//   Dialog,
-//   DialogClose,
-//   DialogContent,
-//   DialogFooter,
-//   DialogHeader,
-//   DialogTitle,
-//   DialogTrigger,
-// } from "@/components/ui/dialog";
-import ComponentCode from "./Code";
 
 interface LogEntry {
   log_data: any;
@@ -44,6 +20,14 @@ import { javascript } from "@codemirror/lang-javascript";
 import { dracula } from "@uiw/codemirror-theme-dracula";
 import { githubLight } from "@uiw/codemirror-theme-github";
 import { useTheme } from "next-themes";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./ui/table";
 
 const getMethodBadgeVariant = (method: string) => {
   switch (method.toUpperCase()) {
@@ -61,11 +45,20 @@ const getMethodBadgeVariant = (method: string) => {
   }
 };
 
+const getStatusBadgeClass = (status: number) => {
+  if (status >= 500) return "bg-red-600";
+  if (status >= 400) return "bg-yellow-500 text-black";
+  if (status >= 300) return "bg-blue-500";
+  if (status >= 200) return "bg-green-600";
+  return "bg-gray-500";
+};
+
 const LogViewer: FC = () => {
   const { theme, setTheme } = useTheme();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const { data: session } = useSession();
   const [isLive, setIsLive] = useState(false);
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   const userId = session?.user?.id;
 
@@ -105,175 +98,138 @@ const LogViewer: FC = () => {
       toast.info("Live log polling has been deactivated.");
     }
   };
+
+  const toggleExpansion = (index: number) => {
+    setExpandedIndex((prevIndex) => (prevIndex === index ? null : index));
+  };
   return (
-    <Card className="w-full">
-      <CardHeader className="flex flex-col items-center justify-between">
-        <CardTitle className="flex items-center justify-between w-full">
-          Request Logs
-          <div className="flex space-x-1">
-            <Toggle
-              aria-label="Toggle live logs"
-              variant="outline"
-              className="cursor-pointer"
-              pressed={isLive}
-              onPressedChange={handleToggleChange}
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${isLive ? "animate-spin" : ""}`}
-              />
-            </Toggle>
-            <Button variant="outline">
-              <Trash className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardTitle>
-        <CardDescription className="w-full">
-          Feed of incoming requests from third-party applications.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="w-full">
-        <div className="space-y-4">
-          {logs.length > 0 ? (
-            <Accordion type="single" collapsible className="">
-              {logs.map((log, index) => (
-                <AccordionItem value={`item-${index}`} key={index}>
-                  <div
-                    key={index}
-                    className="w-full border-b border-border/50 pb-2"
-                  >
-                    <AccordionTrigger className="w-full cursor-pointer p-1 items-center">
-                      <div className="flex items-center gap-4 text-sm justify-between">
-                        <Badge
-                          className={`${getMethodBadgeVariant(
-                            log.log_data.method
-                          )} w-16 justify-center text-primary-foreground dark:text-foreground`}
-                        >
-                          {log.log_data.method}
-                        </Badge>
-                        <Separator
-                          orientation="vertical"
-                          className="mx-2 data-[orientation=vertical]:h-4"
-                        />
-                        <div className="text-xs font-mono text-muted-foreground text-left">
-                          {log.log_data.url}
-                        </div>
-                        <Separator
-                          orientation="vertical"
-                          className="mx-2 data-[orientation=vertical]:h-4"
-                        />
-                        <div className="text-xs font-mono text-muted-foreground text-left w-70">
-                          {log.log_data.userAgent}
-                        </div>
-                        <Separator
-                          orientation="vertical"
-                          className="mx-2 data-[orientation=vertical]:h-4"
-                        />
-                        <div className="text-xs font-mono text-muted-foreground hidden sm:inline">
-                          {new Date(
-                            log.log_data.timestamp
-                          ).toLocaleTimeString()}
-                        </div>
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="w-full">
-                      {/* <div className="flex w-full max-w-sm flex-col gap-6"> */}
-                      <Tabs defaultValue="request">
-                        <TabsList>
-                          <TabsTrigger value="request">Request</TabsTrigger>
-                          <TabsTrigger value="response">Response</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="request" className="w-full">
-                          <div className="text-xs text-muted-foreground space-y-2 p-4 rounded-md mt-2 border w-full">
-                            {log.log_data && (
-                              <div className="text-xs rounded-md relative truncate w-full">
-                                <CodeMirror
-                                  value={JSON.stringify(log.log_data, null, 2)}
-                                  height="400px"
-                                  theme={
-                                    theme == "dark" ? dracula : githubLight
-                                  }
-                                  extensions={[javascript({ jsx: true })]}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        </TabsContent>
-                        <TabsContent value="response">
-                          <div className="text-xs text-muted-foreground space-y-2 p-4 rounded-md mt-2 border w-full">
-                            {log.response && (
-                              <div className="text-xs rounded-md relative truncate w-full">
-                                <CodeMirror
-                                  value={JSON.stringify(log.response, null, 2)}
-                                  height="400px"
-                                  theme={
-                                    theme == "dark" ? dracula : githubLight
-                                  }
-                                  extensions={[javascript({ jsx: true })]}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        </TabsContent>
-                      </Tabs>
-                      {/* </div> */}
-                    </AccordionContent>
-                  </div>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-muted-foreground">
-                Waiting for external API requests...
-              </p>
-            </div>
-          )}
+    <div className="container mx-auto py-10">
+      <div className="flex space-x-1 items-center">
+        <div className="ml-auto mb-2">
+          <Toggle
+            aria-label="Toggle live logs"
+            variant="outline"
+            className="cursor-pointer mr-2"
+            pressed={isLive}
+            onPressedChange={handleToggleChange}
+          >
+            <RefreshCw className={`h-4 w-4 ${isLive ? "animate-spin" : ""}`} />
+          </Toggle>
+          <Button variant="outline">
+            <Trash className="h-4 w-4" />
+          </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+      <div className="overflow-hidden rounded-lg border">
+        <Table>
+          <TableHeader className="bg-muted">
+            <TableRow>
+              <TableHead className="w-[50px]"></TableHead>
+              <TableHead className="w-[100px]">Method</TableHead>
+              <TableHead className="w-[100px]">Status</TableHead>
+              <TableHead>Endpoint</TableHead>
+              <TableHead className="hidden md:table-cell">User Agent</TableHead>
+              <TableHead className="w-[120px] text-right">Time</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {logs.length > 0 ? (
+              logs.map((log, index) => (
+                <Fragment key={index}>
+                  <TableRow
+                    onClick={() => toggleExpansion(index)}
+                    className="cursor-pointer"
+                  >
+                    <TableCell className="pl-4">
+                      {expandedIndex === index ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        className={`${getMethodBadgeVariant(
+                          log.log_data.method
+                        )} w-16 justify-center text-primary-foreground`}
+                      >
+                        {/* ✅ Safely render the method */}
+                        {typeof log.log_data.method === "object"
+                          ? JSON.stringify(log.log_data.method)
+                          : log.log_data.method}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        className={`${getStatusBadgeClass(
+                          log.response?.status.status
+                        )} w-16 justify-center text-primary-foreground`}
+                      >
+                        {log.response?.status.status ?? "N/A"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs truncate max-w-[200px]">
+                      {typeof log.log_data.url === "object"
+                        ? JSON.stringify(log.log_data.url)
+                        : log.log_data.url}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground hidden md:table-cell truncate max-w-[200px]">
+                      {typeof log.log_data.userAgent === "object"
+                        ? JSON.stringify(log.log_data.userAgent)
+                        : log.log_data.userAgent}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs text-muted-foreground">
+                      {new Date(log.log_data.timestamp).toLocaleTimeString()}
+                    </TableCell>
+                  </TableRow>
+                  {expandedIndex === index && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="p-0">
+                        <div className="p-4 bg-muted/50">
+                          <Tabs defaultValue="request">
+                            <TabsList>
+                              <TabsTrigger value="request">Request</TabsTrigger>
+                              <TabsTrigger value="response">
+                                Response
+                              </TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="request" className="mt-2">
+                              <CodeMirror
+                                value={JSON.stringify(log.log_data, null, 2)}
+                                height="300px"
+                                theme={theme === "dark" ? dracula : githubLight}
+                                extensions={[javascript({ jsx: true })]}
+                                readOnly
+                              />
+                            </TabsContent>
+                            <TabsContent value="response" className="mt-2">
+                              <CodeMirror
+                                value={JSON.stringify(log.response, null, 2)}
+                                height="300px"
+                                theme={theme === "dark" ? dracula : githubLight}
+                                extensions={[javascript({ jsx: true })]}
+                                readOnly
+                              />
+                            </TabsContent>
+                          </Tabs>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </Fragment>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={6} className="h-24 text-center">
+                  Waiting for incoming API requests...
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
   );
 };
-
-// const PlayLastResponse = ({ url }: { url: string }) => {
-//   const [code, setCode] = useState<any | null>(null);
-//   const [isLoading, setIsLoading] = useState(true);
-//   const [error, setError] = useState<string | null>(null);
-
-//   const fetchData = useCallback(async () => {
-//     setIsLoading(true);
-//     setError(null);
-//     try {
-//       const res = await fetch(url);
-//       if (!res.ok) {
-//         throw new Error(`Request failed with status ${res.status}`);
-//       }
-//       const data = await res.json();
-//       setCode(data);
-//     } catch (e: any) {
-//       setError(e.message);
-//       toast.error(`Replay failed: ${e.message}`);
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   }, [url]);
-
-//   useEffect(() => {
-//     fetchData();
-//   }, [fetchData]);
-
-//   if (isLoading) {
-//     return <div>Loading replay...</div>;
-//   }
-
-//   if (error) {
-//     return <div className="text-red-500">Error: {error}</div>;
-//   }
-
-//   return (
-//     <div className="text-xs rounded-md overflow-hidden whitespace-pre max-h-80 max-w-80">
-//       <ComponentCode code={JSON.stringify(code, null, 2)} />
-//     </div>
-//   );
-// };
 
 export default LogViewer;

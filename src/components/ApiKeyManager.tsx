@@ -1,15 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { toast } from "sonner";
+import { Copy, Trash2, PlusCircle } from "lucide-react";
+
 import { Button } from "./ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "./ui/card";
 import { Input } from "./ui/input";
 import {
   Table,
@@ -19,10 +15,16 @@ import {
   TableHeader,
   TableRow,
 } from "./ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { LoadingSpinner } from "./helper-components";
-import { Copy, Trash2 } from "lucide-react";
-import { useSession } from "next-auth/react";
-import { Toaster } from "./ui/sonner";
 
 interface ApiKey {
   id: string;
@@ -37,17 +39,16 @@ export default function ApiKeyManager() {
   const [generatedKey, setGeneratedKey] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { data: session } = useSession();
   const userId = session?.user?.id;
-  const [apiEndpoint, setApiEndpoint] = useState("");
+  const apiEndpoint = `https://okta-inbound-scim.vercel.app/api/${userId}/scim/v2`;
+
   const fetchKeys = async () => {
+    if (!userId) return;
     setIsLoading(true);
     try {
-      if (!userId) return;
       const res = await fetch(`/api/${userId}/keys`);
-      setApiEndpoint(
-        `https://okta-inbound-scim.vercel.app/api/${userId}/scim/v2`
-      );
       if (!res.ok) throw new Error("Failed to fetch API keys.");
       const data = await res.json();
       setKeys(data);
@@ -57,8 +58,11 @@ export default function ApiKeyManager() {
       setIsLoading(false);
     }
   };
+
   useEffect(() => {
-    fetchKeys();
+    if (userId) {
+      fetchKeys();
+    }
   }, [userId]);
 
   const handleGenerateKey = async () => {
@@ -80,7 +84,6 @@ export default function ApiKeyManager() {
       const data = await res.json();
       setGeneratedKey(data.rawKey);
       toast.success("API Key generated successfully! Please copy it now.");
-      setNewKeyName("");
       await fetchKeys();
     } catch (error: any) {
       toast.error(error.message);
@@ -90,21 +93,14 @@ export default function ApiKeyManager() {
   };
 
   const handleRevokeKey = async (keyId: string) => {
-    if (
-      !confirm(
-        "Are you sure you want to revoke this API key? This action cannot be undone."
-      )
-    ) {
+    if (!confirm("Are you sure? This will permanently delete the API key.")) {
       return;
     }
     try {
       const res = await fetch(`/api/${userId}/keys/${keyId}`, {
         method: "DELETE",
       });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.detail || "Failed to revoke key.");
-      }
+      if (!res.ok) throw new Error("Failed to revoke key.");
       toast.success("API Key revoked successfully.");
       await fetchKeys();
     } catch (error: any) {
@@ -112,132 +108,146 @@ export default function ApiKeyManager() {
     }
   };
 
-  const copyToClipboard = (text: string, isKey: boolean) => {
+  const handleCloseDialog = () => {
+    setNewKeyName("");
+    setGeneratedKey(null);
+    setIsDialogOpen(false);
+  };
+
+  const handleOpenDialog = () => {
+    setNewKeyName("");
+    setGeneratedKey(null);
+    setIsDialogOpen(true);
+  };
+
+  const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    const toastMessage = isKey ? "Key" : "API URL";
-    toast.success(`${toastMessage} copied to clipboard!`);
+    toast.success("Copied to clipboard!");
   };
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Generate New API Key</CardTitle>
-          <CardDescription>
-            Create a new API key to grant access to the SCIM endpoints.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Input
-              placeholder="Descriptive name (e.g., 'Third-Party App')"
-              value={newKeyName}
-              onChange={(e) => setNewKeyName(e.target.value)}
-              disabled={isGenerating}
-            />
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-4 p-4 border rounded-lg">
+        <div>
+          <h3 className="font-medium">Your SCIM Endpoint</h3>
+          <div className="flex items-center gap-2 p-2 mt-2 bg-muted rounded-md border text-sm">
+            <code className="flex-1 font-mono">{apiEndpoint}</code>
             <Button
-              onClick={handleGenerateKey}
-              disabled={isGenerating}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground dark:text-sidebar-accent-foreground 
-                  dark:hover:text-sidebar-accent-foreground dark:active:text-sidebar-accent-foreground
-                  min-w-8 duration-200 ease-linear"
+              size="icon"
+              variant="ghost"
+              onClick={() => copyToClipboard(apiEndpoint)}
             >
-              {isGenerating ? "Generating..." : "Generate Key"}
+              <Copy className="h-4 w-4" />
             </Button>
           </div>
-          {generatedKey && (
-            <div className="mt-4 p-4 bg-green-100 dark:bg-green-900/50 border border-green-400 rounded-lg">
-              <h4 className="font-semibold text-green-800 dark:text-green-300">
-                New API Key Generated
-              </h4>
-              <p className="text-sm text-muted-foreground my-2">
-                Please copy this key and store it securely. You will not be able
-                to see it again.
-              </p>
-              <div className="flex items-center gap-2 p-2 bg-background rounded-md">
-                <code className="flex-1 font-mono text-sm">{generatedKey}</code>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => copyToClipboard(generatedKey, true)}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
+        </div>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={handleOpenDialog}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Generate New Key
+            </Button>
+          </DialogTrigger>
+          <DialogContent
+            className="sm:max-w-[425px]"
+            onInteractOutside={(e) => {
+              if (generatedKey) e.preventDefault();
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle>Generate New API Key</DialogTitle>
+              <DialogDescription>
+                Provide a descriptive name for your new key.
+              </DialogDescription>
+            </DialogHeader>
+            {generatedKey ? (
+              <div className="mt-4">
+                <p className="text-sm text-muted-foreground mb-2">
+                  Please copy this key now. You will not be able to see it
+                  again.
+                </p>
+                <div className="flex items-center gap-2 p-2 bg-muted rounded-md border">
+                  <code className="flex-1 font-mono text-sm break-all">
+                    {generatedKey}
+                  </code>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => copyToClipboard(generatedKey)}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
-          {apiEndpoint && (
-            <div className="mt-4 p-4 bg-blue-100 dark:bg-blue-900/50 border border-blue-400 rounded-lg">
-              <p className="text-sm text-muted-foreground my-2">
-                Your API endpoint.
-              </p>
-              <div className="flex items-center gap-2 p-2 bg-background rounded-md">
-                <code className="flex-1 font-mono text-sm">{apiEndpoint}</code>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => copyToClipboard(apiEndpoint, false)}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
+            ) : (
+              <div className="grid gap-4 py-4">
+                <Input
+                  id="name"
+                  placeholder="e.g., 'Third-Party App'"
+                  value={newKeyName}
+                  onChange={(e) => setNewKeyName(e.target.value)}
+                  disabled={isGenerating}
+                />
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            )}
+            <DialogFooter>
+              {generatedKey ? (
+                <Button onClick={handleCloseDialog}>Close</Button>
+              ) : (
+                <Button onClick={handleGenerateKey} disabled={isGenerating}>
+                  {isGenerating ? <LoadingSpinner /> : "Generate"}
+                </Button>
+              )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Existing API Keys</CardTitle>
-          <CardDescription>Manage your existing API keys.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <LoadingSpinner />
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Key Prefix</TableHead>
-                  <TableHead>Created At</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {keys.length > 0 ? (
-                  keys.map((key) => (
-                    <TableRow key={key.id}>
-                      <TableCell className="font-medium">{key.name}</TableCell>
-                      <TableCell>
-                        <code>{key.key_prefix}...</code>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(key.created_at).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => handleRevokeKey(key.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center">
-                      No API keys have been generated yet.
+      {isLoading ? (
+        <LoadingSpinner />
+      ) : (
+        <div className="overflow-hidden rounded-lg border">
+          <Table>
+            <TableHeader className="bg-muted">
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Key Prefix</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {keys.length > 0 ? (
+                keys.map((key) => (
+                  <TableRow key={key.id}>
+                    <TableCell className="font-medium">{key.name}</TableCell>
+                    <TableCell>
+                      <code>{key.key_prefix}...</code>
+                    </TableCell>
+                    <TableCell>
+                      {new Date(key.created_at).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleRevokeKey(key.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
                     </TableCell>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="h-24 text-center">
+                    No API keys found.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 }

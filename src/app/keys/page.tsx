@@ -5,15 +5,8 @@ import ApiKeyManager from "@/components/ApiKeyManager";
 export default function ApiKeysPage() {
   return (
     <>
-      <div className="max-w-8xl m-20">
-        <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-          <div className="text-center md:text-left">
-            <h1 className="text-3xl font-bold">API Key Management</h1>
-            <p className="text-muted-foreground">
-              Generate and manage API keys for external systems.
-            </p>
-          </div>
-        </div>
+      <div className="container mx-auto py-10">
+        <h1 className="text-2xl font-bold mb-4">API Key Management</h1>
         <ApiKeyManager />
       </div>
     </>

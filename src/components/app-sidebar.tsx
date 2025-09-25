@@ -1,5 +1,5 @@
 "use client";
-import { UsersRound, KeyIcon, RadarIcon, IdCardIcon } from "lucide-react";
+import { UsersRound, KeyIcon, IdCardIcon, BuildingIcon } from "lucide-react";
 
 import {
   IconCirclePlusFilled,
@@ -7,7 +7,6 @@ import {
   IconClearAll,
   IconDashboard,
   IconListDetails,
-  IconRadarOff,
   IconLogs,
 } from "@tabler/icons-react";
 
@@ -61,6 +60,7 @@ const FormSchema = z.object({
   groupCount: z.transform(Number).pipe(z.number().min(1).max(50)),
   deleteExisting: z.boolean(),
 });
+
 // Menu items.
 const items = [
   {
@@ -77,12 +77,12 @@ const items = [
   {
     title: "Users",
     url: "/users",
-    icon: IconListDetails,
+    icon: UsersRound,
   },
   {
     title: "Groups",
-    url: "#",
-    icon: UsersRound,
+    url: "/groups",
+    icon: BuildingIcon,
   },
   {
     title: "Logs",

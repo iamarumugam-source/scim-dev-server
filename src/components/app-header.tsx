@@ -13,16 +13,16 @@ export function SiteHeader() {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
 
-  let pageTitle = "Dashboard";
-  if (pathname === "/keys") {
-    pageTitle = "API Keys";
-  } else if (pathname == "/users") {
-    pageTitle = "Users";
-  } else if (pathname == "/logs") {
-    pageTitle = "Logs";
-  } else {
-    pageTitle = "JWE Decoder";
-  }
+  const pageTitles: Record<string, string> = {
+    "/keys": "API Keys",
+    "/users": "Users",
+    "/logs": "Logs",
+    "/jwe": "JWE Decoder",
+    "/groups": "Groups",
+    "/": "Dashboard",
+  };
+
+  const pageTitle = pageTitles[pathname] || "";
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");

@@ -113,7 +113,9 @@ export default function JWE() {
         <Button
           onClick={handleClick}
           disabled={isDecrypting}
-          className="w-50 ml-auto"
+          className="w-50 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground dark:text-sidebar-accent-foreground 
+                  dark:hover:text-sidebar-accent-foreground dark:active:text-sidebar-accent-foreground
+                  min-w-8 duration-200 ease-linear ml-auto"
         >
           {isDecrypting ? "Decrypting..." : "Decrypt"}
         </Button>
@@ -143,7 +145,7 @@ export default function JWE() {
                 />
               )}
               <h3 className="text-sm font-semibold mb-2">TOKEN</h3>
-              <div className="p-4 bg-muted rounded-md text-muted-foreground overflow-x-auto whitespace-pre text-xs whitespace-pre-wrap break-all">
+              <div className="p-4 bg-muted rounded-md text-muted-foreground overflow-x-auto text-xs whitespace-pre-wrap break-all">
                 {rawJWK}
               </div>
             </>

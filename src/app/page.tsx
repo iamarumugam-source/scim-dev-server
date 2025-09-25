@@ -1,361 +1,114 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { ScimUser, ScimGroup } from "@/lib/scim/models/scimSchemas";
-import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronRight } from "lucide-react";
-import { LoadingSpinner, ErrorDisplay } from "@/components/helper-components";
-import DashboardPagination from "@/components/padination-handler";
+import { Users, Building } from "lucide-react";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ErrorDisplay } from "@/components/helper-components";
 import { useSession } from "next-auth/react";
-import { toast } from "sonner";
 
 export default function ScimDashboard() {
   const { data: session } = useSession();
-  const [users, setUsers] = useState<ScimUser[]>([]);
-  const [groups, setGroups] = useState<ScimGroup[]>([]);
-  const [isUsersLoading, setIsUsersLoading] = useState(true);
-  const [isGroupsLoading, setIsGroupsLoading] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [totalUsers, setTotalUsers] = useState<number | null>(null);
+  const [totalGroups, setTotalGroups] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // const [userId, setUserId] = useState<string>(""); This logic can be implementd if needed in the future. For now simply fetching userId is more than enough
-
-  const [userPage, setUserPage] = useState(1);
-  const [totalUsers, setTotalUsers] = useState(0);
-  const [groupPage, setGroupPage] = useState(1);
-  const [totalGroups, setTotalGroups] = useState(0);
-  const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
-  const ITEMS_PER_PAGE = 10;
-  const userId = session?.user?.id;
-
-  const getUserCacheKey = (page: number) => `scim_users_page_${page}`;
-  const getGroupCacheKey = (page: number) => `scim_groups_page_${page}`;
-
-  const clearCache = useCallback(() => {
-    Object.keys(sessionStorage).forEach((key) => {
-      if (key.startsWith("scim_users_") || key.startsWith("scim_groups_")) {
-        sessionStorage.removeItem(key);
-      }
-    });
-    toast.info("Data cache has been cleared.");
-  }, []);
-
-  const fetchUsers = useCallback(
-    async (page = 1) => {
-      const cacheKey = getUserCacheKey(page);
-      const cachedData = sessionStorage.getItem(cacheKey);
-
-      if (cachedData) {
-        const usersData = JSON.parse(cachedData);
-        setUsers(usersData.Resources || []);
-        setTotalUsers(usersData.totalResults || 0);
-        setUserPage(page);
-        setIsUsersLoading(false);
-        return;
-      }
-
-      setIsUsersLoading(true);
-      setError(null);
-      try {
-        const startIndex = (page - 1) * ITEMS_PER_PAGE + 1;
-        const usersRes = await fetch(
-          `/api/${userId}/scim/v2/Users?startIndex=${startIndex}&count=${ITEMS_PER_PAGE}`
-        );
-        if (!usersRes.ok)
-          throw new Error(`Failed to fetch users: ${usersRes.statusText}`);
-        const usersData = await usersRes.json();
-
-        sessionStorage.setItem(cacheKey, JSON.stringify(usersData));
-
-        setUsers(usersData.Resources || []);
-        setTotalUsers(usersData.totalResults || 0);
-        setUserPage(page);
-      } catch (e: any) {
-        setError(e.message);
-        toast.error(`Failed to fetch users: ${e.message}`);
-      } finally {
-        setIsUsersLoading(false);
-      }
-    },
-    [userId]
-  );
-
-  const fetchGroups = useCallback(
-    async (page = 1) => {
-      const cacheKey = getGroupCacheKey(page);
-      const cachedData = sessionStorage.getItem(cacheKey);
-
-      if (cachedData) {
-        const groupsData = JSON.parse(cachedData);
-        setGroups(groupsData.Resources || []);
-        setTotalGroups(groupsData.totalResults || 0);
-        setGroupPage(page);
-        setIsGroupsLoading(false);
-        return;
-      }
-
-      setIsGroupsLoading(true);
-      setError(null);
-      try {
-        const startIndex = (page - 1) * ITEMS_PER_PAGE + 1;
-        const groupsRes = await fetch(
-          `/api/${userId}/scim/v2/Groups?startIndex=${startIndex}&count=${ITEMS_PER_PAGE}`
-        );
-        if (!groupsRes.ok)
-          throw new Error(`Failed to fetch groups: ${groupsRes.statusText}`);
-        const groupsData = await groupsRes.json();
-
-        sessionStorage.setItem(cacheKey, JSON.stringify(groupsData));
-
-        setGroups(groupsData.Resources || []);
-        setTotalGroups(groupsData.totalResults || 0);
-        setGroupPage(page);
-      } catch (e: any) {
-        setError(e.message);
-        toast.error(`Failed to fetch groups: ${e.message}`);
-      } finally {
-        setIsGroupsLoading(false);
-      }
-    },
-    [userId]
-  );
-
-  const handleGenerateData = useCallback(async () => {
-    if (isGenerating) return;
-
-    setIsGenerating(true);
-    toast.info("Generating new sample data...");
-    try {
-      const res = await fetch(`/api/${userId}/scim/v2/generate`, {
-        method: "POST",
-        body: JSON.stringify({
-          deleteExisting: true,
-          userCount: 5,
-          groupCount: 1,
-        }),
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.detail || "An unknown error occurred.");
-      }
-
-      clearCache();
-
-      toast.success(
-        "New data generated successfully! Fetching updated lists..."
-      );
-      await Promise.all([fetchUsers(1), fetchGroups(1)]);
-    } catch (e: any) {
-      toast.error(`Error generating data: ${e.message}`);
-    } finally {
-      setIsGenerating(false);
+  const userId = session?.user?.id!;
+  const fetchData = useCallback(async () => {
+    if (!userId) {
+      setIsLoading(false);
+      return;
     }
-  }, [isGenerating, clearCache, fetchUsers, fetchGroups]);
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const usersPromise = fetch(
+        `/api/${userId}/scim/v2/Users?startIndex=1&count=1`
+      );
+      const groupsPromise = fetch(
+        `/api/${userId}/scim/v2/Groups?startIndex=1&count=1`
+      );
+
+      const [usersRes, groupsRes] = await Promise.all([
+        usersPromise,
+        groupsPromise,
+      ]);
+
+      if (!usersRes.ok) {
+        throw new Error(`Failed to fetch users: ${usersRes.statusText}`);
+      }
+      if (!groupsRes.ok) {
+        throw new Error(`Failed to fetch groups: ${groupsRes.statusText}`);
+      }
+
+      const usersData = await usersRes.json();
+      const groupsData = await groupsRes.json();
+
+      setTotalUsers(usersData.totalResults || 0);
+      setTotalGroups(groupsData.totalResults || 0);
+    } catch (e: any) {
+      setError(e.message || "An unknown error occurred.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userId]);
 
   useEffect(() => {
-    document.addEventListener("generateData", handleGenerateData);
-    document.addEventListener("clearCache", clearCache);
-
-    fetchUsers(1);
-    return () => {
-      document.removeEventListener("generateData", handleGenerateData);
-      document.removeEventListener("clearCache", clearCache);
-    };
-  }, [handleGenerateData, clearCache, fetchUsers]); // Add fetchUsers to the dependency array
-
-  const handleTabChange = (value: string) => {
-    if (value === "users") {
-      fetchUsers(userPage);
-    } else if (value === "groups") {
-      fetchGroups(groupPage);
-    }
-  };
-
-  const toggleGroupExpansion = (groupId: string) => {
-    setExpandedGroupId((prevId) => (prevId === groupId ? null : groupId));
-  };
-
-  const userTotalPages = Math.ceil(totalUsers / ITEMS_PER_PAGE);
-  const groupTotalPages = Math.ceil(totalGroups / ITEMS_PER_PAGE);
+    fetchData();
+  }, [userId, fetchData]);
 
   return (
-    <>
-      <div className="w-full max-w-8xl mx-auto p-2">
-        <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4"></div>
-
-        {error && <ErrorDisplay message={error} />}
-
-        <Tabs
-          defaultValue="users"
-          className="w-full"
-          onValueChange={handleTabChange}
-        >
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="groups">Groups</TabsTrigger>
-          </TabsList>
-          <TabsContent value="users">
-            <Card>
-              <CardHeader>
-                <CardTitle>Users</CardTitle>
-                <CardDescription>
-                  A list of all users in the system.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isUsersLoading ? (
-                  <LoadingSpinner />
-                ) : (
-                  <>
-                    <div className="overflow-hidden rounded-lg border">
-                      <Table>
-                        <TableHeader className="bg-muted sticky top-0 z-10">
-                          <TableRow>
-                            <TableHead>Username</TableHead>
-                            <TableHead>Full Name</TableHead>
-                            <TableHead>Email</TableHead>
-                            <TableHead>Status</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {users.length > 0 ? (
-                            users.map((user) => (
-                              <TableRow key={user.id}>
-                                <TableCell className="font-medium">
-                                  {user.userName}
-                                </TableCell>
-                                <TableCell>{user.name?.formatted}</TableCell>
-                                <TableCell>
-                                  {user.emails?.find((e) => e.primary)?.value}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge
-                                    className="text-primary-foreground dark:text-foreground"
-                                    variant={
-                                      user.active ? "default" : "destructive"
-                                    }
-                                  >
-                                    {user.active ? "Active" : "Inactive"}
-                                  </Badge>
-                                </TableCell>
-                              </TableRow>
-                            ))
-                          ) : (
-                            <TableRow>
-                              <TableCell colSpan={4} className="text-center">
-                                No users found.
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                    <DashboardPagination
-                      currentPage={userPage}
-                      totalPages={userTotalPages}
-                      onPageChange={fetchUsers}
-                    />
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="groups">
-            <Card>
-              <CardHeader>
-                <CardTitle>Groups</CardTitle>
-                <CardDescription>
-                  A list of all groups and their members.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isGroupsLoading ? (
-                  <LoadingSpinner />
-                ) : (
-                  <div className="space-y-2">
-                    {groups.length > 0 ? (
-                      groups.map((group) => (
-                        <Card key={group.id} className="overflow-hidden">
-                          <CardHeader
-                            className="flex flex-row items-center justify-between p-4 cursor-pointer"
-                            onClick={() => toggleGroupExpansion(group.id)}
-                          >
-                            <div className="flex items-center gap-4">
-                              {expandedGroupId === group.id ? (
-                                <ChevronDown className="h-5 w-5" />
-                              ) : (
-                                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                              )}
-                              <CardTitle className="text-lg">
-                                {group.displayName}
-                              </CardTitle>
-                            </div>
-                            <Badge variant="secondary">
-                              {group.members?.length || 0} Members
-                            </Badge>
-                          </CardHeader>
-                          {expandedGroupId === group.id && (
-                            <CardContent className="p-4 pt-0">
-                              {group.members && group.members.length > 0 ? (
-                                <Table>
-                                  <TableHeader>
-                                    <TableRow>
-                                      <TableHead>Username</TableHead>
-                                      <TableHead>User ID</TableHead>
-                                    </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {group.members.map((member) => (
-                                      <TableRow key={member.value}>
-                                        <TableCell>{member.display}</TableCell>
-                                        <TableCell className="text-gray-500">
-                                          {member.value}
-                                        </TableCell>
-                                      </TableRow>
-                                    ))}
-                                  </TableBody>
-                                </Table>
-                              ) : (
-                                <p className="text-sm text-gray-500 px-4 py-2">
-                                  No members in this group.
-                                </p>
-                              )}
-                            </CardContent>
-                          )}
-                        </Card>
-                      ))
-                    ) : (
-                      <p className="text-center text-gray-500 py-4">
-                        No groups found.
-                      </p>
-                    )}
-                    <DashboardPagination
-                      currentPage={groupPage}
-                      totalPages={groupTotalPages}
-                      onPageChange={fetchGroups}
-                    />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+    <div className="w-full max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold tracking-tight">Tenant Dashboard</h1>
+        <p className="text-muted-foreground">
+          An overview of your provisioned users and groups.
+        </p>
       </div>
-    </>
+
+      {error ? (
+        <ErrorDisplay message={error} />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {isLoading || totalUsers === null ? (
+                <div className="h-10 w-24 bg-muted rounded animate-pulse"></div>
+              ) : (
+                <div className="text-2xl font-bold">{totalUsers}</div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Total users provisioned in this tenant.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Total Groups
+              </CardTitle>
+              <Building className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {isLoading || totalGroups === null ? (
+                <div className="h-10 w-24 bg-muted rounded animate-pulse"></div>
+              ) : (
+                <div className="text-2xl font-bold">{totalGroups}</div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Total groups configured in this tenant.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
   );
 }

@@ -39,9 +39,7 @@ export function DataTable<TData, TValue>({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    // Pagination
     getPaginationRowModel: getPaginationRowModel(),
-    // Server-side pagination setup
     manualPagination: true,
     pageCount,
     onPaginationChange: setPagination,
@@ -54,7 +52,7 @@ export function DataTable<TData, TValue>({
     <div>
       <div className="rounded-md border">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-muted">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
@@ -103,9 +101,6 @@ export function DataTable<TData, TValue>({
         </Table>
       </div>
       <div className="flex items-center justify-end space-x-2 py-4">
-        {/* <div className="text-muted-foreground flex-1 text-sm">
-          {table.getFilteredRowModel().rows.length} row(s) selected.
-        </div> */}
         <Button
           variant="outline"
           size="sm"
