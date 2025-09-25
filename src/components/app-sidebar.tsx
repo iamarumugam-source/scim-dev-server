@@ -6,7 +6,7 @@ import {
   IconInnerShadowTop,
   IconClearAll,
   IconDashboard,
-  IconListDetails,
+  IconBrandSlack,
   IconLogs,
 } from "@tabler/icons-react";
 
@@ -316,6 +316,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup className="relative flex w-full min-w-0 flex-col p-2 mt-auto">
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem key="contact">
+                <SidebarMenuButton asChild size="sm">
+                  <a href="slack://user?team=E017NDYFGQL&id=U096NTCSRMY">
+                    <IconBrandSlack />
+                    <span>Support</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

@@ -6,7 +6,6 @@ import { Users, Building } from "lucide-react";
 import {
   Card,
   CardAction,
-  CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
@@ -69,9 +68,9 @@ export default function ScimDashboard() {
   }, [userId, fetchData]);
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
+    <div className="container mx-auto py-10">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Tenant Dashboard</h1>
+        <h1 className="text-2xl font-bold">Tenant Dashboard</h1>
         <p className="text-muted-foreground">
           An overview of your provisioned users and groups.
         </p>
@@ -80,7 +79,7 @@ export default function ScimDashboard() {
       {error ? (
         <ErrorDisplay message={error} />
       ) : (
-        <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+        <div className="*:data-[slot=card]:from-secondary-foreground/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
           <Card className="@container/card">
             <CardHeader>
               <CardDescription>Total Users</CardDescription>

@@ -143,7 +143,12 @@ export default function ApiKeyManager() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={handleOpenDialog}>
+            <Button
+              onClick={handleOpenDialog}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground dark:text-sidebar-accent-foreground 
+                  dark:hover:text-sidebar-accent-foreground dark:active:text-sidebar-accent-foreground
+                  min-w-8 duration-200 ease-linear"
+            >
               <PlusCircle className="mr-2 h-4 w-4" /> Generate New Key
             </Button>
           </DialogTrigger>
