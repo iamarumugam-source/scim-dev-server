@@ -3,9 +3,18 @@
 import { useEffect, useState, useCallback } from "react";
 import { Users, Building } from "lucide-react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { ErrorDisplay } from "@/components/helper-components";
 import { useSession } from "next-auth/react";
+import { Badge } from "@/components/ui/badge";
 
 export default function ScimDashboard() {
   const { data: session } = useSession();
@@ -13,7 +22,7 @@ export default function ScimDashboard() {
   const [totalGroups, setTotalGroups] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const userId = session?.user?.id!;
+  const userId = session?.user?.id;
   const fetchData = useCallback(async () => {
     if (!userId) {
       setIsLoading(false);
@@ -71,41 +80,53 @@ export default function ScimDashboard() {
       {error ? (
         <ErrorDisplay message={error} />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+        <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+          <Card className="@container/card">
+            <CardHeader>
+              <CardDescription>Total Users</CardDescription>
+              <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                {isLoading || totalUsers === null ? (
+                  <div className="h-10 w-24 bg-muted rounded animate-pulse"></div>
+                ) : (
+                  <div className="text-2xl font-bold">{totalUsers}</div>
+                )}
+              </CardTitle>
+              <CardAction>
+                <Badge variant="outline">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </Badge>
+              </CardAction>
             </CardHeader>
-            <CardContent>
-              {isLoading || totalUsers === null ? (
-                <div className="h-10 w-24 bg-muted rounded animate-pulse"></div>
-              ) : (
-                <div className="text-2xl font-bold">{totalUsers}</div>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Total users provisioned in this tenant.
-              </p>
-            </CardContent>
+            <CardFooter className="flex-col items-start gap-1.5 text-sm">
+              <div className="line-clamp-1 flex gap-2 font-medium">
+                Total users provisioned for the following tenant:
+              </div>
+              <div className="text-muted-foreground">{userId}</div>
+            </CardFooter>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Groups
+          <Card className="@container/card">
+            <CardHeader>
+              <CardDescription>Total Groups</CardDescription>
+              <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                {isLoading || totalGroups === null ? (
+                  <div className="h-10 w-24 bg-muted rounded animate-pulse"></div>
+                ) : (
+                  <div className="text-2xl font-bold">{totalGroups}</div>
+                )}
               </CardTitle>
-              <Building className="h-4 w-4 text-muted-foreground" />
+              <CardAction>
+                <Badge variant="outline">
+                  <Building className="h-4 w-4 text-muted-foreground" />
+                </Badge>
+              </CardAction>
             </CardHeader>
-            <CardContent>
-              {isLoading || totalGroups === null ? (
-                <div className="h-10 w-24 bg-muted rounded animate-pulse"></div>
-              ) : (
-                <div className="text-2xl font-bold">{totalGroups}</div>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Total groups configured in this tenant.
-              </p>
-            </CardContent>
+            <CardFooter className="flex-col items-start gap-1.5 text-sm">
+              <div className="line-clamp-1 flex gap-2 font-medium">
+                Total groups configured in this tenant:
+              </div>
+              <div className="text-muted-foreground">{userId}</div>
+            </CardFooter>
           </Card>
         </div>
       )}
