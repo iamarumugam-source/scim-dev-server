@@ -2,9 +2,7 @@ import { withAuth, NextRequestWithAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
 export default withAuth(
-
   function middleware(req: NextRequestWithAuth) {
-
     return NextResponse.next();
   },
   {
@@ -13,5 +11,5 @@ export default withAuth(
 );
 
 export const config = {
-  matcher: ["/((?!api).*)"],
+  matcher: ["/((?!api).*)", "/jwe"],
 };
