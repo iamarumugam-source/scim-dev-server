@@ -15,10 +15,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 
-// This type is used to define the shape of our data.
-// You can use a Zod schema here if you want.
+interface GetColumnsProps {
+  handleDeleteUser: (userId: string) => void;
+}
 
-export const columns: ColumnDef<ScimUser>[] = [
+export const getColumns = ({
+  handleDeleteUser,
+}: GetColumnsProps): ColumnDef<ScimUser>[] => [
   {
     accessorKey: "userName",
     header: "Username",
@@ -42,7 +45,10 @@ export const columns: ColumnDef<ScimUser>[] = [
     cell: ({ row }) => {
       const isActive = row.getValue("active");
       return (
-        <Badge variant={isActive ? "default" : "destructive"}>
+        <Badge
+          variant={isActive ? "default" : "destructive"}
+          className="text-primary-foreground dark:text-sidebar-accent-foreground"
+        >
           {isActive ? "Active" : "Inactive"}
         </Badge>
       );
@@ -73,7 +79,10 @@ export const columns: ColumnDef<ScimUser>[] = [
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem>View details</DropdownMenuItem>
-            <DropdownMenuItem className="text-red-500">
+            <DropdownMenuItem
+              className="text-red-500 hover:!text-red-500"
+              onClick={() => handleDeleteUser(user.id)}
+            >
               Delete user
             </DropdownMenuItem>
           </DropdownMenuContent>

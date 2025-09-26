@@ -1,76 +1,100 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { GroupService } from '@/lib/scim/services/groupService';
-import { ScimError } from '@/lib/scim/models/scimSchemas';
-import { logExternalRequest } from '@/lib/scim/logging'; // 1. Import the logger
-import { protectWithApiKey } from '@/lib/scim/apiHelper';
+import { NextRequest, NextResponse } from "next/server";
+import { GroupService } from "@/lib/scim/services/groupService";
+import { logExternalRequest } from "@/lib/scim/logging";
+import { protectWithApiKey } from "@/lib/scim/apiHelper";
 const groupService = new GroupService();
 
-
 interface RouteParams {
-    params: { id: string };
+  params: { id: string; userId: string };
 }
 
+function createAndLogResponse(
+  request: NextRequest,
+  data: any,
+  options: { status: number },
+  userId: string
+): NextResponse {
+  const response = NextResponse.json(data, options);
+  logExternalRequest(request, response, data, userId);
+  return response;
+}
 
-const notFoundResponse = (): NextResponse<ScimError> => {
-    return NextResponse.json({
-        schemas: ["urn:ietf:params:scim:api:2.0:Error"],
-        detail: "Group not found",
-        status: "404",
-    }, { status: 404 });
+const notFoundResponse = (
+  request: NextRequest,
+  userId: string
+): NextResponse => {
+  const errorData = {
+    schemas: ["urn:ietf:params:scim:api:2.0:Error"],
+    detail: "Group not found",
+    status: "404",
+  };
+
+  return createAndLogResponse(request, errorData, { status: 404 }, userId);
 };
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
-    const unauthorizedResponse = await protectWithApiKey(request);
-    if (unauthorizedResponse) {
-        return unauthorizedResponse; 
-    }
-    logExternalRequest(request)
-    try {
-        const group = await groupService.getGroupById(params.id);
-        if (!group) {
-            return notFoundResponse();
-        }
-        return NextResponse.json(group);
-    } catch (error: any) {
-        return NextResponse.json({ detail: error.message, status: "500" }, { status: 500 });
-    }
-}
+  const { userId, id } = await params;
 
+  const unauthorizedResponse = await protectWithApiKey(request);
+  if (unauthorizedResponse) {
+    const errorData = { detail: "Unauthorized" };
+    return createAndLogResponse(request, errorData, { status: 401 }, userId);
+  }
+  try {
+    const group = await groupService.getGroupById(id);
+    if (!group) {
+      return notFoundResponse(request, userId);
+    }
+    return createAndLogResponse(request, group, { status: 200 }, userId);
+  } catch (error: any) {
+    const errorData = { detail: error.message, status: "500" };
+    return createAndLogResponse(request, errorData, { status: 500 }, userId);
+  }
+}
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
-    const unauthorizedResponse = await protectWithApiKey(request);
-    if (unauthorizedResponse) {
-        return unauthorizedResponse; 
+  const { userId, id } = await params;
+  const unauthorizedResponse = await protectWithApiKey(request);
+  if (unauthorizedResponse) {
+    const errorData = { detail: "Unauthorized" };
+    return createAndLogResponse(request, errorData, { status: 401 }, userId);
+  }
+  try {
+    const body = await request.json();
+    const updatedGroup = await groupService.updateGroup(id, body);
+    if (!updatedGroup) {
+      return notFoundResponse(body, userId);
     }
-    logExternalRequest(request)
-    try {
-        const body = await request.json();
-        const updatedGroup = await groupService.updateGroup(params.id, body);
-        if (!updatedGroup) {
-            return notFoundResponse();
-        }
-        return NextResponse.json(updatedGroup);
-    } catch (error: any) {
-        return NextResponse.json({ schemas: ["urn:ietf:params:scim:api:2.0:Error"], detail: error.message, status: "400" }, { status: 400 });
-    }
+    return createAndLogResponse(body, updatedGroup, { status: 200 }, userId);
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        schemas: ["urn:ietf:params:scim:api:2.0:Error"],
+        detail: error.message,
+        status: "400",
+      },
+      { status: 400 }
+    );
+  }
 }
-
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-    const unauthorizedResponse = await protectWithApiKey(request);
-    
-    if (unauthorizedResponse) {
-        return unauthorizedResponse; 
-    }
-    logExternalRequest(request)
-    try {
-        const success = await groupService.deleteGroup(params.id);
-        if (!success) {
-            return notFoundResponse();
-        }
-        return new NextResponse(null, { status: 204 });
-    } catch (error: any) {
-        return NextResponse.json({ detail: error.message, status: "500" }, { status: 500 });
-    }
-}
+  const { userId, id } = await params;
 
+  const unauthorizedResponse = await protectWithApiKey(request);
+
+  if (unauthorizedResponse) {
+    const errorData = { detail: "Unauthorized" };
+    return createAndLogResponse(request, errorData, { status: 401 }, userId);
+  }
+  try {
+    const success = await groupService.deleteGroup(id);
+    if (!success) {
+      return notFoundResponse(request, userId);
+    }
+    return createAndLogResponse(request, null, { status: 200 }, userId);
+  } catch (error: any) {
+    const errorData = { detail: error.message, status: "500" };
+    return createAndLogResponse(request, errorData, { status: 500 }, userId);
+  }
+}

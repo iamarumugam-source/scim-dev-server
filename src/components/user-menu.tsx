@@ -18,12 +18,10 @@ import { IconDotsVertical } from "@tabler/icons-react";
 export default function NavUser() {
   const { data: session, status } = useSession();
 
-  // Display a skeleton loader while the session is being fetched
   if (status === "loading") {
     return <Skeleton className="h-10 w-10 rounded-full" />;
   }
 
-  // If the user is not authenticated, don't render anything
   if (status === "unauthenticated") {
     return null;
   }
