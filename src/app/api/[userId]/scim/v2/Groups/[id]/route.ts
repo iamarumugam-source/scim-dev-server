@@ -53,7 +53,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 }
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
-  console.log(request);
   const { userId, id } = await params;
   const unauthorizedResponse = await protectWithApiKey(request);
   if (unauthorizedResponse) {
@@ -66,7 +65,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (!updatedGroup) {
       return notFoundResponse(body, userId);
     }
-    return createAndLogResponse(body, updatedGroup, { status: 200 }, userId);
+    return createAndLogResponse(request, updatedGroup, { status: 200 }, userId);
   } catch (error: any) {
     return NextResponse.json(
       {
