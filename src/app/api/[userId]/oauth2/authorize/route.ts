@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     const redirectURI = searchParams.get("state");
     const redirect_url = `${redirectURI}?code=${codeValue}`;
     console.log("Inside Redirect Block");
-    NextResponse.redirect(new URL(redirect_url), { status: 302 });
+    return NextResponse.redirect(new URL(redirect_url), { status: 302 });
   }
 
   return NextResponse.json({}, { status: 200 });
