@@ -5,6 +5,17 @@ import { v4 as uuidv4 } from "uuid";
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 const TABLE_NAME = "scim_groups";
 
+interface PatchOperation {
+  op: "add" | "replace" | "remove";
+  path: string;
+  value?: any;
+}
+
+interface ScimPatchOp {
+  schemas: ["urn:ietf:params:scim:api:messages:2.0:PatchOp"];
+  Operations: PatchOperation[];
+}
+
 export class GroupService {
   public async createGroup(
     groupData: Partial<ScimGroup>,
@@ -157,5 +168,95 @@ export class GroupService {
       throw new Error(`Supabase error deleting group: ${error.message}`);
     }
     return true;
+  }
+
+  public async patchGroup(
+    id: string,
+    patchData: ScimPatchOp
+  ): Promise<ScimGroup | null> {
+    // Step 1: Fetch the original group
+    const originalGroup = await this.getGroupById(id);
+
+    if (!originalGroup) {
+      return null; // Group not found
+    }
+
+    // Create a mutable copy to apply changes to
+    const groupToUpdate: ScimGroup = JSON.parse(JSON.stringify(originalGroup));
+
+    // Step 2: Process each operation from the request
+    for (const op of patchData.Operations) {
+      switch (op.op.toLowerCase()) {
+        case "replace":
+          if (op.path === "members") {
+            groupToUpdate.members = op.value || [];
+          } else if (op.path === "displayName") {
+            groupToUpdate.displayName = op.value;
+          }
+          // Add other 'replace' paths here if needed
+          break;
+
+        case "add":
+          if (op.path === "members") {
+            groupToUpdate.members = groupToUpdate.members || [];
+            const newMembers = Array.isArray(op.value) ? op.value : [op.value];
+
+            // Add only members that don't already exist
+            const existingMemberIds = new Set(
+              groupToUpdate.members.map((m) => m.value)
+            );
+            newMembers.forEach((newMember: any) => {
+              if (newMember.value && !existingMemberIds.has(newMember.value)) {
+                groupToUpdate.members.push(newMember);
+              }
+            });
+          }
+          // Add other 'add' paths here if needed
+          break;
+
+        case "remove":
+          // A simple 'remove' might target a specific member via a filter in the path
+          // e.g., path: 'members[value eq "23a35c27..."]'
+          const memberFilterMatch = op.path.match(
+            /members\[value eq "(.+?)"\]/
+          );
+          if (memberFilterMatch) {
+            const memberIdToRemove = memberFilterMatch[1];
+            groupToUpdate.members = (groupToUpdate.members || []).filter(
+              (member) => member.value !== memberIdToRemove
+            );
+          }
+          break;
+
+        default:
+          // Optional: Throw an error for unsupported operations
+          console.warn(`Unsupported PATCH operation: ${op.op}`);
+          break;
+      }
+    }
+
+    // Step 3: Update metadata and save to the database
+    const now = new Date().toISOString();
+    groupToUpdate.meta = {
+      ...groupToUpdate.meta,
+      lastModified: now,
+      version: `W/"${Date.now()}"`,
+    };
+
+    const { error } = await supabase
+      .from(TABLE_NAME)
+      .update({
+        display_name: groupToUpdate.displayName,
+        resource: groupToUpdate, // Save the entire updated object
+        last_modified_at: now,
+      })
+      .eq("id", id);
+
+    if (error) {
+      throw new Error(`Supabase error patching group: ${error.message}`);
+    }
+
+    // Step 4: Return the fully updated group
+    return groupToUpdate;
   }
 }
