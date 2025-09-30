@@ -13,7 +13,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const requestData = logPayload["request"];
     requestData["timestamp"] = logPayload["timestamp"];
     const responseData = logPayload["responseData"];
-    responseData["status"] = logPayload["responseStatus"];
+    responseData["status"] = logPayload["responseStatus"] || {};
 
     const { error } = await supabase.from(LOG_TABLE).insert({
       log_data: requestData,

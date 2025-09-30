@@ -61,6 +61,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   }
   try {
     const body = await request.json();
+    console.log(body);
     const updatedGroup = await groupService.updateGroup(id, body);
     if (!updatedGroup) {
       return notFoundResponse(body, userId);
