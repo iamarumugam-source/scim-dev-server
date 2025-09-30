@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  console.log(request.nextUrl);
 
   const hasResponseType = searchParams.has("response_type");
   const hasClientId = searchParams.has("client_id");
@@ -24,7 +23,8 @@ export async function GET(request: NextRequest) {
     const codeValue = searchParams.get("code");
     const redirectURI = searchParams.get("state");
     const redirect_url = `${redirectURI}?code=${codeValue}`;
-    redirect(redirect_url);
+    console.log("Inside Redirect Block");
+    NextResponse.redirect(redirect_url, { status: 302 });
   }
 
   return NextResponse.json({}, { status: 200 });
