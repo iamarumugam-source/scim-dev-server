@@ -116,6 +116,8 @@ export class GroupService {
       return null;
     }
 
+    console.log(originalGroup);
+
     const now = new Date().toISOString();
     const updatedGroup: ScimGroup = {
       ...originalGroup,
