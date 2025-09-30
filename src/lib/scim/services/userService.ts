@@ -62,26 +62,50 @@ export class UserService {
   }
 
   public async getUsers(
-    startIndex: number = 1,
-    count: number = 10,
-    userId: string
+    startIndex: number,
+    count: number,
+    userId: string,
+    filter?: string | null
   ): Promise<{ users: ScimUser[]; total: number }> {
-    const {
-      data,
-      error,
-      count: total,
-    } = await supabase
+    let query = supabase
       .from(TABLE_NAME)
       .select("resource", { count: "exact" })
-      .eq("tenantId", userId)
-      .range(startIndex - 1, startIndex - 1 + count - 1);
+      .eq("tenantId", userId);
 
-    if (error) {
-      console.log(error);
-      throw new Error(`Supabase error getting users: ${error.message}`);
+    if (filter) {
+      const filterRegex = /([\w\.]+)\s+eq\s+"([^"]+)"/i;
+      const match = filter.match(filterRegex);
+
+      if (match) {
+        const scimAttribute = match[1];
+        const value = match[2];
+        const username = value.split("@")[0];
+        switch (scimAttribute.toLowerCase()) {
+          case "username":
+            query = query.eq("username", username);
+            break;
+          default:
+            throw new Error(
+              `Invalid or unsupported filter attribute: ${scimAttribute}`
+            );
+        }
+      } else {
+        throw new Error(`Invalid or unsupported filter syntax: "${filter}"`);
+      }
     }
 
-    const users = data.map((item) => item.resource as ScimUser);
+    const from = startIndex - 1;
+    const to = from + count - 1;
+    query = query.range(from, to);
+
+    const { data, error, count: total } = await query;
+
+    if (error) {
+      throw new Error(`Supabase error fetching users: ${error.message}`);
+    }
+
+    const users = data.map((row: any) => row.resource as ScimUser);
+
     return { users, total: total || 0 };
   }
 
