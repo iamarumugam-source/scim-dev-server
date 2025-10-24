@@ -25,6 +25,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { LoadingSpinner } from "./helper-components";
+import { LoadingScreen } from "./LoadingScreen";
 
 interface ApiKey {
   id: string;
@@ -126,136 +127,138 @@ export default function ApiKeyManager() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start gap-4 p-4 border rounded-lg">
-        <div>
-          <h3 className="font-medium">Your SCIM Endpoint</h3>
-          <div className="flex items-center gap-2 p-2 mt-2 bg-muted rounded-md border text-sm">
-            <code className="flex-1 font-mono">{apiEndpoint}</code>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => copyToClipboard(apiEndpoint)}
-            >
-              <Copy className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button
-              onClick={handleOpenDialog}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground dark:text-sidebar-accent-foreground 
-                  dark:hover:text-sidebar-accent-foreground dark:active:text-sidebar-accent-foreground
-                  min-w-8 duration-200 ease-linear"
-            >
-              <PlusCircle className="mr-2 h-4 w-4" /> Generate New Key
-            </Button>
-          </DialogTrigger>
-          <DialogContent
-            className="sm:max-w-[425px]"
-            onInteractOutside={(e) => {
-              if (generatedKey) e.preventDefault();
-            }}
-          >
-            <DialogHeader>
-              <DialogTitle>Generate New API Key</DialogTitle>
-              <DialogDescription>
-                Provide a descriptive name for your new key.
-              </DialogDescription>
-            </DialogHeader>
-            {generatedKey ? (
-              <div className="mt-4">
-                <p className="text-sm text-muted-foreground mb-2">
-                  Please copy this key now. You will not be able to see it
-                  again.
-                </p>
-                <div className="flex items-center gap-2 p-2 bg-muted rounded-md border">
-                  <code className="flex-1 font-mono text-sm break-all">
-                    {generatedKey}
-                  </code>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground dark:text-sidebar-accent-foreground 
-                  dark:hover:text-sidebar-accent-foreground dark:active:text-sidebar-accent-foreground
-                  min-w-8 duration-200 ease-linear"
-                    onClick={() => copyToClipboard(generatedKey)}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="grid gap-4 py-4">
-                <Input
-                  id="name"
-                  placeholder="e.g., 'Third-Party App'"
-                  value={newKeyName}
-                  onChange={(e) => setNewKeyName(e.target.value)}
-                  disabled={isGenerating}
-                />
-              </div>
-            )}
-            <DialogFooter>
-              {generatedKey ? (
-                <Button onClick={handleCloseDialog}>Close</Button>
-              ) : (
-                <Button onClick={handleGenerateKey} disabled={isGenerating}>
-                  {isGenerating ? <LoadingSpinner /> : "Generate"}
-                </Button>
-              )}
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-
+    <>
       {isLoading ? (
-        <LoadingSpinner />
+        <LoadingScreen />
       ) : (
-        <div className="overflow-hidden rounded-lg border">
-          <Table>
-            <TableHeader className="bg-muted">
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Key Prefix</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {keys.length > 0 ? (
-                keys.map((key) => (
-                  <TableRow key={key.id}>
-                    <TableCell className="font-medium">{key.name}</TableCell>
-                    <TableCell>
-                      <code>{key.key_prefix}...</code>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(key.created_at).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right">
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-4 p-4 border rounded-lg">
+            <div>
+              <h3 className="font-medium">Your SCIM Endpoint</h3>
+              <div className="flex items-center gap-2 p-2 mt-2 bg-muted rounded-md border text-sm">
+                <code className="flex-1 font-mono">{apiEndpoint}</code>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => copyToClipboard(apiEndpoint)}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  onClick={handleOpenDialog}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground dark:text-sidebar-accent-foreground 
+                  dark:hover:text-sidebar-accent-foreground dark:active:text-sidebar-accent-foreground
+                  min-w-8 duration-200 ease-linear"
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" /> Generate New Key
+                </Button>
+              </DialogTrigger>
+              <DialogContent
+                className="sm:max-w-[425px]"
+                onInteractOutside={(e) => {
+                  if (generatedKey) e.preventDefault();
+                }}
+              >
+                <DialogHeader>
+                  <DialogTitle>Generate New API Key</DialogTitle>
+                  <DialogDescription>
+                    Provide a descriptive name for your new key.
+                  </DialogDescription>
+                </DialogHeader>
+                {generatedKey ? (
+                  <div className="mt-4">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Please copy this key now. You will not be able to see it
+                      again.
+                    </p>
+                    <div className="flex items-center gap-2 p-2 bg-muted rounded-md border">
+                      <code className="flex-1 font-mono text-sm break-all">
+                        {generatedKey}
+                      </code>
                       <Button
                         size="icon"
                         variant="ghost"
-                        onClick={() => handleRevokeKey(key.id)}
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground dark:text-sidebar-accent-foreground 
+                  dark:hover:text-sidebar-accent-foreground dark:active:text-sidebar-accent-foreground
+                  min-w-8 duration-200 ease-linear"
+                        onClick={() => copyToClipboard(generatedKey)}
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <Copy className="h-4 w-4" />
                       </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 py-4">
+                    <Input
+                      id="name"
+                      placeholder="e.g., 'Third-Party App'"
+                      value={newKeyName}
+                      onChange={(e) => setNewKeyName(e.target.value)}
+                      disabled={isGenerating}
+                    />
+                  </div>
+                )}
+                <DialogFooter>
+                  {generatedKey ? (
+                    <Button onClick={handleCloseDialog}>Close</Button>
+                  ) : (
+                    <Button onClick={handleGenerateKey} disabled={isGenerating}>
+                      {isGenerating ? <LoadingSpinner /> : "Generate"}
+                    </Button>
+                  )}
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <div className="overflow-hidden rounded-lg border">
+            <Table>
+              <TableHeader className="bg-muted">
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Key Prefix</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {keys.length > 0 ? (
+                  keys.map((key) => (
+                    <TableRow key={key.id}>
+                      <TableCell className="font-medium">{key.name}</TableCell>
+                      <TableCell>
+                        <code>{key.key_prefix}...</code>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(key.created_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleRevokeKey(key.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center">
+                      No API keys found.
                     </TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
-                    No API keys found.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

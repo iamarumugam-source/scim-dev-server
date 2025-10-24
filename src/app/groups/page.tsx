@@ -15,8 +15,9 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { LoadingSpinner, ErrorDisplay } from "@/components/helper-components";
+import { ErrorDisplay } from "@/components/helper-components";
 import DashboardPagination from "@/components/padination-handler";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 export default function GroupsDisplay() {
   const { data: session } = useSession();
@@ -76,7 +77,7 @@ export default function GroupsDisplay() {
       {error && <ErrorDisplay message={error} />}
 
       {isGroupsLoading ? (
-        <LoadingSpinner />
+        <LoadingScreen />
       ) : (
         <>
           <div className="overflow-hidden rounded-lg border">

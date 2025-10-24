@@ -14,6 +14,7 @@ import {
 import { ErrorDisplay } from "@/components/helper-components";
 import { useSession } from "next-auth/react";
 import { Badge } from "@/components/ui/badge";
+import { Spinner } from "@/components/ui/spinner";
 
 export default function ScimDashboard() {
   const { data: session } = useSession();
@@ -85,7 +86,9 @@ export default function ScimDashboard() {
               <CardDescription>Total Users</CardDescription>
               <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
                 {isLoading || totalUsers === null ? (
-                  <div className="h-10 w-24 bg-muted rounded animate-pulse"></div>
+                  <div className="h-10 w-24 bg-muted rounded animate-pulse">
+                    <Spinner />
+                  </div>
                 ) : (
                   <div className="text-2xl font-bold">{totalUsers}</div>
                 )}
@@ -109,7 +112,9 @@ export default function ScimDashboard() {
               <CardDescription>Total Groups</CardDescription>
               <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
                 {isLoading || totalGroups === null ? (
-                  <div className="h-10 w-24 bg-muted rounded animate-pulse"></div>
+                  <div className="h-10 w-24 bg-muted rounded animate-pulse">
+                    <Spinner />
+                  </div>
                 ) : (
                   <div className="text-2xl font-bold">{totalGroups}</div>
                 )}

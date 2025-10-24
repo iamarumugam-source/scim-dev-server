@@ -32,24 +32,27 @@ import {
 const getMethodBadgeVariant = (method: string) => {
   switch (method.toUpperCase()) {
     case "GET":
-      return "bg-blue-500 hover:bg-blue-500 font-semibold";
+      return "bg-blue-500 hover:bg-blue-500 font-semibold text-primary-foreground dark:text-sidebar-accent-foreground";
     case "POST":
-      return "bg-green-600 hover:bg-green-600 font-semibold";
+      return "bg-green-600 hover:bg-green-600 font-semibold text-primary-foreground dark:text-sidebar-accent-foreground";
     case "PUT":
     case "PATCH":
-      return "bg-yellow-500 hover:bg-yellow-500 text-black font-semibold";
+      return "bg-yellow-500 hover:bg-yellow-500 text-black font-semibold text-primary-foreground dark:text-sidebar-accent-foreground";
     case "DELETE":
-      return "bg-red-600 hover:bg-red-600 font-semibold";
+      return "bg-red-600 hover:bg-red-600 font-semibold text-primary-foreground dark:text-sidebar-accent-foreground";
     default:
-      return "bg-gray-500 hover:bg-gray-500 font-semibold";
+      return "bg-gray-500 hover:bg-gray-500 font-semibold text-primary-foreground dark:text-sidebar-accent-foreground";
   }
 };
 
 const getStatusBadgeClass = (status: number) => {
-  if (status >= 500) return "bg-red-600";
+  if (status >= 500)
+    return "bg-red-600 text-primary-foreground dark:text-sidebar-accent-foreground";
   if (status >= 400) return "bg-yellow-500 text-black";
-  if (status >= 300) return "bg-blue-500";
-  if (status >= 200) return "bg-green-600";
+  if (status >= 300)
+    return "bg-blue-500 text-primary-foreground dark:text-sidebar-accent-foreground";
+  if (status >= 200)
+    return "bg-green-600 text-primary-foreground dark:text-sidebar-accent-foreground";
   return "bg-gray-500";
 };
 

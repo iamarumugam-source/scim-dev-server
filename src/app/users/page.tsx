@@ -6,8 +6,8 @@ import { useSession } from "next-auth/react";
 import { getColumns } from "./columns";
 import { DataTable } from "./data-table";
 import { PaginationState } from "@tanstack/react-table";
-import { LoadingSpinner } from "@/components/helper-components";
 import { toast } from "sonner";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 export default function UsersPage() {
   const { data: session } = useSession();
@@ -84,7 +84,7 @@ export default function UsersPage() {
     <div className="container mx-auto py-10">
       <h1 className="text-2xl font-bold mb-4">Users</h1>
       {isLoading ? (
-        <LoadingSpinner />
+        <LoadingScreen />
       ) : (
         <DataTable
           columns={columns}

@@ -92,6 +92,51 @@ CREATE POLICY "Public access" ON public.scim_groups FOR ALL USING (true) WITH CH
 CREATE POLICY "Enable read access for all users" ON public.scim_logs FOR SELECT USING (true);
 CREATE POLICY "Allow full access for service role" ON public.api_keys FOR ALL USING (true) WITH CHECK (true);
 -- Creating Security Policies END
+
+-- Fresh set of SQL queries
+
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.api_keys (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  hashed_key text NOT NULL UNIQUE,
+  key_prefix text NOT NULL,
+  name text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  last_used_at timestamp with time zone,
+  tenantId text NOT NULL,
+  CONSTRAINT api_keys_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.scim_groups (
+  id uuid NOT NULL,
+  display_name text NOT NULL UNIQUE,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  last_modified_at timestamp with time zone NOT NULL DEFAULT now(),
+  resource jsonb NOT NULL,
+  tenantId text NOT NULL,
+  CONSTRAINT scim_groups_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.scim_logs (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  log_data jsonb NOT NULL,
+  tenantId text NOT NULL,
+  response jsonb,
+  CONSTRAINT scim_logs_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.scim_users (
+  id uuid NOT NULL,
+  username text NOT NULL UNIQUE,
+  active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  last_modified_at timestamp with time zone NOT NULL DEFAULT now(),
+  resource jsonb NOT NULL,
+  tenantId text NOT NULL,
+  CONSTRAINT scim_users_pkey PRIMARY KEY (id)
+);
+
+-- END of Fresh set of queries
 ```
 
 #### Step 6: Obtain Supabase API Keys
