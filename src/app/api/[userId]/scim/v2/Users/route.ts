@@ -43,7 +43,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     );
 
     const listResponse: ScimListResponse<ScimUser> = {
-      schemas: ["urn:ietf:params:scim:api:2.0:ListResponse"],
+      schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
       totalResults: total,
       itemsPerPage: users.length,
       startIndex: startIndex,

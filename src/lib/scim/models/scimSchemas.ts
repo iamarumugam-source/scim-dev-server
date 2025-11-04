@@ -5,7 +5,7 @@
 
 // Basic SCIM Attribute Types
 interface Meta {
-  resourceType: 'User' | 'Group';
+  resourceType: "User" | "Group";
   created: string;
   lastModified: string;
   location: string;
@@ -24,20 +24,20 @@ interface Name {
 interface Email {
   value: string;
   display?: string;
-  type?: 'work' | 'home' | 'other';
+  type?: "work" | "home" | "other";
   primary: boolean;
 }
 
 interface Member {
-    value: string; // The "id" of the SCIM resource.
-    $ref?: string; // The URI of the SCIM resource.
-    display?: string; // A human-readable name for the member.
-    type?: 'User' | 'Group';
+  value: string; // The "id" of the SCIM resource.
+  $ref?: string; // The URI of the SCIM resource.
+  display?: string; // A human-readable name for the member.
+  type?: "User" | "Group";
 }
 
 // Core SCIM User Resource
 export interface ScimUser {
-  schemas: ['urn:ietf:params:scim:schemas:core:2.0:User'];
+  schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"];
   id: string;
   userName: string;
   name: Name;
@@ -56,26 +56,25 @@ export interface ScimUser {
 
 // Core SCIM Group Resource
 export interface ScimGroup {
-    schemas: ['urn:ietf:params:scim:schemas:core:2.0:Group'];
-    id: string;
-    displayName: string;
-    members: Member[];
-    meta: Meta;
+  schemas: ["urn:ietf:params:scim:schemas:core:2.0:Group"];
+  id: string;
+  displayName: string;
+  members: Member[];
+  meta: Meta;
 }
 
 // SCIM List Response for returning collections of resources
 export interface ScimListResponse<T> {
-    schemas: ["urn:ietf:params:scim:api:2.0:ListResponse"];
-    totalResults: number;
-    itemsPerPage: number;
-    startIndex: number;
-    Resources: T[];
+  schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"];
+  totalResults: number;
+  itemsPerPage: number;
+  startIndex: number;
+  Resources: T[];
 }
 
 // SCIM Error Response
 export interface ScimError {
-    schemas: ["urn:ietf:params:scim:api:2.0:Error"];
-    detail: string;
-    status: string;
+  schemas: ["urn:ietf:params:scim:api:2.0:Error"];
+  detail: string;
+  status: string;
 }
-
