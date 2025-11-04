@@ -74,7 +74,7 @@ export interface ScimListResponse<T> {
 
 // SCIM Error Response
 export interface ScimError {
-  schemas: ["urn:ietf:params:scim:api:2.0:Error"];
+  schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"];
   detail: string;
   status: string;
 }

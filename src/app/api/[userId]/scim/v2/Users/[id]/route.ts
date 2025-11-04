@@ -25,7 +25,7 @@ const notFoundResponse = (
   userId: string
 ): NextResponse => {
   const errorData = {
-    schemas: ["urn:ietf:params:scim:api:2.0:Error"],
+    schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"],
     detail: "User not found",
     status: "404",
   };

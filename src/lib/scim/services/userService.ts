@@ -116,8 +116,10 @@ export class UserService {
       .eq("id", id)
       .single();
 
+    console.log(id);
+
     if (error) {
-      if (error.code === "PGRST116") return null;
+      if (error.code === "PGRST116" || error.code == "22P02") return null;
       throw new Error(`Supabase error getting user: ${error.message}`);
     }
 
