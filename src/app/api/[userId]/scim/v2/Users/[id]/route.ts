@@ -37,7 +37,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const { userId, id } = await params;
   const unauthorizedResponse = await protectWithApiKey(request);
   if (unauthorizedResponse) {
-    const errorData = { detail: "Unauthorized" };
+    const errorData = {
+      detail: "Unauthorized",
+      status: "401",
+      schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"],
+    };
     return createAndLogResponse(request, errorData, { status: 401 }, userId);
   }
 
@@ -57,7 +61,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   const unauthorizedResponse = await protectWithApiKey(request);
   const { userId, id } = await params;
   if (unauthorizedResponse) {
-    const errorData = { detail: "Unauthorized" };
+    const errorData = {
+      detail: "Unauthorized",
+      status: "401",
+      schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"],
+    };
     return createAndLogResponse(request, errorData, { status: 401 }, userId);
   }
 
@@ -84,7 +92,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const { userId, id } = await params;
   const unauthorizedResponse = await protectWithApiKey(request);
   if (unauthorizedResponse) {
-    const errorData = { detail: "Unauthorized" };
+    const errorData = {
+      detail: "Unauthorized",
+      status: "401",
+      schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"],
+    };
     return createAndLogResponse(request, errorData, { status: 401 }, userId);
   }
 
