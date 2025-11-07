@@ -29,13 +29,18 @@ interface Email {
 }
 
 interface Member {
-  value: string; // The "id" of the SCIM resource.
-  $ref?: string; // The URI of the SCIM resource.
-  display?: string; // A human-readable name for the member.
+  value: string;
+  $ref?: string;
+  display?: string;
   type?: "User" | "Group";
 }
 
-// Core SCIM User Resource
+export interface ScimGroupMember {
+  value: string;
+  display: string;
+  $ref: string;
+}
+
 export interface ScimUser {
   schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"];
   id: string;
@@ -51,10 +56,10 @@ export interface ScimUser {
   timezone?: string;
   active: boolean;
   emails: Email[];
+  groups?: ScimGroupMember[];
   meta: Meta;
 }
 
-// Core SCIM Group Resource
 export interface ScimGroup {
   schemas: ["urn:ietf:params:scim:schemas:core:2.0:Group"];
   id: string;
@@ -63,7 +68,6 @@ export interface ScimGroup {
   meta: Meta;
 }
 
-// SCIM List Response for returning collections of resources
 export interface ScimListResponse<T> {
   schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"];
   totalResults: number;

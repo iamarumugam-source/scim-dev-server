@@ -8,14 +8,16 @@ import {
   IconDashboard,
   IconBrandSlack,
   IconLogs,
+  IconRestore,
 } from "@tabler/icons-react";
-
+import Image from "next/image";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -89,6 +91,9 @@ const items = [
     url: "/logs",
     icon: IconLogs,
   },
+];
+
+const otherTools = [
   {
     title: "JWE Decoder",
     url: "/jwe",
@@ -114,6 +119,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [isGenerating, setIsGenerating] = useState(false);
   const { data: session } = useSession();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isResetting, setIsReseting] = useState(false);
 
   const userId = session?.user?.id;
 
@@ -168,6 +174,38 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     [isGenerating, userId]
   );
 
+  const handleReset = useCallback(async () => {
+    if (isResetting) return;
+
+    setIsReseting(true);
+
+    toast.error("Deleting/Resetting all users and groups");
+
+    try {
+      const res = await fetch(`/api/${userId}/resourceReset`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || "An unknown error occurred.");
+      }
+
+      toast.success("Data reset completed...");
+
+      clearCache();
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (e: any) {
+      toast.error(`Error generating data: ${e.message}`);
+    } finally {
+      setIsReseting(false);
+    }
+  }, [isResetting, userId]);
+
   const handleClearCacheClick = () => {
     clearCache();
     toast.success("Successfully local storage has been cleared");
@@ -183,7 +221,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
               <a href="#">
-                <IconInnerShadowTop className="!size-5" />
+                <Image
+                  src="/okta.svg"
+                  alt="Okta SCIM"
+                  width={40}
+                  height={40}
+                  className="!size-5 text-red"
+                />
                 <span className="text-base font-semibold">
                   Okta SCIM Server
                 </span>
@@ -201,12 +245,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <DialogTrigger asChild>
                     <SidebarMenuButton
                       tooltip="Generate Mock"
-                      className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground dark:text-sidebar-accent-foreground 
+                      className="bg-blue-800 text-primary-foreground hover:bg-blue/800 hover:text-primary-foreground active:bg-blue-800 active:text-primary-foreground dark:text-sidebar-accent-foreground 
                   dark:hover:text-sidebar-accent-foreground dark:active:text-sidebar-accent-foreground
                   min-w-8 duration-200 ease-linear"
                       // onClick={handleGenerateClick}
                     >
                       <IconCirclePlusFilled />
+
                       <span>Generate Mock</span>
                     </SidebarMenuButton>
                   </DialogTrigger>
@@ -298,10 +343,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <Button
                   size="icon"
                   className="size-8 group-data-[collapsible=icon]:opacity-0"
-                  variant="outline"
-                  onClick={handleClearCacheClick}
+                  variant="destructive"
+                  onClick={handleReset}
                 >
-                  <IconClearAll />
+                  <IconRestore />
                 </Button>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -318,6 +363,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Other Tools</SidebarGroupLabel>
+          <SidebarMenu>
+            {otherTools.map((item) => (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton asChild>
+                  <a href={item.url}>
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
         </SidebarGroup>
         <SidebarGroup className="relative flex w-full min-w-0 flex-col p-2 mt-auto">
           <SidebarGroupContent>

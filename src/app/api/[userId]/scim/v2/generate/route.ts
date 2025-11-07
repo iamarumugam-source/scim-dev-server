@@ -21,9 +21,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const deleteExisting = body.deleteExisting === true;
     const userCount =
-      typeof body.userCount === "number" ? Math.min(body.userCount, 1000) : 20; // Cap at 1000
+      typeof body.userCount === "number" ? Math.min(body.userCount, 1000) : 20;
     const groupCount =
-      typeof body.groupCount === "number" ? Math.min(body.groupCount, 100) : 5; // Cap at 100
+      typeof body.groupCount === "number" ? Math.min(body.groupCount, 100) : 5;
 
     console.log(
       `Configuration - Delete Existing: ${deleteExisting}, User Count: ${userCount}, Group Count: ${groupCount}`
@@ -33,7 +33,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       console.log(
         `'deleteExisting' is true. Removing all users and groups for tenant: ${userId}...`
       );
-
       const { error: deleteGroupsError } = await supabase
         .from("scim_groups")
         .delete()
@@ -69,6 +68,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
       existingUsers = (existingUsersData?.map((u) => u.resource) ||
         []) as ScimUser[];
+
+      existingUsers.forEach((user) => {
+        if (!user.groups) {
+          user.groups = [];
+        }
+      });
+
       console.log(
         `Found ${existingUsers.length} existing users to include in new groups.`
       );
@@ -98,6 +104,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           },
         ],
         active: true,
+        groups: [],
         meta: {
           resourceType: "User",
           created: now,
@@ -130,25 +137,35 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     console.log(`Generated ${groups.length} new groups.`);
 
     const allUsers = [...existingUsers, ...users];
-    if (allUsers.length > 0) {
+    if (allUsers.length > 0 && groups.length > 0) {
       groups.forEach((group) => {
         const memberCount = faker.number.int({
           min: 1,
           max: Math.min(allUsers.length, 10),
         });
+
         const shuffledUsers = faker.helpers.shuffle(allUsers);
-        for (let i = 0; i < memberCount; i++) {
-          const user = shuffledUsers[i];
-          if (group.members && user.id) {
+        const members = shuffledUsers.slice(0, memberCount);
+
+        for (const user of members) {
+          if (group.members && user.id && group.id && group.displayName) {
             group.members.push({
               value: user.id,
               display: user.userName,
               $ref: `${BASE_URL}/api/${userId}/scim/v2/Users/${user.id}`,
             });
+
+            if (user.groups) {
+              user.groups.push({
+                value: group.id,
+                display: group.displayName,
+                $ref: `${BASE_URL}/api/${userId}/scim/v2/Groups/${group.id}`,
+              });
+            }
           }
         }
       });
-      console.log("Assigned users to new groups.");
+      console.log("Assigned users to new groups and groups to users.");
     }
 
     const usersToInsert = users.map((user) => ({
@@ -158,6 +175,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       resource: user,
       tenantId: userId,
     }));
+
+    const usersToUpdate = existingUsers.map((user) => ({
+      id: user.id,
+      username: user.userName,
+      active: user.active,
+      resource: user,
+      tenantId: userId,
+    }));
+
     const groupsToInsert = groups.map((group) => ({
       id: group.id,
       display_name: group.displayName,
@@ -165,14 +191,25 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       tenantId: userId,
     }));
 
-    console.log("Inserting new data into Supabase...");
+    console.log("Inserting and updating data in Supabase...");
     if (usersToInsert.length > 0) {
       const { error: userError } = await supabase
         .from("scim_users")
         .insert(usersToInsert);
       if (userError)
-        throw new Error(`User insertion failed: ${userError.message}`);
+        throw new Error(`New user insertion failed: ${userError.message}`);
     }
+
+    if (usersToUpdate.length > 0) {
+      const { error: userUpdateError } = await supabase
+        .from("scim_users")
+        .upsert(usersToUpdate, { onConflict: "id" });
+      if (userUpdateError)
+        throw new Error(
+          `Existing user update failed: ${userUpdateError.message}`
+        );
+    }
+
     if (groupsToInsert.length > 0) {
       const { error: groupError } = await supabase
         .from("scim_groups")
@@ -181,7 +218,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         throw new Error(`Group insertion failed: ${groupError.message}`);
     }
 
-    const message = `Database seeding completed. Deleted existing data: ${deleteExisting}. Generated: ${users.length} users, ${groups.length} groups.`;
+    const message = `Database seeding completed. Deleted existing data: ${deleteExisting}. Generated: ${users.length} users, ${groups.length} groups. Updated: ${existingUsers.length} existing users.`;
     console.log(message);
     return NextResponse.json({ message });
   } catch (error: any) {
