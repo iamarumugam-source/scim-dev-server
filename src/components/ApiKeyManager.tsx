@@ -43,7 +43,7 @@ export default function ApiKeyManager() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { data: session } = useSession();
   const userId = session?.user?.id;
-  const apiEndpoint = `https://okta-scim.vercel.app/api/${userId}/scim/v2`;
+  const apiEndpoint = `https://oktascim.vercel.app/api/${userId}/scim/v2`;
 
   const fetchKeys = async () => {
     if (!userId) return;

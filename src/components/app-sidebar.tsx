@@ -3,8 +3,6 @@ import { UsersRound, KeyIcon, IdCardIcon, BuildingIcon } from "lucide-react";
 
 import {
   IconCirclePlusFilled,
-  IconInnerShadowTop,
-  IconClearAll,
   IconDashboard,
   IconBrandSlack,
   IconLogs,
@@ -93,6 +91,8 @@ const items = [
   },
 ];
 
+// Secondary nav list -> Other tools
+
 const otherTools = [
   {
     title: "JWE Decoder",
@@ -100,6 +100,7 @@ const otherTools = [
     icon: IdCardIcon,
   },
 ];
+
 type FormValues = z.infer<typeof FormSchema>;
 
 const clearCache = () => {
@@ -119,6 +120,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [isGenerating, setIsGenerating] = useState(false);
   const { data: session } = useSession();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isResetting, setIsReseting] = useState(false);
 
   const userId = session?.user?.id;
@@ -143,7 +145,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       if (data.deleteExisting) toast.info("Removing existing data...");
 
       setIsGenerating(true);
-      // console.log(userId);
       toast.info("Generating new sample data...");
       try {
         const res = await fetch(`/api/${userId}/scim/v2/generate`, {
@@ -196,6 +197,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       clearCache();
 
+      setIsResetDialogOpen(false);
+
       setTimeout(() => {
         window.location.reload();
       }, 1500);
@@ -205,6 +208,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       setIsReseting(false);
     }
   }, [isResetting, userId]);
+
+  //TODO: Will think about implementing a button to clear cache or remove caching behaviour iteslf
 
   const handleClearCacheClick = () => {
     clearCache();
@@ -226,7 +231,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   alt="Okta SCIM"
                   width={40}
                   height={40}
-                  className="!size-5 text-red"
+                  className="!size-5"
                 />
                 <span className="text-base font-semibold">
                   Okta SCIM Server
@@ -255,15 +260,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       <span>Generate Mock</span>
                     </SidebarMenuButton>
                   </DialogTrigger>
-                  {/* <form onSubmit={form.handleSubmit(onSubmit)}> */}
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>
                         How would you like to generate mock data?
                       </DialogTitle>
                       <DialogDescription>
-                        This action cannot be undone. Are you sure you want to
-                        permanently delete this file from our servers?
+                        You can create new Users on top of the existing list or
+                        you can delete existing users and groups and add a new.
                       </DialogDescription>
                     </DialogHeader>
                     <Form {...form}>
@@ -305,7 +309,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                               <FormControl>
                                 <Checkbox
                                   checked={field.value}
-                                  onCheckedChange={field.onChange} // Correctly wired to the form state
+                                  onCheckedChange={field.onChange}
                                 />
                               </FormControl>
                               <div className="space-y-1 leading-none">
@@ -338,16 +342,43 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       </form>
                     </Form>
                   </DialogContent>
-                  {/* </form> */}
                 </Dialog>
-                <Button
-                  size="icon"
-                  className="size-8 group-data-[collapsible=icon]:opacity-0"
-                  variant="destructive"
-                  onClick={handleReset}
+                <Dialog
+                  open={isResetDialogOpen}
+                  onOpenChange={setIsResetDialogOpen}
                 >
-                  <IconRestore />
-                </Button>
+                  <DialogTrigger asChild>
+                    <SidebarMenuButton
+                      className="size-8 group-data-[collapsible=icon]:opacity-0 border-2 justify-center"
+                      variant="outline"
+                    >
+                      <IconRestore />
+                    </SidebarMenuButton>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Reset Data</DialogTitle>
+                      <DialogDescription>
+                        This action cannot be undone. Are you sure you want to
+                        permanently delete users, groups and logs from this
+                        server?
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <DialogClose asChild>
+                        <Button variant="outline">Cancel</Button>
+                      </DialogClose>
+                      <Button
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground dark:text-sidebar-accent-foreground 
+                  dark:hover:text-sidebar-accent-foreground dark:active:text-sidebar-accent-foreground
+                  min-w-8 duration-200 ease-linear"
+                        onClick={handleReset}
+                      >
+                        Confirm
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </SidebarMenuItem>
             </SidebarMenu>
             <SidebarMenu>

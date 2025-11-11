@@ -2,12 +2,12 @@
 
 import { useEffect, useState, FC, useCallback, Fragment } from "react";
 
-import { Toggle } from "@/components/ui/toggle";
+// import { Toggle } from "@/components/ui/toggle";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { ChevronDown, ChevronRight, RefreshCw, Trash } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { Button } from "./ui/button";
+// import { Button } from "./ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface LogEntry {
@@ -107,7 +107,7 @@ const LogViewer: FC = () => {
   };
   return (
     <div className="container mx-auto py-10">
-      <div className="flex space-x-1 items-center">
+      {/* <div className="flex space-x-1 items-center">
         <div className="ml-auto mb-2">
           <Toggle
             aria-label="Toggle live logs"
@@ -122,7 +122,7 @@ const LogViewer: FC = () => {
             <Trash className="h-4 w-4" />
           </Button>
         </div>
-      </div>
+      </div> */}
       <div className="overflow-hidden rounded-lg border">
         <Table>
           <TableHeader className="bg-muted">
@@ -224,7 +224,7 @@ const LogViewer: FC = () => {
             ) : (
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center">
-                  Waiting for incoming API requests...
+                  No logs found.
                 </TableCell>
               </TableRow>
             )}

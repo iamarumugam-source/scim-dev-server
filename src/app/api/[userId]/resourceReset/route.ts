@@ -16,19 +16,32 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .from("scim_groups")
       .delete()
       .eq("tenantId", userId);
-    if (deleteGroupsError)
+    if (deleteGroupsError) {
       throw new Error(
         `Failed to delete existing groups: ${deleteGroupsError.message}`
       );
+    }
 
     const { error: deleteUsersError } = await supabase
       .from("scim_users")
       .delete()
       .eq("tenantId", userId);
-    if (deleteUsersError)
+    if (deleteUsersError) {
       throw new Error(
         `Failed to delete existing users: ${deleteUsersError.message}`
       );
+    }
+
+    const { error: deleteLogsError } = await supabase
+      .from("scim_logs")
+      .delete()
+      .eq("tenantId", userId);
+
+    if (deleteLogsError) {
+      throw new Error(
+        `Failed to delete existing logs: ${deleteLogsError.message}`
+      );
+    }
 
     console.log("Successfully removed existing data.");
 
