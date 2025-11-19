@@ -58,6 +58,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   const { userId, id } = await params;
+
+  console.log(request);
   const unauthorizedResponse = await protectWithApiKey(request);
   if (unauthorizedResponse) {
     const errorData = {
@@ -88,7 +90,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const { userId, id } = params;
-
+  console.log(request);
   const unauthorizedResponse = await protectWithApiKey(request);
   if (unauthorizedResponse) {
     const errorData = {
@@ -101,7 +103,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
   try {
     const body = await request.json();
-
+    console.log(body);
     const patchedGroup = await groupService.patchGroup(id, body);
 
     if (!patchedGroup) {
