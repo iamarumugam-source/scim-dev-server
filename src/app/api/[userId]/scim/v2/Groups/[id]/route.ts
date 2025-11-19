@@ -70,12 +70,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     return createAndLogResponse(request, errorData, { status: 401 }, userId);
   }
   try {
-    const body = await request.json();
+    const body = await request.clone().json();
     const updatedGroup = await groupService.updateGroup(id, body);
     if (!updatedGroup) {
-      return notFoundResponse(body, userId);
+      return notFoundResponse(request, userId);
     }
-    return createAndLogResponse(request, updatedGroup, { status: 200 }, userId);
+    return createAndLogResponse(body, updatedGroup, { status: 200 }, userId);
   } catch (error: any) {
     return NextResponse.json(
       {
