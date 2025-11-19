@@ -40,6 +40,7 @@ export async function logExternalRequest(
     request.method === "PUT" ||
     request.method === "PATCH"
   ) {
+    console.log(request);
     // console.log(request.clone().json())
     try {
       payload = await request.clone().json();
