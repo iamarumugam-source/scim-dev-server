@@ -58,9 +58,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   const { userId, id } = await params;
+  const reqBody = (await request.clone()) as NextRequest;
+  // console.log("BODY:", body);
 
-  console.log(request);
-  const unauthorizedResponse = await protectWithApiKey(request);
+  const unauthorizedResponse = await protectWithApiKey(reqBody);
   if (unauthorizedResponse) {
     const errorData = {
       detail: "Unauthorized",
@@ -71,11 +72,15 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   }
   try {
     const body = await request.clone().json();
+
     const updatedGroup = await groupService.updateGroup(id, body);
     if (!updatedGroup) {
-      return notFoundResponse(request, userId);
+      return notFoundResponse(reqBody, userId);
     }
-    return createAndLogResponse(body, updatedGroup, { status: 200 }, userId);
+
+    console.log("AFTER consumption", request);
+
+    return createAndLogResponse(request, updatedGroup, { status: 200 }, userId);
   } catch (error: any) {
     return NextResponse.json(
       {

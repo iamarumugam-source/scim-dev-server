@@ -8,8 +8,8 @@ function getLogApiUrl(userId: string) {
 
 function isExternalRequest(request: NextRequest): boolean {
   console.log(request);
-  const origin = request.headers.get("origin");
-  const referer = request.headers.get("referer");
+  const origin = request.headers?.get("origin") || "";
+  const referer = request.headers?.get("referer") || "";
 
   if (!origin && !referer) {
     return true;
@@ -40,10 +40,9 @@ export async function logExternalRequest(
     request.method === "PUT" ||
     request.method === "PATCH"
   ) {
-    console.log(request);
     // console.log(request.clone().json())
     try {
-      payload = await request.clone().json();
+      payload = await request.json();
     } catch (error) {
       payload = { error: "Could not parse request body as JSON." };
       console.log(error);
