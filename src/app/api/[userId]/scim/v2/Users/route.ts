@@ -3,6 +3,7 @@ import { UserService } from "@/lib/scim/services/userService";
 import { ScimListResponse, ScimUser } from "@/lib/scim/models/scimSchemas";
 import { logExternalRequest } from "@/lib/scim/logging";
 import { protectWithApiKey } from "@/lib/scim/apiHelper";
+import { stat } from "fs";
 
 const userService = new UserService();
 interface RouteParams {
@@ -45,6 +46,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       userId,
       filter
     );
+
+    if (total === 0) {
+      const notFound = {
+        schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"],
+        detail: "User not found",
+        status: "404",
+      };
+      return createAndLogResponse(request, notFound, { status: 404 }, userId);
+    }
 
     const listResponse: ScimListResponse<ScimUser> = {
       schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],

@@ -78,7 +78,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return notFoundResponse(reqBody, userId);
     }
 
-    console.log("AFTER consumption", request);
+    // console.log("AFTER consumption", request);
 
     return createAndLogResponse(request, updatedGroup, { status: 200 }, userId);
   } catch (error: any) {
