@@ -47,7 +47,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       filter
     );
 
-    if (total === 0) {
+    if (total === 0 && filter !== null) {
       const notFound = {
         schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"],
         detail: "User not found",

@@ -59,7 +59,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   const { userId, id } = await params;
   const reqBody = (await request.clone()) as NextRequest;
-  // console.log("BODY:", body);
 
   const unauthorizedResponse = await protectWithApiKey(reqBody);
   if (unauthorizedResponse) {
@@ -78,8 +77,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return notFoundResponse(reqBody, userId);
     }
 
-    // console.log("AFTER consumption", request);
-
     return createAndLogResponse(request, updatedGroup, { status: 200 }, userId);
   } catch (error: any) {
     return NextResponse.json(
@@ -95,7 +92,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const { userId, id } = params;
-  console.log(request);
   const unauthorizedResponse = await protectWithApiKey(request);
   if (unauthorizedResponse) {
     const errorData = {
@@ -108,7 +104,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
   try {
     const body = await request.json();
-    console.log(body);
     const patchedGroup = await groupService.patchGroup(id, body);
 
     if (!patchedGroup) {
