@@ -30,7 +30,7 @@ export async function logExternalRequest(
   request: NextRequest,
   response: NextResponse,
   responseData: any,
-  userId: string
+  userId: string,
 ): Promise<void> {
   const LOG_API_URL = getLogApiUrl(userId);
 
@@ -40,7 +40,6 @@ export async function logExternalRequest(
     request.method === "PUT" ||
     request.method === "PATCH"
   ) {
-    // console.log(request.clone().json())
     try {
       payload = await request.json();
     } catch (error) {
@@ -49,7 +48,6 @@ export async function logExternalRequest(
     }
   }
   if (isExternalRequest(request)) {
-    // console.log(response)
     const logPayload = {
       timestamp: new Date().toISOString(),
       path: request.nextUrl.pathname,

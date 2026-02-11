@@ -13,7 +13,7 @@ function createAndLogResponse(
   request: NextRequest,
   data: any,
   options: { status: number },
-  userId: string
+  userId: string,
 ): NextResponse {
   const response = NextResponse.json(data, options);
   logExternalRequest(request, response, data, userId);
@@ -22,7 +22,7 @@ function createAndLogResponse(
 
 const notFoundResponse = (
   request: NextRequest,
-  userId: string
+  userId: string,
 ): NextResponse => {
   const errorData = {
     schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"],
@@ -70,13 +70,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   }
 
   try {
-    const body = await request.json();
+    const body = await request.clone().json();
     const updatedUser = await userService.updateUser(id, body);
     if (!updatedUser) {
       return notFoundResponse(body, userId);
     }
 
-    return createAndLogResponse(body, updatedUser, { status: 200 }, userId);
+    return createAndLogResponse(request, updatedUser, { status: 200 }, userId);
   } catch (error: any) {
     const err = {
       schemas: ["urn:ietf:params:scim:api:2.0:Error"],

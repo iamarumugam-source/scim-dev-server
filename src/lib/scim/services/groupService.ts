@@ -19,7 +19,7 @@ interface ScimPatchOp {
 export class GroupService {
   public async createGroup(
     groupData: Partial<ScimGroup>,
-    userId: string
+    userId: string,
   ): Promise<ScimGroup> {
     if (!groupData.displayName) {
       throw new Error("displayName is a required field.");
@@ -33,7 +33,7 @@ export class GroupService {
 
     if (existingGroup) {
       throw new Error(
-        `Group with name '${groupData.displayName}' already exists.`
+        `Group with name '${groupData.displayName}' already exists.`,
       );
     }
 
@@ -71,7 +71,7 @@ export class GroupService {
   public async getGroups(
     startIndex: number = 1,
     count: number = 10,
-    userId: string
+    userId: string,
   ): Promise<{ groups: ScimGroup[]; total: number }> {
     const {
       data,
@@ -108,7 +108,7 @@ export class GroupService {
 
   public async updateGroup(
     id: string,
-    groupData: Partial<ScimGroup>
+    groupData: Partial<ScimGroup>,
   ): Promise<ScimGroup | null> {
     const originalGroup = await this.getGroupById(id);
 
@@ -172,28 +172,34 @@ export class GroupService {
 
   public async patchGroup(
     id: string,
-    patchData: ScimPatchOp
+    patchData: ScimPatchOp,
   ): Promise<ScimGroup | null> {
     // Step 1: Fetch the original group
     const originalGroup = await this.getGroupById(id);
 
     if (!originalGroup) {
-      return null; // Group not found
+      return null;
     }
 
-    // Create a mutable copy to apply changes to
     const groupToUpdate: ScimGroup = JSON.parse(JSON.stringify(originalGroup));
 
-    // Step 2: Process each operation from the request
     for (const op of patchData.Operations) {
       switch (op.op.toLowerCase()) {
         case "replace":
-          if (op.path === "members") {
-            groupToUpdate.members = op.value || [];
-          } else if (op.path === "displayName") {
-            groupToUpdate.displayName = op.value;
+          if (!op.path && typeof op.value === "object") {
+            if (op.value.displayName) {
+              groupToUpdate.displayName = op.value.displayName;
+            }
+            if (op.value.members) {
+              groupToUpdate.members = op.value.members;
+            }
           }
-          // Add other 'replace' paths here if needed
+          // Handle standard style: path is defined
+          else if (op.path === "displayName") {
+            groupToUpdate.displayName = op.value;
+          } else if (op.path === "members") {
+            groupToUpdate.members = op.value || [];
+          }
           break;
 
         case "add":
@@ -201,9 +207,8 @@ export class GroupService {
             groupToUpdate.members = groupToUpdate.members || [];
             const newMembers = Array.isArray(op.value) ? op.value : [op.value];
 
-            // Add only members that don't already exist
             const existingMemberIds = new Set(
-              groupToUpdate.members.map((m) => m.value)
+              groupToUpdate.members.map((m) => m.value),
             );
             newMembers.forEach((newMember: any) => {
               if (newMember.value && !existingMemberIds.has(newMember.value)) {
@@ -211,31 +216,26 @@ export class GroupService {
               }
             });
           }
-          // Add other 'add' paths here if needed
           break;
 
         case "remove":
-          // A simple 'remove' might target a specific member via a filter in the path
-          // e.g., path: 'members[value eq "23a35c27..."]'
           const memberFilterMatch = op.path.match(
-            /members\[value eq "(.+?)"\]/
+            /members\[value eq "(.+?)"\]/,
           );
           if (memberFilterMatch) {
             const memberIdToRemove = memberFilterMatch[1];
             groupToUpdate.members = (groupToUpdate.members || []).filter(
-              (member) => member.value !== memberIdToRemove
+              (member) => member.value !== memberIdToRemove,
             );
           }
           break;
 
         default:
-          // Optional: Throw an error for unsupported operations
           console.warn(`Unsupported PATCH operation: ${op.op}`);
           break;
       }
     }
 
-    // Step 3: Update metadata and save to the database
     const now = new Date().toISOString();
     groupToUpdate.meta = {
       ...groupToUpdate.meta,
@@ -247,7 +247,7 @@ export class GroupService {
       .from(TABLE_NAME)
       .update({
         display_name: groupToUpdate.displayName,
-        resource: groupToUpdate, // Save the entire updated object
+        resource: groupToUpdate,
         last_modified_at: now,
       })
       .eq("id", id);
@@ -256,7 +256,6 @@ export class GroupService {
       throw new Error(`Supabase error patching group: ${error.message}`);
     }
 
-    // Step 4: Return the fully updated group
     return groupToUpdate;
   }
 }

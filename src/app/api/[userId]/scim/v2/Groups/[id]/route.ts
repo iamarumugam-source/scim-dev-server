@@ -12,7 +12,7 @@ function createAndLogResponse(
   request: NextRequest,
   data: any,
   options: { status: number },
-  userId: string
+  userId: string,
 ): NextResponse {
   const response = NextResponse.json(data, options);
   logExternalRequest(request, response, data, userId);
@@ -21,7 +21,7 @@ function createAndLogResponse(
 
 const notFoundResponse = (
   request: NextRequest,
-  userId: string
+  userId: string,
 ): NextResponse => {
   const errorData = {
     schemas: ["urn:ietf:params:scim:api:2.0:Error"],
@@ -85,13 +85,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         detail: error.message,
         status: "400",
       },
-      { status: 400 }
+      { status: 400 },
     );
   }
 }
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  const { userId, id } = params;
+  const { userId, id } = await params;
   const unauthorizedResponse = await protectWithApiKey(request);
   if (unauthorizedResponse) {
     const errorData = {
@@ -103,14 +103,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   }
 
   try {
-    const body = await request.json();
+    const body = await request.clone().json();
     const patchedGroup = await groupService.patchGroup(id, body);
 
     if (!patchedGroup) {
       return notFoundResponse(body, userId);
     }
 
-    return createAndLogResponse(body, patchedGroup, { status: 200 }, userId);
+    return createAndLogResponse(request, patchedGroup, { status: 200 }, userId);
   } catch (error: any) {
     return NextResponse.json(
       {
@@ -118,7 +118,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         detail: error.message,
         status: "400",
       },
-      { status: 400 }
+      { status: 400 },
     );
   }
 }
