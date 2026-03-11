@@ -38,23 +38,33 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { userId } = await params;
-    const { data, error } = await supabase
+    const { searchParams } = new URL(request.url);
+    const limit = Math.min(parseInt(searchParams.get("limit") || "20", 10), 100);
+    const offset = parseInt(searchParams.get("offset") || "0", 10);
+
+    const { data, error, count } = await supabase
       .from(LOG_TABLE)
-      .select("log_data, response")
+      .select("log_data, response", { count: "exact" })
       .eq("tenantId", userId)
       .order("created_at", { ascending: false })
-      .limit(100);
+      .range(offset, offset + limit - 1);
 
     if (error) {
       throw new Error(`Supabase error fetching logs: ${error.message}`);
     }
 
-    // The log data is stored in the `log_data` column
-    const logs = data.map((item) => {
-      return { log_data: item.log_data, response: item.response };
-    });
+    const logs = data.map((item) => ({
+      log_data: item.log_data,
+      response: item.response,
+    }));
 
-    return NextResponse.json(logs);
+    const total = count ?? 0;
+
+    return NextResponse.json({
+      logs,
+      total,
+      hasMore: offset + logs.length < total,
+    });
   } catch (error: any) {
     console.error("Log fetching API error:", error);
     return NextResponse.json(

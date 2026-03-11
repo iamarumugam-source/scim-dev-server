@@ -132,14 +132,17 @@ export default function ApiKeyManager() {
         <LoadingScreen />
       ) : (
         <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start gap-4 p-4 border rounded-lg">
-            <div>
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-4 p-4 border rounded-lg bg-card text-card-foreground">
+            <div className="w-full sm:w-auto min-w-0 flex-1">
               <h3 className="font-medium">Your SCIM Endpoint</h3>
               <div className="flex items-center gap-2 p-2 mt-2 bg-muted rounded-md border text-sm">
-                <code className="flex-1 font-mono">{apiEndpoint}</code>
+                <code className="flex-1 font-mono text-foreground truncate">
+                  {apiEndpoint}
+                </code>
                 <Button
                   size="icon"
                   variant="ghost"
+                  className="flex-shrink-0"
                   onClick={() => copyToClipboard(apiEndpoint)}
                 >
                   <Copy className="h-4 w-4" />
@@ -150,15 +153,13 @@ export default function ApiKeyManager() {
               <DialogTrigger asChild>
                 <Button
                   onClick={handleOpenDialog}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground dark:text-sidebar-accent-foreground 
-                  dark:hover:text-sidebar-accent-foreground dark:active:text-sidebar-accent-foreground
-                  min-w-8 duration-200 ease-linear"
+                  className="w-full sm:w-auto flex-shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground dark:text-sidebar-accent-foreground dark:hover:text-sidebar-accent-foreground dark:active:text-sidebar-accent-foreground min-w-8 duration-200 ease-linear"
                 >
                   <PlusCircle className="mr-2 h-4 w-4" /> Generate New Key
                 </Button>
               </DialogTrigger>
               <DialogContent
-                className="sm:max-w-[425px]"
+                className="w-[calc(100%-2rem)] sm:max-w-[425px]"
                 onInteractOutside={(e) => {
                   if (generatedKey) e.preventDefault();
                 }}
@@ -176,15 +177,13 @@ export default function ApiKeyManager() {
                       again.
                     </p>
                     <div className="flex items-center gap-2 p-2 bg-muted rounded-md border">
-                      <code className="flex-1 font-mono text-sm break-all">
+                      <code className="flex-1 font-mono text-sm break-all text-foreground">
                         {generatedKey}
                       </code>
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground dark:text-sidebar-accent-foreground 
-                  dark:hover:text-sidebar-accent-foreground dark:active:text-sidebar-accent-foreground
-                  min-w-8 duration-200 ease-linear"
+                        className="flex-shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground dark:text-sidebar-accent-foreground dark:hover:text-sidebar-accent-foreground dark:active:text-sidebar-accent-foreground min-w-8 duration-200 ease-linear"
                         onClick={() => copyToClipboard(generatedKey)}
                       >
                         <Copy className="h-4 w-4" />
@@ -216,46 +215,54 @@ export default function ApiKeyManager() {
           </div>
 
           <div className="overflow-hidden rounded-lg border">
-            <Table>
-              <TableHeader className="bg-muted">
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Key Prefix</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {keys.length > 0 ? (
-                  keys.map((key) => (
-                    <TableRow key={key.id}>
-                      <TableCell className="font-medium">{key.name}</TableCell>
-                      <TableCell>
-                        <code>{key.key_prefix}...</code>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(key.created_at).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => handleRevokeKey(key.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+            <div className="overflow-x-auto">
+              <Table className="min-w-[500px]">
+                <TableHeader className="bg-muted">
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Key Prefix</TableHead>
+                    <TableHead className="hidden sm:table-cell">
+                      Created
+                    </TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {keys.length > 0 ? (
+                    keys.map((key) => (
+                      <TableRow key={key.id}>
+                        <TableCell className="font-medium">
+                          {key.name}
+                        </TableCell>
+                        <TableCell>
+                          <code className="bg-muted text-foreground font-mono text-xs px-1.5 py-0.5 rounded">
+                            {key.key_prefix}...
+                          </code>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
+                          {new Date(key.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleRevokeKey(key.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={4} className="h-24 text-center">
+                        No API keys found.
                       </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
-                      No API keys found.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </div>
         </div>
       )}

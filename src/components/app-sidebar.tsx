@@ -231,7 +231,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   alt="Okta SCIM"
                   width={40}
                   height={40}
-                  className="!size-5"
+                  className="!size-5 dark:invert"
                 />
                 <span className="text-base font-semibold">
                   Okta SCIM Server
