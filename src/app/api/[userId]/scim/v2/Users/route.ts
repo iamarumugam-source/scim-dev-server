@@ -4,6 +4,7 @@ import { ScimListResponse, ScimUser } from "@/lib/scim/models/scimSchemas";
 import { logExternalRequest } from "@/lib/scim/logging";
 import { protectWithApiKey } from "@/lib/scim/apiHelper";
 import { stat } from "fs";
+import { withMockExtension } from "./util";
 
 const userService = new UserService();
 interface RouteParams {
@@ -61,7 +62,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       totalResults: total,
       itemsPerPage: users.length,
       startIndex: startIndex,
-      Resources: users,
+      Resources: users.map(withMockExtension),
     };
     return createAndLogResponse(request, listResponse, { status: 200 }, userId);
   } catch (error: any) {

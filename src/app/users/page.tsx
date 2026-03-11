@@ -30,7 +30,7 @@ export default function UsersPage() {
       const count = pagination.pageSize;
 
       const usersRes = await fetch(
-        `/api/${userId}/scim/v2/Users?startIndex=${startIndex}&count=${count}`
+        `/api/${userId}/scim/v2/Users?startIndex=${startIndex}&count=${count}`,
       );
       if (!usersRes.ok) {
         throw new Error(`Failed to fetch users: ${usersRes.statusText}`);
@@ -57,7 +57,7 @@ export default function UsersPage() {
         `/api/${userId}/scim/v2/Users/${userToDeleteId}`,
         {
           method: "DELETE",
-        }
+        },
       );
 
       if (!res.ok) {
@@ -78,7 +78,7 @@ export default function UsersPage() {
   }, [totalUsers, pagination.pageSize]);
   const columns = useMemo(
     () => getColumns({ handleDeleteUser }),
-    [handleDeleteUser]
+    [handleDeleteUser],
   );
   return (
     <div className="container mx-auto py-10">
