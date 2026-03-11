@@ -4,6 +4,8 @@ import { useState, useCallback } from "react";
 import { Copy, Check, SquarePlus, SquareMinus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+import { toast } from "sonner";
+
 type JsonPrimitive = string | number | boolean | null;
 type JsonValue = JsonPrimitive | JsonObject | JsonArray;
 type JsonObject = { [key: string]: JsonValue };
@@ -46,6 +48,7 @@ function CopyAllButton({ data }: { data: unknown }) {
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(JSON.stringify(data, null, 2));
     setCopied(true);
+    toast.success("Json copied to clipboard");
     setTimeout(() => setCopied(false), 1500);
   }, [data]);
 
@@ -89,7 +92,9 @@ function ToggleButton({
 
 function PrimitiveValue({ value }: { value: JsonPrimitive }) {
   if (value === null) {
-    return <span className="text-rose-500 dark:text-rose-400 italic">null</span>;
+    return (
+      <span className="text-rose-500 dark:text-rose-400 italic">null</span>
+    );
   }
   if (typeof value === "boolean") {
     return (
@@ -202,7 +207,9 @@ function JsonNode({
               <span className="text-xs text-muted-foreground/60 select-none tabular-nums flex-shrink-0">
                 {count} properties
               </span>
-              <span className="text-muted-foreground flex-shrink-0">{close}</span>
+              <span className="text-muted-foreground flex-shrink-0">
+                {close}
+              </span>
             </>
           )}
         </div>

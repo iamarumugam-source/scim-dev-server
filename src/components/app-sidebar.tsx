@@ -1,5 +1,5 @@
 "use client";
-import { UsersRound, KeyIcon, IdCardIcon, BuildingIcon } from "lucide-react";
+import { UsersRound, KeyIcon, IdCardIcon, BuildingIcon, FileSearch } from "lucide-react";
 
 import {
   IconCirclePlusFilled,
@@ -99,6 +99,11 @@ const otherTools = [
     url: "/jwe",
     icon: IdCardIcon,
   },
+  {
+    title: "HAR Analyser",
+    url: "/har-analyser",
+    icon: FileSearch,
+  },
 ];
 
 type FormValues = z.infer<typeof FormSchema>;
@@ -157,7 +162,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         }
 
         toast.success(
-          "New data generated successfully! Fetching updated lists..."
+          "New data generated successfully! Fetching updated lists...",
         );
 
         clearCache();
@@ -172,7 +177,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         setIsGenerating(false);
       }
     },
-    [isGenerating, userId]
+    [isGenerating, userId],
   );
 
   const handleReset = useCallback(async () => {
@@ -233,9 +238,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   height={40}
                   className="!size-5 dark:invert"
                 />
-                <span className="text-base font-semibold">
-                  Okta SCIM Server
-                </span>
+                <span className="text-base font-semibold">Okta Tools</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>

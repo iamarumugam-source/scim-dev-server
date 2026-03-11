@@ -15,6 +15,7 @@ export function SiteHeader() {
 
   const pageTitles: Record<string, string> = {
     "/keys": "API Keys",
+    "/har-analyser": "HAR analyser",
     "/users": "Users",
     "/logs": "Logs",
     "/jwe": "JWE Decoder",
