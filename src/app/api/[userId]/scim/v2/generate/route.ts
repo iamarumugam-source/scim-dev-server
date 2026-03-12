@@ -7,225 +7,192 @@ interface RouteParams {
   params: { userId: string };
 }
 
+const DEPARTMENTS = [
+  "Engineering", "Product", "Design", "Marketing", "Sales",
+  "Finance", "Human Resources", "Legal", "Operations", "Security",
+  "Customer Success", "Data Science", "DevOps", "QA", "Support",
+];
+
+const JOB_TITLES = [
+  "Software Engineer", "Senior Software Engineer", "Principal Engineer", "Staff Engineer",
+  "Product Manager", "Senior Product Manager", "Director of Product",
+  "UX Designer", "Senior Designer", "Design Lead",
+  "Marketing Manager", "Growth Manager", "Brand Strategist",
+  "Account Executive", "Sales Manager", "Business Development Manager",
+  "Financial Analyst", "Senior Accountant", "Finance Manager",
+  "HR Business Partner", "Talent Acquisition Specialist",
+  "Legal Counsel", "Compliance Manager",
+  "Operations Manager", "Program Manager",
+  "Security Engineer", "Security Analyst",
+  "Customer Success Manager", "Implementation Specialist",
+  "Data Scientist", "ML Engineer", "Data Analyst",
+  "DevOps Engineer", "Site Reliability Engineer",
+  "QA Engineer", "Test Automation Engineer",
+  "Support Specialist", "Technical Support Engineer",
+];
+
+const USER_TYPES   = ["Employee", "Employee", "Employee", "Contractor"];
+const LOCALES      = ["en-US", "en-US", "en-GB", "fr-FR", "de-DE", "ja-JP", "es-ES"];
+const TIMEZONES    = [
+  "America/New_York", "America/Los_Angeles", "America/Chicago", "America/Denver",
+  "Europe/London", "Europe/Paris", "Europe/Berlin", "Asia/Tokyo", "Asia/Singapore",
+];
+const LANGUAGES    = ["en", "en", "fr", "de", "ja", "es"];
+
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const { userId } = await params;
-  console.log(`Starting database seeding for tenant: ${userId}`);
 
   try {
-    let body;
-    try {
-      body = await request.json();
-    } catch (e) {
-      body = {};
-    }
+    let body: any = {};
+    try { body = await request.json(); } catch {}
 
     const deleteExisting = body.deleteExisting === true;
-    const userCount =
-      typeof body.userCount === "number" ? Math.min(body.userCount, 1000) : 20;
-    const groupCount =
-      typeof body.groupCount === "number" ? Math.min(body.groupCount, 100) : 5;
-
-    console.log(
-      `Configuration - Delete Existing: ${deleteExisting}, User Count: ${userCount}, Group Count: ${groupCount}`
-    );
+    const userCount      = typeof body.userCount  === "number" ? Math.min(body.userCount, 1000) : 20;
+    const groupCount     = typeof body.groupCount === "number" ? Math.min(body.groupCount, 100) : 5;
 
     if (deleteExisting) {
-      console.log(
-        `'deleteExisting' is true. Removing all users and groups for tenant: ${userId}...`
-      );
-      const { error: deleteGroupsError } = await supabase
-        .from("scim_groups")
-        .delete()
-        .eq("tenantId", userId);
-      if (deleteGroupsError)
-        throw new Error(
-          `Failed to delete existing groups: ${deleteGroupsError.message}`
-        );
-
-      const { error: deleteUsersError } = await supabase
-        .from("scim_users")
-        .delete()
-        .eq("tenantId", userId);
-      if (deleteUsersError)
-        throw new Error(
-          `Failed to delete existing users: ${deleteUsersError.message}`
-        );
-
-      console.log("Successfully removed existing data.");
+      const { error: eg } = await supabase.from("scim_groups").delete().eq("tenantId", userId);
+      if (eg) throw new Error(`Failed to delete groups: ${eg.message}`);
+      const { error: eu } = await supabase.from("scim_users").delete().eq("tenantId", userId);
+      if (eu) throw new Error(`Failed to delete users: ${eu.message}`);
     }
 
     let existingUsers: ScimUser[] = [];
     if (!deleteExisting) {
-      const { data: existingUsersData, error: fetchError } = await supabase
-        .from("scim_users")
-        .select("resource")
-        .eq("tenantId", userId);
-
-      if (fetchError)
-        throw new Error(
-          `Failed to fetch existing users: ${fetchError.message}`
-        );
-
-      existingUsers = (existingUsersData?.map((u) => u.resource) ||
-        []) as ScimUser[];
-
-      existingUsers.forEach((user) => {
-        if (!user.groups) {
-          user.groups = [];
-        }
-      });
-
-      console.log(
-        `Found ${existingUsers.length} existing users to include in new groups.`
-      );
+      const { data, error } = await supabase.from("scim_users").select("resource").eq("tenantId", userId);
+      if (error) throw new Error(`Failed to fetch existing users: ${error.message}`);
+      existingUsers = (data?.map((u) => u.resource) || []) as ScimUser[];
+      existingUsers.forEach((u) => { if (!u.groups) u.groups = []; });
     }
 
-    const BASE_URL =
-      process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+
     const users: ScimUser[] = [];
     for (let i = 0; i < userCount; i++) {
       const firstName = faker.person.firstName();
-      const lastName = faker.person.lastName();
-      const id = faker.string.uuid();
-      const now = new Date().toISOString();
+      const lastName  = faker.person.lastName();
+      const id        = faker.string.uuid();
+      const now       = new Date().toISOString();
       users.push({
-        schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"],
+        schemas:           ["urn:ietf:params:scim:schemas:core:2.0:User"],
         id,
-        userName: faker.internet.username({ firstName, lastName }),
+        userName:          faker.internet.username({ firstName, lastName }),
+        displayName:       `${firstName} ${lastName}`,
         name: {
-          givenName: firstName,
+          givenName:  firstName,
           familyName: lastName,
-          formatted: `${firstName} ${lastName}`,
+          formatted:  `${firstName} ${lastName}`,
         },
-        emails: [
-          {
-            primary: true,
-            value: faker.internet.exampleEmail({ firstName, lastName }),
-          },
-        ],
-        active: true,
+        title:             faker.helpers.arrayElement(JOB_TITLES),
+        userType:          faker.helpers.arrayElement(USER_TYPES),
+        preferredLanguage: faker.helpers.arrayElement(LANGUAGES),
+        locale:            faker.helpers.arrayElement(LOCALES),
+        timezone:          faker.helpers.arrayElement(TIMEZONES),
+        emails: [{
+          primary: true,
+          value:   faker.internet.exampleEmail({ firstName, lastName }),
+          type:    "work",
+        }],
+        active: faker.datatype.boolean({ probability: 0.9 }),
         groups: [],
         meta: {
           resourceType: "User",
-          created: now,
+          created:      now,
           lastModified: now,
-          location: `${BASE_URL}/api/${userId}/scim/v2/Users/${id}`,
-          version: `W/"${Date.now()}"`,
+          location:     `${BASE_URL}/api/${userId}/scim/v2/Users/${id}`,
+          version:      `W/"${Date.now()}"`,
         },
       });
     }
-    console.log(`Generated ${users.length} new users.`);
 
+    const usedNames = new Set<string>();
     const groups: ScimGroup[] = [];
     for (let i = 0; i < groupCount; i++) {
-      const id = faker.string.uuid();
+      let name: string;
+      let attempts = 0;
+      do {
+        const dept = faker.helpers.arrayElement(DEPARTMENTS);
+        const suffix = faker.helpers.arrayElement(["Team", "Group", "Squad", "Chapter"]);
+        name = `${dept} ${suffix}`;
+        attempts++;
+      } while (usedNames.has(name) && attempts < 20);
+      usedNames.add(name);
+
+      const id  = faker.string.uuid();
       const now = new Date().toISOString();
       groups.push({
-        schemas: ["urn:ietf:params:scim:schemas:core:2.0:Group"],
+        schemas:     ["urn:ietf:params:scim:schemas:core:2.0:Group"],
         id,
-        displayName: `${faker.company.name()} Team`,
-        members: [],
+        displayName: name,
+        members:     [],
         meta: {
           resourceType: "Group",
-          created: now,
+          created:      now,
           lastModified: now,
-          location: `${BASE_URL}/api/${userId}/scim/v2/Groups/${id}`,
-          version: `W/"${Date.now()}"`,
+          location:     `${BASE_URL}/api/${userId}/scim/v2/Groups/${id}`,
+          version:      `W/"${Date.now()}"`,
         },
       });
     }
-    console.log(`Generated ${groups.length} new groups.`);
 
     const allUsers = [...existingUsers, ...users];
+
     if (allUsers.length > 0 && groups.length > 0) {
-      groups.forEach((group) => {
-        const memberCount = faker.number.int({
-          min: 1,
-          max: Math.min(allUsers.length, 10),
+      const addMember = (group: ScimGroup, user: ScimUser) => {
+        if (group.members.some((m) => m.value === user.id)) return;
+        group.members.push({
+          value:   user.id,
+          display: user.name?.formatted || user.displayName || user.userName,
+          $ref:    `${BASE_URL}/api/${userId}/scim/v2/Users/${user.id}`,
         });
-
-        const shuffledUsers = faker.helpers.shuffle(allUsers);
-        const members = shuffledUsers.slice(0, memberCount);
-
-        for (const user of members) {
-          if (group.members && user.id && group.id && group.displayName) {
-            group.members.push({
-              value: user.id,
-              display: user.userName,
-              $ref: `${BASE_URL}/api/${userId}/scim/v2/Users/${user.id}`,
-            });
-
-            if (user.groups) {
-              user.groups.push({
-                value: group.id,
-                display: group.displayName,
-                $ref: `${BASE_URL}/api/${userId}/scim/v2/Groups/${group.id}`,
-              });
-            }
-          }
+        if (!user.groups) user.groups = [];
+        if (!user.groups.some((g) => g.value === group.id)) {
+          user.groups.push({
+            value:   group.id,
+            display: group.displayName,
+            $ref:    `${BASE_URL}/api/${userId}/scim/v2/Groups/${group.id}`,
+          });
         }
+      };
+
+      users.forEach((user) => {
+        const group = faker.helpers.arrayElement(groups);
+        addMember(group, user);
       });
-      console.log("Assigned users to new groups and groups to users.");
+
+      groups.forEach((group) => {
+        const extra = faker.number.int({ min: 0, max: Math.min(allUsers.length - 1, 8) });
+        faker.helpers.shuffle([...allUsers]).slice(0, extra).forEach((u) => addMember(group, u));
+      });
     }
 
-    const usersToInsert = users.map((user) => ({
-      id: user.id,
-      username: user.userName,
-      active: user.active,
-      resource: user,
-      tenantId: userId,
-    }));
-
-    const usersToUpdate = existingUsers.map((user) => ({
-      id: user.id,
-      username: user.userName,
-      active: user.active,
-      resource: user,
-      tenantId: userId,
-    }));
-
-    const groupsToInsert = groups.map((group) => ({
-      id: group.id,
-      display_name: group.displayName,
-      resource: group,
-      tenantId: userId,
-    }));
-
-    console.log("Inserting and updating data in Supabase...");
-    if (usersToInsert.length > 0) {
-      const { error: userError } = await supabase
-        .from("scim_users")
-        .insert(usersToInsert);
-      if (userError)
-        throw new Error(`New user insertion failed: ${userError.message}`);
+    if (users.length > 0) {
+      const { error } = await supabase.from("scim_users").insert(
+        users.map((u) => ({ id: u.id, username: u.userName, active: u.active, resource: u, tenantId: userId }))
+      );
+      if (error) throw new Error(`User insertion failed: ${error.message}`);
     }
 
-    if (usersToUpdate.length > 0) {
-      const { error: userUpdateError } = await supabase
-        .from("scim_users")
-        .upsert(usersToUpdate, { onConflict: "id" });
-      if (userUpdateError)
-        throw new Error(
-          `Existing user update failed: ${userUpdateError.message}`
-        );
+    if (existingUsers.length > 0) {
+      const { error } = await supabase.from("scim_users").upsert(
+        existingUsers.map((u) => ({ id: u.id, username: u.userName, active: u.active, resource: u, tenantId: userId })),
+        { onConflict: "id" }
+      );
+      if (error) throw new Error(`Existing user update failed: ${error.message}`);
     }
 
-    if (groupsToInsert.length > 0) {
-      const { error: groupError } = await supabase
-        .from("scim_groups")
-        .insert(groupsToInsert);
-      if (groupError)
-        throw new Error(`Group insertion failed: ${groupError.message}`);
+    if (groups.length > 0) {
+      const { error } = await supabase.from("scim_groups").insert(
+        groups.map((g) => ({ id: g.id, display_name: g.displayName, resource: g, tenantId: userId }))
+      );
+      if (error) throw new Error(`Group insertion failed: ${error.message}`);
     }
 
-    const message = `Database seeding completed. Deleted existing data: ${deleteExisting}. Generated: ${users.length} users, ${groups.length} groups. Updated: ${existingUsers.length} existing users.`;
-    console.log(message);
-    return NextResponse.json({ message });
+    return NextResponse.json({
+      message: `Generated ${users.length} users and ${groups.length} groups. Updated ${existingUsers.length} existing users.`,
+    });
   } catch (error: any) {
-    console.error("Failed to seed database:", error);
-    return NextResponse.json(
-      { detail: "Internal Server Error", error: error.message },
-      { status: 500 }
-    );
+    console.error("Seed failed:", error);
+    return NextResponse.json({ detail: "Internal Server Error", error: error.message }, { status: 500 });
   }
 }

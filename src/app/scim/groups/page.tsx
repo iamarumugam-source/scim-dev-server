@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, Fragment } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { ScimGroup } from "@/lib/scim/models/scimSchemas";
+import { ChevronRight, Users } from "lucide-react";
 
 import {
   Table,
@@ -14,79 +15,86 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronRight } from "lucide-react";
 import { ErrorDisplay } from "@/components/helper-components";
 import DashboardPagination from "@/components/padination-handler";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { cn } from "@/lib/utils";
+import { GroupEditor } from "@/components/scim/group-editor";
 
-export default function GroupsDisplay() {
+
+// ─── Page ──────────────────────────────────────────────────────────────────────
+
+const ITEMS_PER_PAGE = 10;
+
+export default function GroupsPage() {
   const { data: session } = useSession();
-  const [groups, setGroups] = useState<ScimGroup[]>([]);
-  const [isGroupsLoading, setIsGroupsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const [groupPage, setGroupPage] = useState(1);
-  const [totalGroups, setTotalGroups] = useState(0);
-  const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
-
-  const ITEMS_PER_PAGE = 10;
   const userId = session?.user?.id;
+
+  const [groups,          setGroups]          = useState<ScimGroup[]>([]);
+  const [totalGroups,     setTotalGroups]     = useState(0);
+  const [groupPage,       setGroupPage]       = useState(1);
+  const [isLoading,       setIsLoading]       = useState(true);
+  const [error,           setError]           = useState<string | null>(null);
+  const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
 
   const fetchGroups = useCallback(
     async (page = 1) => {
-      setIsGroupsLoading(true);
+      if (!userId) return;
+      setIsLoading(true);
       setError(null);
       try {
         const startIndex = (page - 1) * ITEMS_PER_PAGE + 1;
-        const response = await fetch(
+        const res = await fetch(
           `/api/${userId}/scim/v2/Groups?startIndex=${startIndex}&count=${ITEMS_PER_PAGE}`
         );
-        if (!response.ok) {
-          throw new Error(`Failed to fetch groups: ${response.statusText}`);
-        }
-        const groupsData = await response.json();
-        setGroups(groupsData.Resources || []);
-        setTotalGroups(groupsData.totalResults || 0);
+        if (!res.ok) throw new Error(`Failed to fetch groups: ${res.statusText}`);
+        const data = await res.json();
+        setGroups(data.Resources || []);
+        setTotalGroups(data.totalResults || 0);
         setGroupPage(page);
       } catch (e: any) {
-        const errorMessage = e.message || "An unknown error occurred.";
-        setError(errorMessage);
-        toast.error(`Failed to fetch groups: ${errorMessage}`);
+        const msg = e.message || "An unknown error occurred.";
+        setError(msg);
+        toast.error(`Failed to fetch groups: ${msg}`);
       } finally {
-        setIsGroupsLoading(false);
+        setIsLoading(false);
       }
     },
     [userId]
   );
 
-  useEffect(() => {
-    if (userId) {
-      fetchGroups(1);
-    }
-  }, [userId, fetchGroups]);
+  useEffect(() => { if (userId) fetchGroups(1); }, [userId, fetchGroups]);
 
-  const toggleGroupExpansion = (groupId: string) => {
-    setExpandedGroupId((prevId) => (prevId === groupId ? null : groupId));
-  };
-
-  const groupTotalPages = Math.ceil(totalGroups / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(totalGroups / ITEMS_PER_PAGE);
+  const from = (groupPage - 1) * ITEMS_PER_PAGE + 1;
+  const to   = Math.min(groupPage * ITEMS_PER_PAGE, totalGroups);
 
   return (
-    <div className="container mx-auto py-10">
-      <h1 className="text-2xl font-bold mb-4">Groups</h1>
+    <div className="container mx-auto py-10 space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Groups</h1>
+        {!isLoading && totalGroups > 0 && (
+          <p className="text-sm text-muted-foreground">
+            Showing {from}–{to} of {totalGroups}
+          </p>
+        )}
+      </div>
+
       {error && <ErrorDisplay message={error} />}
 
-      {isGroupsLoading ? (
+      {isLoading ? (
         <LoadingScreen />
       ) : (
-        <>
+        <div className="space-y-3">
           <div className="overflow-hidden rounded-lg border">
             <Table>
               <TableHeader className="bg-muted">
                 <TableRow>
-                  <TableHead className="w-[50px]"></TableHead>
-                  <TableHead>Group Name</TableHead>
-                  <TableHead className="w-[150px]">Members</TableHead>
+                  <TableHead className="w-9" />
+                  <TableHead className="text-xs font-semibold uppercase tracking-wide">Group Name</TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wide">Group ID</TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wide w-28">Members</TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wide hidden md:table-cell">Last Modified</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -94,53 +102,45 @@ export default function GroupsDisplay() {
                   groups.map((group) => (
                     <Fragment key={group.id}>
                       <TableRow
-                        onClick={() => toggleGroupExpansion(group.id)}
-                        className="cursor-pointer"
+                        onClick={() => setExpandedGroupId((p) => p === group.id ? null : group.id)}
+                        className="cursor-pointer hover:bg-muted/40 transition-colors"
                       >
-                        <TableCell className="pl-4">
-                          {expandedGroupId === group.id ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4" />
-                          )}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {group.displayName}
+                        <TableCell className="pl-3 text-muted-foreground">
+                          <ChevronRight
+                            className={cn(
+                              "h-4 w-4 transition-transform duration-150",
+                              expandedGroupId === group.id && "rotate-90",
+                            )}
+                          />
                         </TableCell>
                         <TableCell>
-                          <Badge variant="secondary">
-                            {group.members?.length || 0} Members
+                          <div className="flex items-center gap-2">
+                            <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-muted">
+                              <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                            </div>
+                            <span className="font-medium text-sm">{group.displayName}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground">
+                          {group.id}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className="tabular-nums">
+                            {group.members?.length ?? 0}
                           </Badge>
                         </TableCell>
+                        <TableCell className="text-xs text-muted-foreground hidden md:table-cell">
+                          {group.meta?.lastModified
+                            ? new Date(group.meta.lastModified).toLocaleDateString()
+                            : "—"}
+                        </TableCell>
                       </TableRow>
+
                       {expandedGroupId === group.id && (
-                        <TableRow>
-                          <TableCell colSpan={3} className="p-0">
-                            <div className="p-4 bg-muted/50">
-                              {group.members && group.members.length > 0 ? (
-                                <Table>
-                                  <TableHeader>
-                                    <TableRow>
-                                      <TableHead>Username</TableHead>
-                                      <TableHead>User ID</TableHead>
-                                    </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {group.members.map((member) => (
-                                      <TableRow key={member.value}>
-                                        <TableCell>{member.display}</TableCell>
-                                        <TableCell className="text-muted-foreground">
-                                          {member.value}
-                                        </TableCell>
-                                      </TableRow>
-                                    ))}
-                                  </TableBody>
-                                </Table>
-                              ) : (
-                                <p className="text-sm text-muted-foreground px-4 py-2">
-                                  No members in this group.
-                                </p>
-                              )}
+                        <TableRow className="bg-muted/20 hover:bg-muted/20">
+                          <TableCell colSpan={5} className="p-0 border-t border-border/60">
+                            <div className="px-5 py-4">
+                              <GroupEditor group={group} userId={userId!} onUpdate={() => fetchGroups(groupPage)} />
                             </div>
                           </TableCell>
                         </TableRow>
@@ -149,7 +149,7 @@ export default function GroupsDisplay() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={3} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                       No groups found.
                     </TableCell>
                   </TableRow>
@@ -157,12 +157,13 @@ export default function GroupsDisplay() {
               </TableBody>
             </Table>
           </div>
+
           <DashboardPagination
             currentPage={groupPage}
-            totalPages={groupTotalPages}
+            totalPages={totalPages}
             onPageChange={fetchGroups}
           />
-        </>
+        </div>
       )}
     </div>
   );

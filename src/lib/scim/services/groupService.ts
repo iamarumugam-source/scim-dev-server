@@ -142,6 +142,12 @@ export class GroupService {
       throw new Error(`Supabase error updating group: ${error.message}`);
     }
 
+    const originalIds = new Set((originalGroup.members ?? []).map((m) => m.value));
+    const updatedIds  = new Set((updatedGroup.members ?? []).map((m) => m.value));
+    const addedIds    = [...updatedIds].filter((uid) => !originalIds.has(uid));
+    const removedIds  = [...originalIds].filter((uid) => !updatedIds.has(uid));
+    await this.syncUserGroupMemberships(updatedGroup, addedIds, removedIds);
+
     return updatedGroup;
   }
 
@@ -170,6 +176,61 @@ export class GroupService {
     return true;
   }
 
+  private async syncUserGroupMemberships(
+    group: ScimGroup,
+    addedUserIds: string[],
+    removedUserIds: string[],
+  ): Promise<void> {
+    if (addedUserIds.length === 0 && removedUserIds.length === 0) return;
+
+    const groupEntry = {
+      value: group.id,
+      display: group.displayName,
+      $ref: group.meta?.location || `${BASE_URL}/api/scim/v2/Groups/${group.id}`,
+    };
+
+    if (addedUserIds.length > 0) {
+      const { data } = await supabase
+        .from("scim_users")
+        .select("id, resource")
+        .in("id", addedUserIds);
+
+      for (const row of data ?? []) {
+        const user = row.resource as any;
+        const groups: any[] = user.groups ?? [];
+        if (groups.some((g: any) => g.value === group.id)) continue;
+        const now = new Date().toISOString();
+        await supabase.from("scim_users").update({
+          resource: {
+            ...user,
+            groups: [...groups, groupEntry],
+            meta: { ...user.meta, lastModified: now, version: `W/"${Date.now()}"` },
+          },
+        }).eq("id", row.id);
+      }
+    }
+
+    if (removedUserIds.length > 0) {
+      const { data } = await supabase
+        .from("scim_users")
+        .select("id, resource")
+        .in("id", removedUserIds);
+
+      for (const row of data ?? []) {
+        const user = row.resource as any;
+        const groups = (user.groups ?? []).filter((g: any) => g.value !== group.id);
+        const now = new Date().toISOString();
+        await supabase.from("scim_users").update({
+          resource: {
+            ...user,
+            groups,
+            meta: { ...user.meta, lastModified: now, version: `W/"${Date.now()}"` },
+          },
+        }).eq("id", row.id);
+      }
+    }
+  }
+
   public async patchGroup(
     id: string,
     patchData: ScimPatchOp,
@@ -182,6 +243,8 @@ export class GroupService {
     }
 
     const groupToUpdate: ScimGroup = JSON.parse(JSON.stringify(originalGroup));
+    const addedMemberIds:   string[] = [];
+    const removedMemberIds: string[] = [];
 
     for (const op of patchData.Operations) {
       switch (op.op.toLowerCase()) {
@@ -191,14 +254,21 @@ export class GroupService {
               groupToUpdate.displayName = op.value.displayName;
             }
             if (op.value.members) {
+              const prevIds = new Set(groupToUpdate.members.map((m) => m.value));
+              const nextIds = new Set((op.value.members as any[]).map((m) => m.value));
+              addedMemberIds.push(...[...nextIds].filter((uid) => !prevIds.has(uid)));
+              removedMemberIds.push(...[...prevIds].filter((uid) => !nextIds.has(uid)));
               groupToUpdate.members = op.value.members;
             }
-          }
-          // Handle standard style: path is defined
-          else if (op.path === "displayName") {
+          } else if (op.path === "displayName") {
             groupToUpdate.displayName = op.value;
           } else if (op.path === "members") {
-            groupToUpdate.members = op.value || [];
+            const prevIds = new Set(groupToUpdate.members.map((m) => m.value));
+            const next: any[] = op.value || [];
+            const nextIds = new Set(next.map((m) => m.value));
+            addedMemberIds.push(...[...nextIds].filter((uid) => !prevIds.has(uid)));
+            removedMemberIds.push(...[...prevIds].filter((uid) => !nextIds.has(uid)));
+            groupToUpdate.members = next;
           }
           break;
 
@@ -206,29 +276,27 @@ export class GroupService {
           if (op.path === "members") {
             groupToUpdate.members = groupToUpdate.members || [];
             const newMembers = Array.isArray(op.value) ? op.value : [op.value];
-
-            const existingMemberIds = new Set(
-              groupToUpdate.members.map((m) => m.value),
-            );
-            newMembers.forEach((newMember: any) => {
-              if (newMember.value && !existingMemberIds.has(newMember.value)) {
-                groupToUpdate.members.push(newMember);
+            const existingIds = new Set(groupToUpdate.members.map((m) => m.value));
+            newMembers.forEach((m: any) => {
+              if (m.value && !existingIds.has(m.value)) {
+                groupToUpdate.members.push(m);
+                addedMemberIds.push(m.value);
               }
             });
           }
           break;
 
-        case "remove":
-          const memberFilterMatch = op.path.match(
-            /members\[value eq "(.+?)"\]/,
-          );
-          if (memberFilterMatch) {
-            const memberIdToRemove = memberFilterMatch[1];
+        case "remove": {
+          const match = op.path.match(/members\[value eq "(.+?)"\]/);
+          if (match) {
+            const idToRemove = match[1];
+            removedMemberIds.push(idToRemove);
             groupToUpdate.members = (groupToUpdate.members || []).filter(
-              (member) => member.value !== memberIdToRemove,
+              (m) => m.value !== idToRemove,
             );
           }
           break;
+        }
 
         default:
           console.warn(`Unsupported PATCH operation: ${op.op}`);
@@ -255,6 +323,8 @@ export class GroupService {
     if (error) {
       throw new Error(`Supabase error patching group: ${error.message}`);
     }
+
+    await this.syncUserGroupMemberships(groupToUpdate, addedMemberIds, removedMemberIds);
 
     return groupToUpdate;
   }

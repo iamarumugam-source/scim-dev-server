@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { ScimUser } from "@/lib/scim/models/scimSchemas";
 import { useSession } from "next-auth/react";
-import { getColumns } from "./columns";
+import { getColumns, UserExpandedRow } from "./columns";
 import { DataTable } from "./data-table";
 import { PaginationState } from "@tanstack/react-table";
 import { toast } from "sonner";
@@ -92,8 +92,12 @@ export default function UsersPage() {
           columns={columns}
           data={users}
           pageCount={pageCount}
+          totalCount={totalUsers}
           pagination={pagination}
           setPagination={setPagination}
+          renderExpandedRow={(user) => (
+            <UserExpandedRow user={user} userId={userId!} onUpdate={fetchUsers} />
+          )}
         />
       )}
     </div>
