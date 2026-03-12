@@ -253,11 +253,11 @@ function HeaderSection({ title, headers }: { title: string; headers: HarHeader[]
       {open && (
         <div className="px-3 pb-2">
           {headers.map((h, i) => (
-            <div key={i} className="flex gap-2 py-0.5 text-xs font-mono leading-5">
-              <span className="text-foreground/70 flex-shrink-0 min-w-[160px] max-w-[220px] truncate" title={h.name}>
+            <div key={i} className="flex gap-2 py-0.5 text-xs font-mono leading-5 rounded hover:bg-muted/40 px-1 -mx-1 transition-colors">
+              <span className="font-semibold text-foreground flex-shrink-0 min-w-[160px] max-w-[220px] truncate" title={h.name}>
                 {h.name}:
               </span>
-              <span className="text-foreground break-all min-w-0">{h.value}</span>
+              <span className="text-foreground/80 break-all min-w-0">{h.value}</span>
             </div>
           ))}
         </div>
@@ -278,9 +278,9 @@ function HeadersPanel({ entry }: { entry: HarEntry }) {
             ["Status Code",    `${entry.response.status} ${entry.response.statusText}`],
             ["HTTP Version",   entry.response.httpVersion],
           ].map(([k, v]) => (
-            <div key={k} className="flex gap-2 py-0.5 leading-5">
-              <span className="text-foreground/70 flex-shrink-0 min-w-[160px]">{k}:</span>
-              <span className="text-foreground break-all min-w-0">{v}</span>
+            <div key={k} className="flex gap-2 py-0.5 leading-5 rounded hover:bg-muted/40 px-1 -mx-1 transition-colors">
+              <span className="font-semibold text-foreground flex-shrink-0 min-w-[160px]">{k}:</span>
+              <span className="text-foreground/80 break-all min-w-0">{v}</span>
             </div>
           ))}
         </div>
@@ -418,6 +418,146 @@ function SplunkPanel({ entry, orgId, cell, orgPending }: { entry: HarEntry; orgI
   );
 }
 
+// ─── OIDC URL params panel ───────────────────────────────────────────────────────
+
+const OIDC_PARAM_INFO: Record<string, { label: string; description: string; decode?: boolean }> = {
+  client_id:                { label: "Client ID",              description: "OAuth 2.0 client identifier registered with the authorization server" },
+  response_type:            { label: "Response Type",          description: "Requested response: code · token · id_token" },
+  response_mode:            { label: "Response Mode",          description: "How the response is delivered: query · fragment · form_post" },
+  redirect_uri:             { label: "Redirect URI",           description: "URI the browser is redirected to after authentication" },
+  scope:                    { label: "Scope",                  description: "Requested permissions — space-separated list of scopes" },
+  state:                    { label: "State",                  description: "Opaque value for CSRF protection and application state restoration", decode: true },
+  nonce:                    { label: "Nonce",                  description: "Random value embedded in the ID token to prevent replay attacks" },
+  prompt:                   { label: "Prompt",                 description: "Controls UI display: none · login · consent · select_account" },
+  login_hint:               { label: "Login Hint",             description: "Pre-fills the username or email in the sign-in form" },
+  code_challenge:           { label: "Code Challenge",         description: "PKCE — base64url(SHA-256(code_verifier))" },
+  code_challenge_method:    { label: "Challenge Method",       description: "PKCE method: S256 (recommended) or plain" },
+  code:                     { label: "Auth Code",              description: "Short-lived authorization code to exchange for tokens" },
+  grant_type:               { label: "Grant Type",             description: "authorization_code · client_credentials · refresh_token · device_code" },
+  code_verifier:            { label: "Code Verifier",          description: "PKCE — the random secret that generated code_challenge" },
+  token_type_hint:          { label: "Token Type Hint",        description: "Hint for revoke/introspect: access_token · refresh_token" },
+  id_token_hint:            { label: "ID Token Hint",          description: "Hints about the end-user for logout" },
+  post_logout_redirect_uri: { label: "Post-Logout URI",        description: "URI to redirect after the session is ended" },
+  session_token:            { label: "Session Token",          description: "Okta session token used to obtain tokens without re-authentication" },
+  request:                  { label: "Request Object",         description: "JWT-encoded OpenID Connect request (RFC 9101)", decode: true },
+  request_uri:              { label: "Request URI",            description: "URI pointing to a JWT request object" },
+  acr_values:               { label: "ACR Values",             description: "Requested authentication context class references" },
+  max_age:                  { label: "Max Age",                description: "Maximum time (seconds) since last authentication" },
+  ui_locales:               { label: "UI Locales",             description: "Preferred UI languages for the sign-in page" },
+  display:                  { label: "Display",                description: "How to render the auth page: page · popup · touch · wap" },
+  access_token:             { label: "Access Token",           description: "Bearer token to be introspected or revoked" },
+  id_token:                 { label: "ID Token",               description: "JWT identity token", decode: true },
+  refresh_token:            { label: "Refresh Token",          description: "Long-lived token used to obtain new access tokens" },
+  username:                 { label: "Username",               description: "Resource Owner Password Credentials username" },
+  password:                 { label: "Password",               description: "Resource Owner Password Credentials password" },
+  client_assertion_type:    { label: "Client Assertion Type",  description: "JWT bearer assertion: urn:ietf:params:oauth:client-assertion-type:jwt-bearer" },
+  client_assertion:         { label: "Client Assertion",       description: "Signed JWT used for private_key_jwt client authentication", decode: true },
+  dpop:                     { label: "DPoP Proof",             description: "Demonstration of Proof-of-Possession JWT", decode: true },
+};
+
+function tryBase64UrlDecode(value: string): { text: string; parsed: boolean } | null {
+  try {
+    const b64 = value.replace(/-/g, "+").replace(/_/g, "/");
+    const pad  = b64.length % 4;
+    const full = pad ? b64 + "=".repeat(4 - pad) : b64;
+    const raw  = atob(full);
+    if (/[\x00-\x08\x0e-\x1f]/.test(raw)) return null;
+    try {
+      return { text: JSON.stringify(JSON.parse(raw), null, 2), parsed: true };
+    } catch {
+      return raw.length > 3 ? { text: raw, parsed: false } : null;
+    }
+  } catch {
+    return null;
+  }
+}
+
+function OidcUrlPanel({ entry }: { entry: HarEntry }) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  const params: { key: string; value: string }[] = [];
+
+  try {
+    const url = new URL(entry.request.url);
+    url.searchParams.forEach((v, k) => params.push({ key: k, value: v }));
+  } catch {}
+
+  const contentType = (entry.request.headers.find(
+    (h) => h.name.toLowerCase() === "content-type"
+  )?.value ?? "").toLowerCase();
+
+  if (contentType.includes("x-www-form-urlencoded") && entry.request.postData?.text) {
+    try {
+      new URLSearchParams(entry.request.postData.text).forEach((v, k) => params.push({ key: k, value: v }));
+    } catch {}
+  }
+
+  if (params.length === 0) {
+    return (
+      <div className="rounded-md border border-border bg-card p-4 text-xs text-muted-foreground font-mono">
+        No URL or form parameters found for this request.
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-md border border-border overflow-hidden bg-card text-xs font-mono">
+      {params.map(({ key, value }, i) => {
+        const info     = OIDC_PARAM_INFO[key];
+        const isScope  = key === "scope";
+        const decoded  = info?.decode ? tryBase64UrlDecode(value) : null;
+        const isOpen   = expanded[key] ?? false;
+
+        return (
+          <div key={i} className="border-b border-border/50 last:border-0">
+            <div className="flex items-start gap-3 px-3 py-2 hover:bg-muted/30 transition-colors">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-semibold text-foreground">{key}</span>
+                  {info && (
+                    <span className="text-[10px] text-muted-foreground font-sans">
+                      — {info.description}
+                    </span>
+                  )}
+                </div>
+                {isScope ? (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {value.split(/\s+/).map((s) => (
+                      <span key={s} className="px-1.5 py-px rounded bg-muted text-foreground/80 text-[10px]">{s}</span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-0.5 text-foreground/80 break-all">{value}</div>
+                )}
+              </div>
+              {decoded && (
+                <button
+                  onClick={() => setExpanded((p) => ({ ...p, [key]: !isOpen }))}
+                  className="flex-shrink-0 text-[10px] font-sans text-primary hover:underline mt-0.5"
+                >
+                  {isOpen ? "hide" : "decode"}
+                </button>
+              )}
+            </div>
+            {decoded && isOpen && (
+              <div className="px-3 pb-3 bg-muted/20 border-t border-border/40">
+                <div className="flex items-center gap-2 mb-1.5 pt-2">
+                  <span className="text-[10px] font-sans text-muted-foreground uppercase tracking-wide">
+                    {decoded.parsed ? "Decoded JSON" : "Decoded value"}
+                  </span>
+                </div>
+                <pre className="text-[11px] text-foreground/90 whitespace-pre-wrap break-all leading-relaxed">
+                  {decoded.text}
+                </pre>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Waterfall cell ─────────────────────────────────────────────────────────────
 
 function WaterfallBar({ entry, startOffset, totalSpan }: { entry: HarEntry; startOffset: number; totalSpan: number }) {
@@ -453,7 +593,32 @@ export default function HarAnalyser() {
   const [search,        setSearch]        = useState("");
   const [typeFilter,    setTypeFilter]    = useState<ResourceType>("All");
   const [orgInfoCache,  setOrgInfoCache]  = useState<Record<string, { id: string | null; cell: string | null } | null>>({});
-  const orgPendingRef = useRef<Set<string>>(new Set());
+  const orgPendingRef   = useRef<Set<string>>(new Set());
+  const [drawerHeight,  setDrawerHeight]  = useState(320);
+  const isDragging      = useRef(false);
+  const dragStartY      = useRef(0);
+  const dragStartHeight = useRef(0);
+
+  const onDragHandleMouseDown = useCallback((e: React.MouseEvent) => {
+    isDragging.current      = true;
+    dragStartY.current      = e.clientY;
+    dragStartHeight.current = drawerHeight;
+    e.preventDefault();
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!isDragging.current) return;
+      const delta     = dragStartY.current - ev.clientY;
+      const clamped   = Math.max(150, Math.min(window.innerHeight * 0.85, dragStartHeight.current + delta));
+      setDrawerHeight(clamped);
+    };
+    const onMouseUp = () => {
+      isDragging.current = false;
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup",   onMouseUp);
+    };
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup",   onMouseUp);
+  }, [drawerHeight]);
 
   const fetchOrgInfo = useCallback(async (hostname: string) => {
     if (hostname in orgInfoCache || orgPendingRef.current.has(hostname)) return;
@@ -649,82 +814,101 @@ export default function HarAnalyser() {
         </table>
       </div>
 
-      {/* Bottom drawer — scrolls independently, table above remains scrollable */}
-      {selected && (
-        <div className="flex-shrink-0 h-[320px] border-t border-border flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/40 flex-shrink-0">
-            <div className="flex items-center gap-2 min-w-0">
-              {(() => {
-                const oi = getOidcInfo(selected.request.url, selected.request.method);
-                const os = oi ? OIDC_STYLES[oi.phase] : null;
-                const io = !oi && hasOktaHeader(selected);
-                return (
-                  <>
-                    {oi && <span className={cn("flex-shrink-0 text-[10px] font-sans font-medium px-1.5 py-px rounded", os?.badge)}>{oi.label}</span>}
-                    {io && <span className={cn("flex-shrink-0 text-[10px] font-sans font-medium px-1.5 py-px rounded", OKTA_STYLE.badge)}>Okta</span>}
-                  </>
-                );
-              })()}
-              <span className="text-xs font-mono truncate text-foreground/80" title={selected.request.url}>
-                {urlName(selected.request.url)}
-              </span>
-              <span className="text-[10px] text-muted-foreground flex-shrink-0 font-mono">
-                {selected.response.status} · {formatDuration(selected.time)}
-              </span>
+      {/* Bottom drawer — resizable, table above remains independently scrollable */}
+      {selected && (() => {
+        const oktaRequestId = selected.response.headers.find(h => h.name.toLowerCase() === "x-okta-request-id")?.value;
+        const hostname      = (() => { try { return new URL(selected.request.url).hostname; } catch { return ""; } })();
+        const cached        = orgInfoCache[hostname];
+        const orgId         = cached?.id ?? null;
+        const cell          = cached?.cell ?? null;
+        const orgPending    = orgPendingRef.current.has(hostname);
+        const oidcInfo      = getOidcInfo(selected.request.url, selected.request.method);
+        const oidcStyle     = oidcInfo ? OIDC_STYLES[oidcInfo.phase] : null;
+        const isOkta        = !oidcInfo && hasOktaHeader(selected);
+        return (
+          <div
+            className="flex-shrink-0 border-t border-border flex flex-col overflow-hidden"
+            style={{ height: drawerHeight }}
+          >
+            {/* Drag handle */}
+            <div
+              onMouseDown={onDragHandleMouseDown}
+              className="flex-shrink-0 h-2.5 flex items-center justify-center cursor-ns-resize group bg-transparent hover:bg-muted/50 transition-colors"
+              title="Drag to resize"
+            >
+              <div className="w-10 h-0.5 rounded-full bg-border/60 group-hover:bg-primary/40 transition-colors" />
             </div>
-            <button onClick={() => setSelectedIndex(null)} className="text-muted-foreground hover:text-foreground ml-2 flex-shrink-0">
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-          {(() => {
-            const oktaRequestId = selected.response.headers.find(h => h.name.toLowerCase() === "x-okta-request-id")?.value;
-            const hostname      = (() => { try { return new URL(selected.request.url).hostname; } catch { return ""; } })();
-            const cached        = orgInfoCache[hostname];
-            const orgId         = cached?.id ?? null;
-            const cell          = cached?.cell ?? null;
-            const orgPending    = orgPendingRef.current.has(hostname);
-            return (
-              <div className="flex-1 overflow-auto min-h-0 p-3">
-                <Tabs defaultValue="headers">
-                  <TabsList className="h-7 text-xs">
-                    <TabsTrigger value="headers"  className="text-xs h-6 px-2">Headers</TabsTrigger>
-                    <TabsTrigger value="preview"  className="text-xs h-6 px-2">Preview</TabsTrigger>
-                    <TabsTrigger value="response" className="text-xs h-6 px-2">Response</TabsTrigger>
-                    <TabsTrigger value="timing"   className="text-xs h-6 px-2">Timing</TabsTrigger>
-                    {oktaRequestId && (
-                      <TabsTrigger value="splunk" className="text-xs h-6 px-2 text-violet-600 dark:text-violet-400 data-[state=active]:text-violet-700 dark:data-[state=active]:text-violet-300">
-                        Splunk
-                      </TabsTrigger>
-                    )}
-                  </TabsList>
-                  <TabsContent value="headers" className="mt-2">
-                    <HeadersPanel entry={selected} />
-                  </TabsContent>
-                  <TabsContent value="preview" className="mt-2">
-                    <JsonViewer
-                      data={tryParseJson(selected.response.content?.text) ?? selected.response.content}
-                      className="max-h-[220px]"
-                    />
-                  </TabsContent>
-                  <TabsContent value="response" className="mt-2">
-                    <pre className="rounded-md border border-border bg-card p-3 text-xs font-mono overflow-auto max-h-[220px] whitespace-pre-wrap break-all">
-                      {selected.response.content?.text ?? "(empty)"}
-                    </pre>
-                  </TabsContent>
-                  <TabsContent value="timing" className="mt-2">
-                    <TimingPanel timings={selected.timings} total={selected.time} />
-                  </TabsContent>
-                  {oktaRequestId && (
-                    <TabsContent value="splunk" className="mt-2">
-                      <SplunkPanel entry={selected} orgId={orgId} cell={cell} orgPending={orgPending || !(hostname in orgInfoCache)} />
-                    </TabsContent>
-                  )}
-                </Tabs>
+
+            {/* Entry info */}
+            <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-muted/40 flex-shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                {oidcStyle && <span className={cn("flex-shrink-0 text-[10px] font-sans font-medium px-1.5 py-px rounded", oidcStyle.badge)}>{oidcInfo!.label}</span>}
+                {isOkta    && <span className={cn("flex-shrink-0 text-[10px] font-sans font-medium px-1.5 py-px rounded", OKTA_STYLE.badge)}>Okta</span>}
+                <span className="text-xs font-mono truncate text-foreground/80" title={selected.request.url}>
+                  {urlName(selected.request.url)}
+                </span>
+                <span className="text-[10px] text-muted-foreground flex-shrink-0 font-mono">
+                  {selected.response.status} · {formatDuration(selected.time)}
+                </span>
               </div>
-            );
-          })()}
-        </div>
-      )}
+              <button onClick={() => setSelectedIndex(null)} className="text-muted-foreground hover:text-foreground ml-2 flex-shrink-0">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            {/* Tabs — sticky header + scrollable body */}
+            <Tabs defaultValue="headers" className="flex flex-col flex-1 min-h-0">
+              <div className="flex-shrink-0 px-3 pt-2 pb-0 bg-card border-b border-border/60">
+                <TabsList className="h-7 text-xs">
+                  <TabsTrigger value="headers"   className="text-xs h-6 px-2">Headers</TabsTrigger>
+                  {oidcInfo && (
+                    <TabsTrigger value="urlparams" className="text-xs h-6 px-2 text-blue-600 dark:text-blue-400 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-300">
+                      URL Params
+                    </TabsTrigger>
+                  )}
+                  <TabsTrigger value="preview"   className="text-xs h-6 px-2">Preview</TabsTrigger>
+                  <TabsTrigger value="response"  className="text-xs h-6 px-2">Response</TabsTrigger>
+                  <TabsTrigger value="timing"    className="text-xs h-6 px-2">Timing</TabsTrigger>
+                  {oktaRequestId && (
+                    <TabsTrigger value="splunk" className="text-xs h-6 px-2 text-violet-600 dark:text-violet-400 data-[state=active]:text-violet-700 dark:data-[state=active]:text-violet-300">
+                      Splunk
+                    </TabsTrigger>
+                  )}
+                </TabsList>
+              </div>
+
+              <div className="flex-1 overflow-auto min-h-0 p-3">
+                <TabsContent value="headers" className="mt-0">
+                  <HeadersPanel entry={selected} />
+                </TabsContent>
+                {oidcInfo && (
+                  <TabsContent value="urlparams" className="mt-0">
+                    <OidcUrlPanel entry={selected} />
+                  </TabsContent>
+                )}
+                <TabsContent value="preview" className="mt-0">
+                  <JsonViewer
+                    data={tryParseJson(selected.response.content?.text) ?? selected.response.content}
+                  />
+                </TabsContent>
+                <TabsContent value="response" className="mt-0">
+                  <pre className="rounded-md border border-border bg-card p-3 text-xs font-mono whitespace-pre-wrap break-all">
+                    {selected.response.content?.text ?? "(empty)"}
+                  </pre>
+                </TabsContent>
+                <TabsContent value="timing" className="mt-0">
+                  <TimingPanel timings={selected.timings} total={selected.time} />
+                </TabsContent>
+                {oktaRequestId && (
+                  <TabsContent value="splunk" className="mt-0">
+                    <SplunkPanel entry={selected} orgId={orgId} cell={cell} orgPending={orgPending || !(hostname in orgInfoCache)} />
+                  </TabsContent>
+                )}
+              </div>
+            </Tabs>
+          </div>
+        );
+      })()}
 
       {/* Status bar */}
       <div className="flex items-center gap-4 px-3 py-1.5 border-t border-border bg-muted/30 text-[11px] text-muted-foreground font-mono flex-wrap flex-shrink-0">
