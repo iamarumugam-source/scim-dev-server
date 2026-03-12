@@ -20,6 +20,7 @@ import DashboardPagination from "@/components/padination-handler";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { cn } from "@/lib/utils";
 import { GroupEditor } from "@/components/scim/group-editor";
+import { usePageTracking } from "@/hooks/usePageTracking";
 
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
@@ -27,6 +28,7 @@ import { GroupEditor } from "@/components/scim/group-editor";
 const ITEMS_PER_PAGE = 10;
 
 export default function GroupsPage() {
+  usePageTracking();
   const { data: session } = useSession();
   const userId = session?.user?.id;
 

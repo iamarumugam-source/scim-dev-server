@@ -8,8 +8,10 @@ import { DataTable } from "./data-table";
 import { PaginationState } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { usePageTracking } from "@/hooks/usePageTracking";
 
 export default function UsersPage() {
+  usePageTracking();
   const { data: session } = useSession();
   const userId = session?.user?.id;
 

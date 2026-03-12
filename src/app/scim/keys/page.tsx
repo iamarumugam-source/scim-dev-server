@@ -1,8 +1,10 @@
 "use client";
 
 import ApiKeyManager from "@/components/ApiKeyManager";
+import { usePageTracking } from "@/hooks/usePageTracking";
 
 export default function ApiKeysPage() {
+  usePageTracking();
   return (
     <div className="container mx-auto py-10 space-y-4">
       <div>
