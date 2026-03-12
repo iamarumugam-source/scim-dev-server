@@ -75,8 +75,7 @@ export default function ApiKeyManager() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const { data: session } = useSession();
-  const userId      = session?.user?.id;
-  const apiEndpoint = `https://oktascim.vercel.app/api/${userId}/scim/v2`;
+  const userId = session?.user?.id;
 
   const fetchKeys = async () => {
     if (!userId) return;
@@ -118,16 +117,27 @@ export default function ApiKeyManager() {
     }
   };
 
-  const handleRevokeKey = async (keyId: string) => {
-    if (!confirm("Permanently delete this API key?")) return;
-    try {
-      const res = await fetch(`/api/${userId}/keys/${keyId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to revoke key.");
-      toast.success("API Key revoked.");
-      await fetchKeys();
-    } catch (e: any) {
-      toast.error(e.message);
-    }
+  const handleRevokeKey = (keyId: string, keyName: string) => {
+    toast(`Delete "${keyName}"?`, {
+      description: "This API key will be permanently removed and can no longer be used.",
+      action: {
+        label: "Delete",
+        onClick: async () => {
+          try {
+            const res = await fetch(`/api/${userId}/keys/${keyId}`, { method: "DELETE" });
+            if (!res.ok) throw new Error("Failed to revoke key.");
+            toast.success("API key deleted.");
+            await fetchKeys();
+          } catch (e: any) {
+            toast.error(e.message);
+          }
+        },
+      },
+      cancel: {
+        label: "Cancel",
+        onClick: () => {},
+      },
+    });
   };
 
   const handleCloseDialog = () => { setNewKeyName(""); setGeneratedKey(null); setIsDialogOpen(false); };
@@ -137,28 +147,22 @@ export default function ApiKeyManager() {
 
   return (
     <div className="space-y-6">
-      {/* SCIM endpoint */}
+      {/* API Keys — header + generate button + table */}
       <section className="space-y-2">
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-          SCIM Endpoint
-        </h2>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 rounded-lg border border-border bg-card p-4">
-          <div className="flex-1 min-w-0">
-            <p className="text-[11px] text-muted-foreground mb-1">
-              Use this URL in your identity provider's SCIM configuration.
-            </p>
-            <div className="flex items-center gap-2 rounded-md border bg-muted px-3 py-2">
-              <code className="flex-1 text-xs font-mono text-foreground truncate">
-                {apiEndpoint}
-              </code>
-              <CopyButton text={apiEndpoint} />
-            </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              API Keys
+            </h2>
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {keys.length} key{keys.length !== 1 ? "s" : ""}
+            </span>
           </div>
 
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={handleOpenDialog} className="w-full sm:w-auto flex-shrink-0">
-                <PlusCircle className="mr-2 h-4 w-4" /> Generate New Key
+              <Button size="sm" onClick={handleOpenDialog} className="gap-1.5">
+                <PlusCircle className="h-3.5 w-3.5" /> Generate New Key
               </Button>
             </DialogTrigger>
             <DialogContent
@@ -210,16 +214,6 @@ export default function ApiKeyManager() {
             </DialogContent>
           </Dialog>
         </div>
-      </section>
-
-      {/* Keys table */}
-      <section className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            API Keys
-          </h2>
-          <span className="text-sm text-muted-foreground">{keys.length} key{keys.length !== 1 ? "s" : ""}</span>
-        </div>
 
         <div className="overflow-hidden rounded-lg border">
           <div className="overflow-x-auto">
@@ -262,7 +256,7 @@ export default function ApiKeyManager() {
                           size="icon"
                           variant="ghost"
                           className="h-8 w-8 text-muted-foreground hover:text-destructive transition-colors"
-                          onClick={() => handleRevokeKey(key.id)}
+                          onClick={() => handleRevokeKey(key.id, key.name)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

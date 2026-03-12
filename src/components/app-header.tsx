@@ -28,7 +28,7 @@ export function SiteHeader() {
   const pageTitles: Record<string, string> = {
     "/": "Home",
     "/scim": "Dashboard",
-    "/scim/keys": "API Keys",
+    "/scim/keys": "API",
     "/scim/users": "Users",
     "/scim/groups": "Groups",
     "/scim/logs": "Logs",

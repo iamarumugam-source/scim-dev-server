@@ -18,6 +18,7 @@ function CopyButton({ text, className }: { text: string; className?: string }) {
     (e: React.MouseEvent) => {
       e.stopPropagation();
       navigator.clipboard.writeText(text);
+      toast.success("Copied");
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     },
@@ -48,7 +49,7 @@ function CopyAllButton({ data }: { data: unknown }) {
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(JSON.stringify(data, null, 2));
     setCopied(true);
-    toast.success("Json copied to clipboard");
+    toast.success("Copied to clipboard");
     setTimeout(() => setCopied(false), 1500);
   }, [data]);
 

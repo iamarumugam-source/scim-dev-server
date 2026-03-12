@@ -1,5 +1,5 @@
 "use client";
-import { UsersRound, KeyIcon, BuildingIcon, ChevronRight, ShieldCheck, Network, KeyRound, FlaskConical } from "lucide-react";
+import { UsersRound, BuildingIcon, ChevronRight, ShieldCheck, Network, KeyRound, FlaskConical, Fingerprint } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,7 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
@@ -74,49 +75,17 @@ const FormSchema = z.object({
 
 // Menu items.
 const items = [
-  {
-    title: "Dashboard",
-    url: "/scim",
-    icon: IconDashboard,
-  },
-  {
-    title: "API Keys",
-    url: "/scim/keys",
-    icon: KeyIcon,
-  },
-  {
-    title: "Users",
-    url: "/scim/users",
-    icon: UsersRound,
-  },
-  {
-    title: "Groups",
-    url: "/scim/groups",
-    icon: BuildingIcon,
-  },
-  {
-    title: "Logs",
-    url: "/scim/logs",
-    icon: IconLogs,
-  },
-  {
-    title: "Extensions",
-    url: "/scim/extensions",
-    icon: FlaskConical,
-  },
+  { title: "Dashboard",  url: "/scim",           icon: IconDashboard },
+  { title: "API",        url: "/scim/keys",       icon: Fingerprint   },
+  { title: "Users",      url: "/scim/users",      icon: UsersRound    },
+  { title: "Groups",     url: "/scim/groups",     icon: BuildingIcon  },
+  { title: "Logs",       url: "/scim/logs",       icon: IconLogs      },
+  { title: "Extensions", url: "/scim/extensions", icon: FlaskConical  },
 ];
 
 const otherTools = [
-  {
-    title: "HAR Analyser",
-    url: "/har-analyser",
-    icon: Network,
-  },
-  {
-    title: "JWE Decoder",
-    url: "/jwe",
-    icon: KeyRound,
-  },
+  { title: "HAR Analyser", url: "/har-analyser", icon: Network  },
+  { title: "JWE Decoder",  url: "/jwe",          icon: KeyRound },
 ];
 
 type FormValues = z.infer<typeof FormSchema>;
@@ -262,7 +231,7 @@ const userId = session?.user?.id;
                   <DialogTrigger asChild>
                     <SidebarMenuButton
                       tooltip="Generate Mock"
-                      className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 transition-colors"
+                      className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground dark:text-sidebar-accent-foreground dark:hover:text-sidebar-accent-foreground dark:active:text-sidebar-accent-foreground min-w-8 duration-200 ease-linear"
                     >
                       <IconCirclePlusFilled />
                       <span>Generate Mock</span>
@@ -338,8 +307,8 @@ const userId = session?.user?.id;
                           <DialogClose asChild>
                             <Button variant="outline">Cancel</Button>
                           </DialogClose>
-                          <Button type="submit">
-                            {isGenerating ? "Generating…" : "Generate"}
+                          <Button type="submit" disabled={isGenerating}>
+                            {isGenerating ? "Generating…" : "Confirm"}
                           </Button>
                         </DialogFooter>
                       </form>
@@ -387,17 +356,27 @@ const userId = session?.user?.id;
           <SidebarMenu>
             <Collapsible asChild open={scimOpen} onOpenChange={setScimOpen}>
               <SidebarMenuItem>
-                <CollapsibleTrigger asChild>
-                  <SidebarMenuButton isActive={pathname.startsWith("/scim")}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith("/scim")}
+                  tooltip="SCIM Tool"
+                >
+                  <a href="/scim">
                     <ShieldCheck />
                     <span>SCIM Tool</span>
-                    <ChevronRight
-                      className={cn(
-                        "ml-auto h-4 w-4 transition-transform duration-200",
-                        scimOpen && "rotate-90",
-                      )}
-                    />
-                  </SidebarMenuButton>
+                  </a>
+                </SidebarMenuButton>
+                <CollapsibleTrigger asChild>
+                  <SidebarMenuAction
+                    className={cn(
+                      "transition-transform duration-200",
+                      scimOpen && "rotate-90",
+                    )}
+                    showOnHover
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                    <span className="sr-only">Toggle SCIM sub-menu</span>
+                  </SidebarMenuAction>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <SidebarMenuSub>

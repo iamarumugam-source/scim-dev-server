@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Copy, Check, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import type { HarEntry } from "./types";
 
 interface Props {
@@ -20,6 +21,7 @@ export function SplunkPanel({ entry, orgId, cell, orgPending }: Props) {
 
   const copy = (text: string, setCopied: (v: boolean) => void) => {
     navigator.clipboard.writeText(text);
+    toast.success("Copied to clipboard");
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };

@@ -1,156 +1,270 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { JsonViewer } from "@/components/json-viewer";
 import { toast } from "sonner";
+import { Lock, KeyRound, FileJson, AlertCircle, ShieldCheck } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-const ComponentCode = ({ code, title }: { code: string; title?: string }) => (
-  <div>
-    {title && <h3 className="text-sm font-semibold mb-2">{title}</h3>}
-    <pre className="p-3 bg-muted rounded-md text-muted-foreground overflow-x-auto whitespace-pre text-xs">
-      <code>{code}</code>
-    </pre>
-  </div>
-);
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-function b64UrlDecode(str: string) {
-  let output = str.replace(/-/g, "+").replace(/_/g, "/");
-  switch (output.length % 4) {
-    case 0:
-      break;
-    case 2:
-      output += "==";
-      break;
-    case 3:
-      output += "=";
-      break;
-    default:
-      throw new Error("Illegal base64url string!");
-  }
-  return atob(output);
+interface DecryptResult {
+  type:         "JWE" | "JWT";
+  jweHeader?:   Record<string, unknown>;
+  header?:      Record<string, unknown>;
+  payload?:     unknown;
+  raw?:         string;
+  innerIsJwt?:  boolean;
 }
 
-export default function JWE() {
-  const [jwkString, setJwkString] = useState("");
-  const [jweString, setJweString] = useState("");
-  const [isDecrypting, setIsDecrypting] = useState(false);
-  const [rawJWK, setRawJWK] = useState("");
+// ─── Key type hints ───────────────────────────────────────────────────────────
 
-  const [header, setHeader] = useState<object | null>(null);
-  const [payload, setPayload] = useState<object | null>(null);
+const KEY_HINTS = [
+  { label: "RSA Private (JWK)",   desc: "kty: \"RSA\" with d, p, q — for RSA-OAEP, RSA-OAEP-256" },
+  { label: "EC Private (JWK)",    desc: "kty: \"EC\" with d — for ECDH-ES, ECDH-ES+A256KW" },
+  { label: "Symmetric (JWK)",     desc: "kty: \"oct\" with k — for dir+AES, HS256/384/512" },
+  { label: "JWKS",                desc: "{ \"keys\": [...] } — server tries each key automatically" },
+  { label: "Not needed for JWT",  desc: "Plain JWTs (3 parts) are decoded without a key" },
+];
 
-  const handleClick = async () => {
-    setIsDecrypting(true);
-    setHeader(null);
-    setPayload(null);
+// ─── Empty state ──────────────────────────────────────────────────────────────
+
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-6">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+        <Lock className="h-5 w-5 text-muted-foreground" />
+      </div>
+      <div>
+        <p className="text-sm font-medium text-muted-foreground">Decoded output will appear here</p>
+        <p className="text-xs text-muted-foreground/60 mt-1 max-w-xs">
+          Paste a token on the left and click Decode. JWTs are decoded without a key. JWE tokens require a private or symmetric key.
+        </p>
+      </div>
+      <div className="w-full max-w-sm rounded-lg border border-border bg-muted/30 p-3 text-left space-y-1.5">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+          Supported key types
+        </p>
+        {KEY_HINTS.map((h) => (
+          <div key={h.label} className="flex items-start gap-2">
+            <KeyRound className="h-3 w-3 text-muted-foreground/60 mt-0.5 flex-shrink-0" />
+            <div className="min-w-0">
+              <span className="text-[11px] font-medium text-foreground">{h.label}</span>
+              <span className="text-[11px] text-muted-foreground"> — {h.desc}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Result view ──────────────────────────────────────────────────────────────
+
+function ResultView({ result }: { result: DecryptResult }) {
+  const isJwe      = result.type === "JWE";
+  const hasJwsInner = isJwe && result.innerIsJwt;
+
+  const defaultTab = isJwe ? "jwe-header" : "header";
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Token type badge */}
+      <div className="flex items-center gap-2 px-4 pt-3 pb-2 border-b border-border/60 flex-shrink-0">
+        <Badge
+          className={cn(
+            "text-[10px] font-semibold px-2 py-0.5",
+            isJwe
+              ? "bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300"
+              : "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
+          )}
+        >
+          {isJwe ? "JWE" : "JWT"}
+        </Badge>
+        {result.jweHeader && (
+          <span className="text-xs text-muted-foreground font-mono">
+            {String((result.jweHeader as any).alg ?? "")}
+            {(result.jweHeader as any).enc ? ` / ${(result.jweHeader as any).enc}` : ""}
+          </span>
+        )}
+        {!isJwe && result.header && (
+          <span className="text-xs text-muted-foreground font-mono">
+            {String((result.header as any).alg ?? "")}
+          </span>
+        )}
+        {isJwe && hasJwsInner && (
+          <span className="text-xs text-muted-foreground">→ contains JWT</span>
+        )}
+        <ShieldCheck className="h-3.5 w-3.5 text-green-500 ml-auto" />
+      </div>
+
+      {/* Tabs */}
+      <Tabs defaultValue={defaultTab} className="flex flex-col flex-1 min-h-0">
+        <div className="flex-shrink-0 px-4 pt-2 bg-card border-b border-border/60">
+          <TabsList className="h-7">
+            {isJwe && (
+              <TabsTrigger value="jwe-header" className="text-xs h-6 px-2">
+                JWE Header
+              </TabsTrigger>
+            )}
+            {result.header && (
+              <TabsTrigger value="header" className="text-xs h-6 px-2">
+                {hasJwsInner ? "JWT Header" : "Header"}
+              </TabsTrigger>
+            )}
+            {result.payload !== undefined && (
+              <TabsTrigger value="payload" className="text-xs h-6 px-2">
+                {hasJwsInner ? "Claims" : "Payload"}
+              </TabsTrigger>
+            )}
+            {result.raw && (
+              <TabsTrigger value="raw" className="text-xs h-6 px-2">
+                Raw
+              </TabsTrigger>
+            )}
+          </TabsList>
+        </div>
+
+        <div className="flex-1 overflow-auto min-h-0 p-3">
+          {isJwe && result.jweHeader && (
+            <TabsContent value="jwe-header" className="mt-0 h-full">
+              <JsonViewer data={result.jweHeader} />
+            </TabsContent>
+          )}
+          {result.header && (
+            <TabsContent value="header" className="mt-0 h-full">
+              <JsonViewer data={result.header} />
+            </TabsContent>
+          )}
+          {result.payload !== undefined && (
+            <TabsContent value="payload" className="mt-0 h-full">
+              <JsonViewer
+                data={typeof result.payload === "object" ? result.payload : { value: result.payload }}
+              />
+            </TabsContent>
+          )}
+          {result.raw && (
+            <TabsContent value="raw" className="mt-0 h-full">
+              <pre className="rounded-md border border-border bg-card p-3 text-xs font-mono whitespace-pre-wrap break-all">
+                {result.raw}
+              </pre>
+            </TabsContent>
+          )}
+        </div>
+      </Tabs>
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default function JwePage() {
+  const [keyInput,    setKeyInput]    = useState("");
+  const [tokenInput,  setTokenInput]  = useState("");
+  const [isDecoding,  setIsDecoding]  = useState(false);
+  const [result,      setResult]      = useState<DecryptResult | null>(null);
+  const [decodeError, setDecodeError] = useState<string | null>(null);
+
+  const handleDecode = async () => {
+    setIsDecoding(true);
+    setResult(null);
+    setDecodeError(null);
+
     try {
-      if (!jwkString || !jweString) {
-        throw new Error("JWK and JWE inputs cannot be empty.");
+      if (!tokenInput.trim()) throw new Error("Token cannot be empty.");
+
+      let parsedKey: unknown = undefined;
+      if (keyInput.trim()) {
+        try {
+          parsedKey = JSON.parse(keyInput.trim());
+        } catch {
+          throw new Error("Key must be valid JSON (JWK or JWKS format).");
+        }
       }
 
-      const jwkObject = JSON.parse(jwkString);
-
       const res = await fetch("/api/jwe", {
-        method: "POST",
+        method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keys: jwkObject, token: jweString }),
+        body:    JSON.stringify({ token: tokenInput.trim(), key: parsedKey }),
       });
 
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || "Failed to decrypt JWE.");
-      }
+      if (!res.ok) throw new Error(data.detail || "Decoding failed.");
 
-      const decryptedJws = data.id_token;
-      setRawJWK(decryptedJws);
-      if (typeof decryptedJws !== "string") {
-        throw new Error("Decrypted token is not a valid string.");
-      }
-
-      const parts = decryptedJws.split(".");
-      if (parts.length !== 3) {
-        throw new Error("Decrypted token is not a valid JWT (JWS).");
-      }
-
-      const decodedHeader = JSON.parse(b64UrlDecode(parts[0]));
-      const decodedPayload = JSON.parse(b64UrlDecode(parts[1]));
-
-      setHeader(decodedHeader);
-      setPayload(decodedPayload);
-      toast.success("JWE decrypted successfully!");
-    } catch (error: any) {
-      console.error("Decryption failed:", error);
-      toast.error(error.message || "An unknown error occurred.");
+      setResult(data as DecryptResult);
+      toast.success(data.type === "JWE" ? "JWE decrypted successfully" : "JWT decoded successfully");
+    } catch (e: any) {
+      setDecodeError(e.message);
+      toast.error(e.message);
     } finally {
-      setIsDecrypting(false);
+      setIsDecoding(false);
     }
   };
 
   return (
-    <div className="flex flex-row gap-4 p-4 h-[calc(100vh-120px)] w-full">
-      <div className="flex flex-col w-1/2 gap-4">
-        <div className="flex flex-col h-1/2 border rounded-lg">
-          <div className="p-2 font-semibold border-b text-sm">Private JWK</div>
-          <Textarea
-            placeholder="Paste your private JWK (JSON Web Key) here"
-            className="w-full h-full rounded-none border-none resize-none font-mono text-xs"
-            value={jwkString}
-            onChange={(e) => setJwkString(e.target.value)}
-          />
-        </div>
-        <div className="flex flex-col h-1/2 border rounded-lg">
-          <div className="p-2 font-semibold border-b text-sm">
-            Encrypted Token (JWE)
+    <div className="flex gap-4 p-4 h-[calc(100vh-var(--header-height))]">
+      {/* Input panel */}
+      <div className="flex flex-col w-1/2 gap-3 min-h-0">
+        {/* Key input */}
+        <div className="flex flex-col flex-1 rounded-lg border border-border overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/40 flex-shrink-0">
+            <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-xs font-semibold">Private / Symmetric Key</span>
+            <span className="ml-auto text-[10px] text-muted-foreground">JWK or JWKS · optional for plain JWT</span>
           </div>
           <Textarea
-            placeholder="Paste your compact JWE (JSON Web Encryption) string here"
-            className="w-full h-full rounded-none border-none resize-none font-mono text-xs"
-            value={jweString}
-            onChange={(e) => setJweString(e.target.value)}
+            placeholder={'Paste a JWK, JWKS, or leave empty for plain JWT\n\n{"kty":"RSA","d":"...","n":"...",...}\n{"keys":[{...},{...}]}'}
+            className="flex-1 rounded-none border-none resize-none font-mono text-xs focus-visible:ring-0"
+            value={keyInput}
+            onChange={(e) => setKeyInput(e.target.value)}
           />
         </div>
+
+        {/* Token input */}
+        <div className="flex flex-col flex-1 rounded-lg border border-border overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/40 flex-shrink-0">
+            <FileJson className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-xs font-semibold">Token</span>
+            <span className="ml-auto text-[10px] text-muted-foreground">JWE (5 parts) or JWT (3 parts)</span>
+          </div>
+          <Textarea
+            placeholder="eyJhbGciOiJSU0EtT0FFUC0yNTYiLCJlbmMiOiJBMjU2R0NNIn0..."
+            className="flex-1 rounded-none border-none resize-none font-mono text-xs focus-visible:ring-0"
+            value={tokenInput}
+            onChange={(e) => setTokenInput(e.target.value)}
+          />
+        </div>
+
         <Button
-          onClick={handleClick}
-          disabled={isDecrypting}
-          className="w-50 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground dark:text-sidebar-accent-foreground 
-                  dark:hover:text-sidebar-accent-foreground dark:active:text-sidebar-accent-foreground
-                  min-w-8 duration-200 ease-linear ml-auto"
+          onClick={handleDecode}
+          disabled={isDecoding}
+          className="ml-auto"
         >
-          {isDecrypting ? "Decrypting..." : "Decrypt"}
+          {isDecoding ? "Decoding…" : "Decode"}
         </Button>
       </div>
 
-      <div className="flex flex-col w-1/2 border rounded-lg">
-        <div className="p-2 font-semibold border-b text-sm">
-          Decrypted Token
+      {/* Output panel */}
+      <div className="flex flex-col w-1/2 rounded-lg border border-border overflow-hidden">
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/40 flex-shrink-0">
+          <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-xs font-semibold">Decoded Output</span>
         </div>
-        <div className="p-4 space-y-4 overflow-auto">
-          {!header && !payload ? (
-            <div className="flex items-center justify-center h-full text-muted-foreground">
-              Decrypted token content will appear here...
-            </div>
-          ) : (
-            <>
-              {header && (
-                <ComponentCode
-                  title="HEADER"
-                  code={JSON.stringify(header, null, 2)}
-                />
-              )}
-              {payload && (
-                <ComponentCode
-                  title="PAYLOAD"
-                  code={JSON.stringify(payload, null, 2)}
-                />
-              )}
-              <h3 className="text-sm font-semibold mb-2">TOKEN</h3>
-              <div className="p-4 bg-muted rounded-md text-muted-foreground overflow-x-auto text-xs whitespace-pre-wrap break-all">
-                {rawJWK}
-              </div>
-            </>
-          )}
-        </div>
+
+        {decodeError ? (
+          <div className="flex items-start gap-3 p-4 m-4 rounded-lg border border-destructive/40 bg-destructive/10">
+            <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-destructive">{decodeError}</p>
+          </div>
+        ) : result ? (
+          <ResultView result={result} />
+        ) : (
+          <EmptyState />
+        )}
       </div>
     </div>
   );
