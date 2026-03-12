@@ -2,7 +2,6 @@
 import { UsersRound, KeyIcon, BuildingIcon, ChevronRight, ShieldCheck, Network, KeyRound, FlaskConical } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 import {
@@ -145,11 +144,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const [scimOpen, setScimOpen] = useState(pathname.startsWith("/scim"));
 
-  useEffect(() => {
-    if (pathname.startsWith("/scim")) setScimOpen(true);
-  }, [pathname]);
-
-  const userId = session?.user?.id;
+const userId = session?.user?.id;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(FormSchema),
@@ -267,13 +262,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <DialogTrigger asChild>
                     <SidebarMenuButton
                       tooltip="Generate Mock"
-                      className="bg-blue-800 text-primary-foreground hover:bg-blue/800 hover:text-primary-foreground active:bg-blue-800 active:text-primary-foreground dark:text-sidebar-accent-foreground 
-                  dark:hover:text-sidebar-accent-foreground dark:active:text-sidebar-accent-foreground
-                  min-w-8 duration-200 ease-linear"
-                      // onClick={handleGenerateClick}
+                      className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 transition-colors"
                     >
                       <IconCirclePlusFilled />
-
                       <span>Generate Mock</span>
                     </SidebarMenuButton>
                   </DialogTrigger>
@@ -347,13 +338,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                           <DialogClose asChild>
                             <Button variant="outline">Cancel</Button>
                           </DialogClose>
-                          <Button
-                            className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground dark:text-sidebar-accent-foreground 
-                  dark:hover:text-sidebar-accent-foreground dark:active:text-sidebar-accent-foreground
-                  min-w-8 duration-200 ease-linear"
-                            type="submit"
-                          >
-                            Confirm
+                          <Button type="submit">
+                            {isGenerating ? "Generating…" : "Generate"}
                           </Button>
                         </DialogFooter>
                       </form>
@@ -366,7 +352,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 >
                   <DialogTrigger asChild>
                     <SidebarMenuButton
-                      className="size-8 group-data-[collapsible=icon]:opacity-0 border-2 justify-center"
+                      tooltip="Reset Data"
+                      className="size-8 group-data-[collapsible=icon]:opacity-0 border justify-center text-muted-foreground hover:text-destructive hover:border-destructive/50 hover:bg-destructive/10 transition-colors"
                       variant="outline"
                     >
                       <IconRestore />
@@ -385,13 +372,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       <DialogClose asChild>
                         <Button variant="outline">Cancel</Button>
                       </DialogClose>
-                      <Button
-                        className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground dark:text-sidebar-accent-foreground 
-                  dark:hover:text-sidebar-accent-foreground dark:active:text-sidebar-accent-foreground
-                  min-w-8 duration-200 ease-linear"
-                        onClick={handleReset}
-                      >
-                        Confirm
+                      <Button variant="destructive" onClick={handleReset}>
+                        {isResetting ? "Deleting…" : "Delete all data"}
                       </Button>
                     </DialogFooter>
                   </DialogContent>

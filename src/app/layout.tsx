@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import "./globals.css";
 // import "./codehighlight.css";
 import { cn } from "@/lib/utils";
@@ -25,11 +26,15 @@ export const metadata: Metadata = {
   description: "Manage SCIM users and groups",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const cookieStore   = await cookies();
+  const sidebarCookie = cookieStore.get("sidebar_state")?.value;
+  const sidebarOpen   = sidebarCookie !== "false";
+
   return (
     <html lang="en" suppressHydrationWarning className="layout-full">
       <body
@@ -47,6 +52,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <SidebarProvider
+              defaultOpen={sidebarOpen}
               style={
                 {
                   "--sidebar-width": "calc(var(--spacing) * 72)",
