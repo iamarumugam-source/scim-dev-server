@@ -1,6 +1,7 @@
 "use client";
 import { UsersRound, KeyIcon, BuildingIcon, ChevronRight, ShieldCheck, Network, KeyRound } from "lucide-react";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 
@@ -229,13 +230,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     }
   }, [isResetting, userId]);
 
-  //TODO: Will think about implementing a button to clear cache or remove caching behaviour iteslf
-
-  const handleClearCacheClick = () => {
-    clearCache();
-    toast.success("Successfully local storage has been cleared");
-  };
-
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -245,7 +239,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <a href="/">
+              <Link href="/">
                 <Image
                   src="/okta.svg"
                   alt="Okta SCIM"
@@ -254,7 +248,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   className="!size-5 dark:invert"
                 />
                 <span className="text-base font-semibold">Okta Tools</span>
-              </a>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

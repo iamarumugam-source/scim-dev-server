@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Users, Building, FileSearch, KeyRound, Network, ShieldCheck } from "lucide-react";
+import { Users, Building, KeyRound, Network, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
 import {
