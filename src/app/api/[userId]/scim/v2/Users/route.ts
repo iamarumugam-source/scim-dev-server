@@ -3,8 +3,7 @@ import { UserService } from "@/lib/scim/services/userService";
 import { ScimListResponse, ScimUser } from "@/lib/scim/models/scimSchemas";
 import { logExternalRequest } from "@/lib/scim/logging";
 import { protectWithApiKey } from "@/lib/scim/apiHelper";
-import { stat } from "fs";
-import { withMockExtension } from "./util";
+import { withExtensions } from "./util";
 
 const userService = new UserService();
 interface RouteParams {
@@ -57,12 +56,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return createAndLogResponse(request, notFound, { status: 404 }, userId);
     }
 
+    const augmented = await Promise.all(
+      users.map((u) => withExtensions(u as unknown as Record<string, unknown>, userId)),
+    );
+
     const listResponse: ScimListResponse<ScimUser> = {
       schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
       totalResults: total,
-      itemsPerPage: users.length,
+      itemsPerPage: augmented.length,
       startIndex: startIndex,
-      Resources: users.map(withMockExtension),
+      Resources: augmented as unknown as ScimUser[],
     };
     return createAndLogResponse(request, listResponse, { status: 200 }, userId);
   } catch (error: any) {

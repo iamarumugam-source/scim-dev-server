@@ -1,5 +1,5 @@
 "use client";
-import { UsersRound, KeyIcon, BuildingIcon, ChevronRight, ShieldCheck, Network, KeyRound } from "lucide-react";
+import { UsersRound, KeyIcon, BuildingIcon, ChevronRight, ShieldCheck, Network, KeyRound, FlaskConical } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useEffect } from "react";
@@ -99,6 +99,11 @@ const items = [
     title: "Logs",
     url: "/scim/logs",
     icon: IconLogs,
+  },
+  {
+    title: "Extensions",
+    url: "/scim/extensions",
+    icon: FlaskConical,
   },
 ];
 

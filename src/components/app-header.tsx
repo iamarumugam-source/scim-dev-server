@@ -20,6 +20,7 @@ export function SiteHeader() {
     "/scim/users": "Users",
     "/scim/groups": "Groups",
     "/scim/logs": "Logs",
+    "/scim/extensions": "Schema Extensions",
     "/har-analyser": "HAR Analyser",
     "/jwe": "JWE Decoder",
   };

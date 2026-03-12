@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { UserService } from "@/lib/scim/services/userService";
 import { logExternalRequest } from "@/lib/scim/logging";
 import { protectWithApiKey } from "@/lib/scim/apiHelper";
-import { withMockExtension } from "../util";
+import { withExtensions } from "../util";
 
 const userService = new UserService();
 
@@ -51,7 +51,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     if (!user) {
       return notFoundResponse(request, userId);
     }
-    return createAndLogResponse(request, withMockExtension(user), { status: 200 }, userId);
+    const augmented = await withExtensions(user as unknown as Record<string, unknown>, userId);
+    return createAndLogResponse(request, augmented, { status: 200 }, userId);
   } catch (error: any) {
     const errorData = { detail: error.message, status: "500" };
     return createAndLogResponse(request, errorData, { status: 500 }, userId);

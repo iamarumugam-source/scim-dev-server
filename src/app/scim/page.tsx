@@ -432,7 +432,7 @@ export default function ScimDashboard() {
       </div>
 
       {/* ── Page views ──────────────────────────────────────────────────────── */}
-      {!isLoading && stats?.pageViews.total! > 0 && (
+      {!isLoading && (stats?.pageViews.total ?? 0) > 0 && (
         <section>
           <SectionLabel>Page Views</SectionLabel>
           <Card>
