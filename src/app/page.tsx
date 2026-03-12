@@ -1,139 +1,93 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { Users, Building } from "lucide-react";
+import { ShieldCheck, Network, KeyRound, ArrowRight } from "lucide-react";
+import Link from "next/link";
 
-import {
-  Card,
-  CardAction,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { ErrorDisplay } from "@/components/helper-components";
-import { useSession } from "next-auth/react";
-import { Badge } from "@/components/ui/badge";
-import { Spinner } from "@/components/ui/spinner";
+const TOOLS = [
+  {
+    title: "SCIM Tool",
+    href: "/scim",
+    icon: ShieldCheck,
+    color: "text-blue-600 dark:text-blue-400",
+    bg: "bg-blue-50 dark:bg-blue-950/40",
+    border: "hover:border-blue-300 dark:hover:border-blue-700",
+    description:
+      "Manage SCIM 2.0 provisioning for your Okta tenant. Inspect users and groups, manage API keys, and monitor incoming provisioning requests in real time.",
+    features: ["Users & Groups", "API Keys", "Request Logs"],
+  },
+  {
+    title: "HAR Analyser",
+    href: "/har-analyser",
+    icon: Network,
+    color: "text-violet-600 dark:text-violet-400",
+    bg: "bg-violet-50 dark:bg-violet-950/40",
+    border: "hover:border-violet-300 dark:hover:border-violet-700",
+    description:
+      "Upload a HAR capture from Chrome DevTools and inspect every request. Highlights OIDC flow steps, detects Okta headers, and generates ready-to-copy Splunk queries.",
+    features: ["OIDC Flow Detection", "Splunk Query Builder", "Waterfall View"],
+  },
+  {
+    title: "JWE Decoder",
+    href: "/jwe",
+    icon: KeyRound,
+    color: "text-amber-600 dark:text-amber-400",
+    bg: "bg-amber-50 dark:bg-amber-950/40",
+    border: "hover:border-amber-300 dark:hover:border-amber-700",
+    description:
+      "Decode and inspect JSON Web Encryption tokens. Paste a JWE to view its header, decrypt the payload, and examine the embedded claims — all processed in your browser.",
+    features: ["Header Inspection", "Payload Decryption", "Claims Viewer"],
+  },
+];
 
-export default function ScimDashboard() {
-  const { data: session } = useSession();
-  const [totalUsers, setTotalUsers] = useState<number | null>(null);
-  const [totalGroups, setTotalGroups] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const userId = session?.user?.id;
-  const fetchData = useCallback(async () => {
-    if (!userId) {
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const usersPromise = fetch(
-        `/api/${userId}/scim/v2/Users?startIndex=1&count=1`
-      );
-      const groupsPromise = fetch(
-        `/api/${userId}/scim/v2/Groups?startIndex=1&count=1`
-      );
-
-      const [usersRes, groupsRes] = await Promise.all([
-        usersPromise,
-        groupsPromise,
-      ]);
-
-      if (!usersRes.ok) {
-        throw new Error(`Failed to fetch users: ${usersRes.statusText}`);
-      }
-      if (!groupsRes.ok) {
-        throw new Error(`Failed to fetch groups: ${groupsRes.statusText}`);
-      }
-
-      const usersData = await usersRes.json();
-      const groupsData = await groupsRes.json();
-
-      setTotalUsers(usersData.totalResults || 0);
-      setTotalGroups(groupsData.totalResults || 0);
-    } catch (e: any) {
-      setError(e.message || "An unknown error occurred.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    fetchData();
-  }, [userId, fetchData]);
-
+export default function HomePage() {
   return (
-    <div className="container mx-auto py-10">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Tenant Dashboard</h1>
-        <p className="text-muted-foreground">
-          An overview of your provisioned users and groups.
+    <div className="container mx-auto py-10 space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold">Okta Admin Tools</h1>
+        <p className="text-muted-foreground mt-1 max-w-xl">
+          A set of developer tools for working with Okta — covering SCIM provisioning,
+          network traffic analysis, and token inspection.
         </p>
       </div>
 
-      {error ? (
-        <ErrorDisplay message={error} />
-      ) : (
-        <div className="*:data-[slot=card]:from-secondary-foreground/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-          <Card className="@container/card">
-            <CardHeader>
-              <CardDescription>Total Users</CardDescription>
-              <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                {isLoading || totalUsers === null ? (
-                  <div className="h-10 w-24 bg-muted rounded animate-pulse">
-                    <Spinner />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {TOOLS.map((tool) => (
+          <Link key={tool.title} href={tool.href} className="group block">
+            <div
+              className={`h-full rounded-lg border border-border bg-card p-5 transition-all ${tool.border} hover:shadow-sm space-y-4`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg ${tool.bg}`}
+                  >
+                    <tool.icon className={`h-5 w-5 ${tool.color}`} />
                   </div>
-                ) : (
-                  <div className="text-2xl font-bold">{totalUsers}</div>
-                )}
-              </CardTitle>
-              <CardAction>
-                <Badge variant="outline">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </Badge>
-              </CardAction>
-            </CardHeader>
-            <CardFooter className="flex-col items-start gap-1.5 text-sm">
-              <div className="line-clamp-1 flex gap-2 font-medium">
-                Total users provisioned for the following tenant:
-              </div>
-              <div className="text-muted-foreground">{userId}</div>
-            </CardFooter>
-          </Card>
-
-          <Card className="@container/card">
-            <CardHeader>
-              <CardDescription>Total Groups</CardDescription>
-              <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                {isLoading || totalGroups === null ? (
-                  <div className="h-10 w-24 bg-muted rounded animate-pulse">
-                    <Spinner />
+                  <div>
+                    <p className="font-semibold text-sm group-hover:text-primary transition-colors">
+                      {tool.title}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                      {tool.description}
+                    </p>
                   </div>
-                ) : (
-                  <div className="text-2xl font-bold">{totalGroups}</div>
-                )}
-              </CardTitle>
-              <CardAction>
-                <Badge variant="outline">
-                  <Building className="h-4 w-4 text-muted-foreground" />
-                </Badge>
-              </CardAction>
-            </CardHeader>
-            <CardFooter className="flex-col items-start gap-1.5 text-sm">
-              <div className="line-clamp-1 flex gap-2 font-medium">
-                Total groups configured in this tenant:
+                </div>
+                <ArrowRight className="h-4 w-4 flex-shrink-0 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all mt-0.5" />
               </div>
-              <div className="text-muted-foreground">{userId}</div>
-            </CardFooter>
-          </Card>
-        </div>
-      )}
+              <div className="flex flex-wrap gap-1.5">
+                {tool.features.map((f) => (
+                  <span
+                    key={f}
+                    className="text-[11px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground"
+                  >
+                    {f}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }

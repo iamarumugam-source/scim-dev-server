@@ -1,5 +1,8 @@
 "use client";
-import { UsersRound, KeyIcon, IdCardIcon, BuildingIcon, FileSearch } from "lucide-react";
+import { UsersRound, KeyIcon, BuildingIcon, ChevronRight, ShieldCheck, Network, KeyRound } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { useEffect } from "react";
+import { cn } from "@/lib/utils";
 
 import {
   IconCirclePlusFilled,
@@ -20,7 +23,15 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 import {
   Dialog,
@@ -65,44 +76,41 @@ const FormSchema = z.object({
 const items = [
   {
     title: "Dashboard",
-    url: "/",
+    url: "/scim",
     icon: IconDashboard,
   },
-
   {
     title: "API Keys",
-    url: "/keys",
+    url: "/scim/keys",
     icon: KeyIcon,
   },
   {
     title: "Users",
-    url: "/users",
+    url: "/scim/users",
     icon: UsersRound,
   },
   {
     title: "Groups",
-    url: "/groups",
+    url: "/scim/groups",
     icon: BuildingIcon,
   },
   {
     title: "Logs",
-    url: "/logs",
+    url: "/scim/logs",
     icon: IconLogs,
   },
 ];
 
-// Secondary nav list -> Other tools
-
 const otherTools = [
-  {
-    title: "JWE Decoder",
-    url: "/jwe",
-    icon: IdCardIcon,
-  },
   {
     title: "HAR Analyser",
     url: "/har-analyser",
-    icon: FileSearch,
+    icon: Network,
+  },
+  {
+    title: "JWE Decoder",
+    url: "/jwe",
+    icon: KeyRound,
   },
 ];
 
@@ -127,6 +135,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isResetting, setIsReseting] = useState(false);
+
+  const pathname = usePathname();
+  const [scimOpen, setScimOpen] = useState(pathname.startsWith("/scim"));
+
+  useEffect(() => {
+    if (pathname.startsWith("/scim")) setScimOpen(true);
+  }, [pathname]);
 
   const userId = session?.user?.id;
 
@@ -230,7 +245,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <a href="#">
+              <a href="/">
                 <Image
                   src="/okta.svg"
                   alt="Okta SCIM"
@@ -384,26 +399,50 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </Dialog>
               </SidebarMenuItem>
             </SidebarMenu>
-            <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <a href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
         <SidebarGroup>
-          <SidebarGroupLabel>Other Tools</SidebarGroupLabel>
+          <SidebarGroupLabel>Tools</SidebarGroupLabel>
           <SidebarMenu>
+            <Collapsible asChild open={scimOpen} onOpenChange={setScimOpen}>
+              <SidebarMenuItem>
+                <CollapsibleTrigger asChild>
+                  <SidebarMenuButton isActive={pathname.startsWith("/scim")}>
+                    <ShieldCheck />
+                    <span>SCIM Tool</span>
+                    <ChevronRight
+                      className={cn(
+                        "ml-auto h-4 w-4 transition-transform duration-200",
+                        scimOpen && "rotate-90",
+                      )}
+                    />
+                  </SidebarMenuButton>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <SidebarMenuSub>
+                    {items.map((sub) => (
+                      <SidebarMenuSubItem key={sub.title}>
+                        <SidebarMenuSubButton
+                          asChild
+                          isActive={pathname === sub.url}
+                        >
+                          <a href={sub.url}>
+                            <sub.icon />
+                            <span>{sub.title}</span>
+                          </a>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                </CollapsibleContent>
+              </SidebarMenuItem>
+            </Collapsible>
             {otherTools.map((item) => (
               <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton asChild>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith(item.url)}
+                >
                   <a href={item.url}>
                     <item.icon />
                     <span>{item.title}</span>

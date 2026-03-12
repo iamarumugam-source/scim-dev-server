@@ -14,13 +14,14 @@ export function SiteHeader() {
   const { theme, setTheme } = useTheme();
 
   const pageTitles: Record<string, string> = {
-    "/keys": "API Keys",
-    "/har-analyser": "HAR analyser",
-    "/users": "Users",
-    "/logs": "Logs",
+    "/": "Home",
+    "/scim": "Dashboard",
+    "/scim/keys": "API Keys",
+    "/scim/users": "Users",
+    "/scim/groups": "Groups",
+    "/scim/logs": "Logs",
+    "/har-analyser": "HAR Analyser",
     "/jwe": "JWE Decoder",
-    "/groups": "Groups",
-    "/": "Dashboard",
   };
 
   const pageTitle = pageTitles[pathname] || "";

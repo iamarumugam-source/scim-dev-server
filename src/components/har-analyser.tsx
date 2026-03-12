@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useRef, useMemo } from "react";
-import { FileSearch, X, Search } from "lucide-react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { FileSearch, X, Search, Copy, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -55,7 +55,8 @@ interface HarFile {
   };
 }
 
-type ResourceType = "All" | "Fetch/XHR" | "Doc" | "CSS" | "JS" | "Font" | "Img" | "Other";
+type ResourceType = "All" | "Fetch/XHR" | "Doc" | "CSS" | "JS" | "Font" | "Img" | "Other" | "OIDC";
+type OidcPhase   = "discovery" | "authorize" | "token" | "userinfo" | "keys" | "introspect" | "revoke" | "logout" | "session" | "idx";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -122,6 +123,73 @@ function tryParseJson(text?: string): unknown {
   if (!text) return undefined;
   try { return JSON.parse(text); } catch { return text; }
 }
+
+const OIDC_PATTERNS: Array<{
+  pattern: RegExp;
+  methods?: string[];
+  label: string;
+  phase: OidcPhase;
+}> = [
+  { pattern: /\/.well-known\/openid-configuration/,       label: "Discovery",        phase: "discovery"  },
+  { pattern: /\/.well-known\/oauth-authorization-server/, label: "AS Metadata",       phase: "discovery"  },
+  { pattern: /\/v1\/authorize$/,                           label: "Authorize",        phase: "authorize"  },
+  { pattern: /\/v1\/par$/,             methods: ["POST"],  label: "PAR",              phase: "authorize"  },
+  { pattern: /\/login\/login\.htm/,                        label: "Login Page",       phase: "authorize"  },
+  { pattern: /\/login\/sessionCookieRedirect/,             label: "Session Redirect", phase: "authorize"  },
+  { pattern: /\/sso\/idps\//,                              label: "SSO IdP",          phase: "authorize"  },
+  { pattern: /\/v1\/token$/,           methods: ["POST"],  label: "Token",            phase: "token"      },
+  { pattern: /\/v1\/userinfo$/,                            label: "UserInfo",         phase: "userinfo"   },
+  { pattern: /\/v1\/keys$/,            methods: ["GET"],   label: "JWKS",             phase: "keys"       },
+  { pattern: /\/v1\/introspect$/,      methods: ["POST"],  label: "Introspect",       phase: "introspect" },
+  { pattern: /\/v1\/revoke$/,          methods: ["POST"],  label: "Revoke",           phase: "revoke"     },
+  { pattern: /\/v1\/logout$/,                              label: "Logout",           phase: "logout"     },
+  { pattern: /\/v1\/end_session$/,                         label: "End Session",      phase: "logout"     },
+  { pattern: /\/v1\/device\/authorize$/,                   label: "Device Auth",      phase: "authorize"  },
+  { pattern: /\/api\/v1\/authn$/,      methods: ["POST"],  label: "Authn",            phase: "session"    },
+  { pattern: /\/api\/v1\/sessions/,                        label: "Session",          phase: "session"    },
+  { pattern: /\/idp\/idx\/introspect$/, methods: ["POST"], label: "IDX Introspect",   phase: "idx"        },
+  { pattern: /\/idp\/idx\/identify$/,   methods: ["POST"], label: "IDX Identify",     phase: "idx"        },
+  { pattern: /\/idp\/idx\/challenge/,                      label: "IDX Challenge",    phase: "idx"        },
+  { pattern: /\/idp\/idx\//,                               label: "IDX",              phase: "idx"        },
+];
+
+interface OidcInfo { label: string; phase: OidcPhase }
+
+function getOidcInfo(url: string, method: string): OidcInfo | null {
+  try {
+    const path = new URL(url).pathname;
+    for (const def of OIDC_PATTERNS) {
+      if (def.pattern.test(path) && (!def.methods || def.methods.includes(method.toUpperCase()))) {
+        return { label: def.label, phase: def.phase };
+      }
+    }
+  } catch {}
+  return null;
+}
+
+function hasOktaHeader(entry: HarEntry): boolean {
+  return entry.request.headers.some(
+    (h) => h.name.toLowerCase().includes("okta") || h.value.toLowerCase().includes("okta"),
+  );
+}
+
+const OIDC_STYLES: Record<OidcPhase, { badge: string; row: string }> = {
+  discovery:  { badge: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200",    row: "bg-slate-50/60 dark:bg-slate-900/20"   },
+  authorize:  { badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/70 dark:text-blue-300",     row: "bg-blue-50/50 dark:bg-blue-950/20"     },
+  token:      { badge: "bg-green-100 text-green-700 dark:bg-green-900/70 dark:text-green-300", row: "bg-green-50/50 dark:bg-green-950/20"   },
+  userinfo:   { badge: "bg-violet-100 text-violet-700 dark:bg-violet-900/70 dark:text-violet-300", row: "bg-violet-50/50 dark:bg-violet-950/20" },
+  keys:       { badge: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/70 dark:text-cyan-300",     row: "bg-cyan-50/50 dark:bg-cyan-950/20"     },
+  introspect: { badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/70 dark:text-amber-300", row: "bg-amber-50/50 dark:bg-amber-950/20"   },
+  revoke:     { badge: "bg-red-100 text-red-600 dark:bg-red-900/70 dark:text-red-300",         row: "bg-red-50/30 dark:bg-red-950/10"       },
+  logout:     { badge: "bg-red-100 text-red-600 dark:bg-red-900/70 dark:text-red-300",         row: "bg-red-50/30 dark:bg-red-950/10"       },
+  session:    { badge: "bg-orange-100 text-orange-700 dark:bg-orange-900/70 dark:text-orange-300", row: "bg-orange-50/50 dark:bg-orange-950/20" },
+  idx:        { badge: "bg-pink-100 text-pink-700 dark:bg-pink-900/70 dark:text-pink-300",     row: "bg-pink-50/50 dark:bg-pink-950/20"     },
+};
+
+const OKTA_STYLE = {
+  badge: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/70 dark:text-indigo-300",
+  row:   "bg-indigo-50/40 dark:bg-indigo-950/15",
+};
 
 // ─── Drop zone ──────────────────────────────────────────────────────────────────
 
@@ -268,6 +336,88 @@ function TimingPanel({ timings, total }: { timings: HarEntry["timings"]; total: 
   );
 }
 
+// ─── Splunk panel ───────────────────────────────────────────────────────────────
+
+function SplunkPanel({ entry, orgId, cell, orgPending }: { entry: HarEntry; orgId: string | null; cell: string | null; orgPending: boolean }) {
+  const requestId = entry.response.headers.find(h => h.name.toLowerCase() === "x-okta-request-id")?.value ?? "";
+  const query     = cell ? `index="${cell}*" "${requestId}"` : null;
+
+  const [copiedId,    setCopiedId]    = useState(false);
+  const [copiedQuery, setCopiedQuery] = useState(false);
+
+  const copy = (text: string, setCopied: (v: boolean) => void) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <div className="space-y-4 font-mono text-xs">
+      <div className="space-y-1.5">
+        <p className="font-sans text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          x-okta-request-id
+        </p>
+        <div className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2">
+          <span className="flex-1 break-all text-foreground">{requestId}</span>
+          <button onClick={() => copy(requestId, setCopiedId)} className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors">
+            {copiedId ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <p className="font-sans text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Okta Org ID
+          <span className="ml-1.5 normal-case font-normal text-muted-foreground/60">(from /.well-known/okta-organization)</span>
+        </p>
+        {orgPending ? (
+          <div className="flex items-center gap-2 text-muted-foreground px-1">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            <span>Fetching…</span>
+          </div>
+        ) : orgId ? (
+          <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-foreground">{orgId}</div>
+        ) : (
+          <div className="text-muted-foreground/60 px-1">Could not retrieve org info — CORS or network error.</div>
+        )}
+      </div>
+
+      <div className="space-y-1.5">
+        <p className="font-sans text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Cell</p>
+        {orgPending ? (
+          <div className="flex items-center gap-2 text-muted-foreground px-1">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            <span>Fetching…</span>
+          </div>
+        ) : cell ? (
+          <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-foreground">{cell}</div>
+        ) : !orgPending && orgId !== null ? (
+          <div className="text-muted-foreground/60 px-1">Cell not returned in org metadata.</div>
+        ) : null}
+      </div>
+
+      <div className="space-y-1.5">
+        <p className="font-sans text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Splunk Query</p>
+        {query ? (
+          <div className="relative rounded-md border border-border bg-muted/30">
+            <pre className="px-3 py-2 pr-10 text-xs overflow-auto whitespace-pre-wrap break-all text-foreground">{query}</pre>
+            <button
+              onClick={() => copy(query, setCopiedQuery)}
+              className="absolute right-2 top-2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {copiedQuery ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+            </button>
+          </div>
+        ) : (
+          <div className="text-muted-foreground/60 px-1">
+            {orgPending ? "Waiting for cell…" : "Cell unavailable — cannot construct query."}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Waterfall cell ─────────────────────────────────────────────────────────────
 
 function WaterfallBar({ entry, startOffset, totalSpan }: { entry: HarEntry; startOffset: number; totalSpan: number }) {
@@ -294,7 +444,7 @@ function WaterfallBar({ entry, startOffset, totalSpan }: { entry: HarEntry; star
 
 // ─── Main component ─────────────────────────────────────────────────────────────
 
-const TYPE_FILTERS: ResourceType[] = ["All", "Fetch/XHR", "Doc", "CSS", "JS", "Font", "Img", "Other"];
+const TYPE_FILTERS: ResourceType[] = ["All", "Fetch/XHR", "Doc", "CSS", "JS", "Font", "Img", "Other", "OIDC"];
 
 export default function HarAnalyser() {
   const [har,           setHar]           = useState<HarFile | null>(null);
@@ -302,6 +452,22 @@ export default function HarAnalyser() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [search,        setSearch]        = useState("");
   const [typeFilter,    setTypeFilter]    = useState<ResourceType>("All");
+  const [orgInfoCache,  setOrgInfoCache]  = useState<Record<string, { id: string | null; cell: string | null } | null>>({});
+  const orgPendingRef = useRef<Set<string>>(new Set());
+
+  const fetchOrgInfo = useCallback(async (hostname: string) => {
+    if (hostname in orgInfoCache || orgPendingRef.current.has(hostname)) return;
+    orgPendingRef.current.add(hostname);
+    try {
+      const res  = await fetch(`https://${hostname}/.well-known/okta-organization`);
+      const data = res.ok ? await res.json() : null;
+      setOrgInfoCache(prev => ({ ...prev, [hostname]: data ? { id: data.id ?? null, cell: data.cell ?? null } : null }));
+    } catch {
+      setOrgInfoCache(prev => ({ ...prev, [hostname]: null }));
+    } finally {
+      orgPendingRef.current.delete(hostname);
+    }
+  }, [orgInfoCache]);
 
   const handleFile = useCallback((parsed: HarFile, name: string) => {
     setHar(parsed);
@@ -309,9 +475,17 @@ export default function HarAnalyser() {
     setSelectedIndex(null);
     setSearch("");
     setTypeFilter("All");
+    setOrgInfoCache({});
+    orgPendingRef.current.clear();
   }, []);
 
-  const handleClear = () => { setHar(null); setFileName(""); setSelectedIndex(null); };
+  const handleClear = () => {
+    setHar(null);
+    setFileName("");
+    setSelectedIndex(null);
+    setOrgInfoCache({});
+    orgPendingRef.current.clear();
+  };
 
   const entries = har?.log.entries ?? [];
 
@@ -319,7 +493,11 @@ export default function HarAnalyser() {
     const q = search.toLowerCase();
     return entries.filter((e) => {
       const matchesSearch = !q || e.request.url.toLowerCase().includes(q);
-      const matchesType   = typeFilter === "All" || getResourceType(e) === typeFilter;
+      const matchesType   = typeFilter === "All"
+        ? true
+        : typeFilter === "OIDC"
+          ? getOidcInfo(e.request.url, e.request.method) !== null
+          : getResourceType(e) === typeFilter;
       return matchesSearch && matchesType;
     });
   }, [entries, search, typeFilter]);
@@ -332,14 +510,24 @@ export default function HarAnalyser() {
     return { startMs: s, spanMs: Math.max(...ends) - s };
   }, [entries]);
 
-  if (!har) return <DropZone onFile={handleFile} />;
-
   const selected = selectedIndex !== null ? filtered[selectedIndex] : null;
 
+  useEffect(() => {
+    if (!selected) return;
+    const hasRequestId = selected.response.headers.some(h => h.name.toLowerCase() === "x-okta-request-id");
+    if (!hasRequestId) return;
+    try {
+      const hostname = new URL(selected.request.url).hostname;
+      fetchOrgInfo(hostname);
+    } catch {}
+  }, [selected, fetchOrgInfo]);
+
+  if (!har) return <DropZone onFile={handleFile} />;
+
   return (
-    <div className="space-y-0 rounded-lg border border-border overflow-hidden bg-card">
+    <div className="flex flex-col rounded-lg border border-border overflow-hidden bg-card h-[80vh]">
       {/* Toolbar */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/40 flex-wrap">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/40 flex-wrap flex-shrink-0">
         <button onClick={handleClear} className="text-muted-foreground hover:text-foreground transition-colors" title="Clear">
           <X className="h-4 w-4" />
         </button>
@@ -373,122 +561,173 @@ export default function HarAnalyser() {
         </span>
       </div>
 
-      <div className={cn("flex", selected ? "divide-x divide-border" : "")}>
-        {/* Table */}
-        <div className={cn("overflow-auto", selected ? "w-[55%]" : "w-full")}>
-          <table className="w-full text-xs font-mono border-collapse">
-            <thead className="sticky top-0 z-10">
-              <tr className="bg-muted text-muted-foreground">
-                <th className="text-left font-medium px-2 py-1.5 w-[30%]">Name</th>
-                <th className="text-left font-medium px-2 py-1.5 w-16">Status</th>
-                <th className="text-left font-medium px-2 py-1.5 w-16 hidden sm:table-cell">Method</th>
-                <th className="text-left font-medium px-2 py-1.5 w-20 hidden md:table-cell">Type</th>
-                <th className="text-right font-medium px-2 py-1.5 w-16 hidden lg:table-cell">Size</th>
-                <th className="text-right font-medium px-2 py-1.5 w-16">Time</th>
-                <th className="text-left font-medium px-2 py-1.5 hidden xl:table-cell">Waterfall</th>
+      {/* Table — scrolls independently */}
+      <div className="flex-1 overflow-auto min-h-0">
+        <table className="w-full text-xs font-mono border-collapse">
+          <thead className="sticky top-0 z-10">
+            <tr className="bg-muted text-muted-foreground">
+              <th className="text-left font-medium px-2 py-1.5 w-[30%]">Name</th>
+              <th className="text-left font-medium px-2 py-1.5 w-16">Status</th>
+              <th className="text-left font-medium px-2 py-1.5 w-16 hidden sm:table-cell">Method</th>
+              <th className="text-left font-medium px-2 py-1.5 w-20 hidden md:table-cell">Type</th>
+              <th className="text-right font-medium px-2 py-1.5 w-16 hidden lg:table-cell">Size</th>
+              <th className="text-right font-medium px-2 py-1.5 w-16">Time</th>
+              <th className="text-left font-medium px-2 py-1.5 hidden xl:table-cell">Waterfall</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="text-center py-10 text-muted-foreground text-xs">
+                  No requests match the current filter.
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="text-center py-10 text-muted-foreground text-xs">
-                    No requests match the current filter.
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((entry, idx) => {
-                  const isSelected = selectedIndex === idx;
-                  const startOffset = new Date(entry.startedDateTime).getTime() - startMs;
-                  return (
-                    <tr
-                      key={idx}
-                      onClick={() => setSelectedIndex(isSelected ? null : idx)}
-                      className={cn(
-                        "cursor-pointer border-b border-border/40 transition-colors",
-                        isSelected
-                          ? "bg-primary/10 dark:bg-primary/20"
-                          : getRowClass(entry.response.status),
-                        !isSelected && "hover:bg-muted/50",
-                      )}
-                    >
-                      <td className="px-2 py-1 max-w-0 overflow-hidden">
-                        <div className="truncate" title={entry.request.url}>
-                          {urlName(entry.request.url)}
-                        </div>
-                        <div className="truncate text-muted-foreground/60 text-[10px]">
-                          {(() => { try { return new URL(entry.request.url).hostname; } catch { return ""; } })()}
-                        </div>
-                      </td>
-                      <td className={cn("px-2 py-1", getStatusClass(entry.response.status))}>
-                        {entry.response.status}
-                      </td>
-                      <td className={cn("px-2 py-1 hidden sm:table-cell", getMethodClass(entry.request.method))}>
-                        {entry.request.method}
-                      </td>
-                      <td className="px-2 py-1 text-muted-foreground hidden md:table-cell">
-                        {getResourceType(entry)}
-                      </td>
-                      <td className="px-2 py-1 text-right text-muted-foreground hidden lg:table-cell tabular-nums">
-                        {formatBytes(entry.response.content?.size ?? entry.response.bodySize)}
-                      </td>
-                      <td className="px-2 py-1 text-right tabular-nums text-muted-foreground">
-                        {formatDuration(entry.time)}
-                      </td>
-                      <td className="px-2 py-1 hidden xl:table-cell min-w-[100px]">
-                        <WaterfallBar entry={entry} startOffset={startOffset} totalSpan={spanMs} />
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+            ) : (
+              filtered.map((entry, idx) => {
+                const isSelected  = selectedIndex === idx;
+                const startOffset = new Date(entry.startedDateTime).getTime() - startMs;
+                const oidcInfo    = getOidcInfo(entry.request.url, entry.request.method);
+                const oidcStyle   = oidcInfo ? OIDC_STYLES[oidcInfo.phase] : null;
+                const isOkta      = !oidcInfo && hasOktaHeader(entry);
+                return (
+                  <tr
+                    key={idx}
+                    onClick={() => setSelectedIndex(isSelected ? null : idx)}
+                    className={cn(
+                      "cursor-pointer border-b border-border/40 transition-colors",
+                      isSelected
+                        ? "bg-primary/10 dark:bg-primary/20"
+                        : oidcStyle
+                          ? oidcStyle.row
+                          : isOkta
+                            ? OKTA_STYLE.row
+                            : getRowClass(entry.response.status),
+                      !isSelected && "hover:bg-muted/50",
+                    )}
+                  >
+                    <td className="px-2 py-1 max-w-0 overflow-hidden">
+                      <div className="flex items-center gap-1.5 truncate" title={entry.request.url}>
+                        {oidcInfo && (
+                          <span className={cn("flex-shrink-0 text-[10px] font-sans font-medium px-1 py-px rounded leading-tight", oidcStyle?.badge)}>
+                            {oidcInfo.label}
+                          </span>
+                        )}
+                        {isOkta && (
+                          <span className={cn("flex-shrink-0 text-[10px] font-sans font-medium px-1 py-px rounded leading-tight", OKTA_STYLE.badge)}>
+                            Okta
+                          </span>
+                        )}
+                        <span className="truncate">{urlName(entry.request.url)}</span>
+                      </div>
+                      <div className="truncate text-muted-foreground/60 text-[10px]">
+                        {(() => { try { return new URL(entry.request.url).hostname; } catch { return ""; } })()}
+                      </div>
+                    </td>
+                    <td className={cn("px-2 py-1", getStatusClass(entry.response.status))}>
+                      {entry.response.status}
+                    </td>
+                    <td className={cn("px-2 py-1 hidden sm:table-cell", getMethodClass(entry.request.method))}>
+                      {entry.request.method}
+                    </td>
+                    <td className="px-2 py-1 text-muted-foreground hidden md:table-cell">
+                      {getResourceType(entry)}
+                    </td>
+                    <td className="px-2 py-1 text-right text-muted-foreground hidden lg:table-cell tabular-nums">
+                      {formatBytes(entry.response.content?.size ?? entry.response.bodySize)}
+                    </td>
+                    <td className="px-2 py-1 text-right tabular-nums text-muted-foreground">
+                      {formatDuration(entry.time)}
+                    </td>
+                    <td className="px-2 py-1 hidden xl:table-cell min-w-[100px]">
+                      <WaterfallBar entry={entry} startOffset={startOffset} totalSpan={spanMs} />
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
 
-        {/* Detail panel */}
-        {selected && (
-          <div className="w-[45%] overflow-auto max-h-[70vh]">
-            <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/40">
+      {/* Bottom drawer — scrolls independently, table above remains scrollable */}
+      {selected && (
+        <div className="flex-shrink-0 h-[320px] border-t border-border flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/40 flex-shrink-0">
+            <div className="flex items-center gap-2 min-w-0">
+              {(() => {
+                const oi = getOidcInfo(selected.request.url, selected.request.method);
+                const os = oi ? OIDC_STYLES[oi.phase] : null;
+                const io = !oi && hasOktaHeader(selected);
+                return (
+                  <>
+                    {oi && <span className={cn("flex-shrink-0 text-[10px] font-sans font-medium px-1.5 py-px rounded", os?.badge)}>{oi.label}</span>}
+                    {io && <span className={cn("flex-shrink-0 text-[10px] font-sans font-medium px-1.5 py-px rounded", OKTA_STYLE.badge)}>Okta</span>}
+                  </>
+                );
+              })()}
               <span className="text-xs font-mono truncate text-foreground/80" title={selected.request.url}>
                 {urlName(selected.request.url)}
               </span>
-              <button onClick={() => setSelectedIndex(null)} className="text-muted-foreground hover:text-foreground ml-2 flex-shrink-0">
-                <X className="h-3.5 w-3.5" />
-              </button>
+              <span className="text-[10px] text-muted-foreground flex-shrink-0 font-mono">
+                {selected.response.status} · {formatDuration(selected.time)}
+              </span>
             </div>
-            <div className="p-3">
-              <Tabs defaultValue="headers">
-                <TabsList className="h-7 text-xs">
-                  <TabsTrigger value="headers"  className="text-xs h-6 px-2">Headers</TabsTrigger>
-                  <TabsTrigger value="preview"  className="text-xs h-6 px-2">Preview</TabsTrigger>
-                  <TabsTrigger value="response" className="text-xs h-6 px-2">Response</TabsTrigger>
-                  <TabsTrigger value="timing"   className="text-xs h-6 px-2">Timing</TabsTrigger>
-                </TabsList>
-                <TabsContent value="headers" className="mt-2">
-                  <HeadersPanel entry={selected} />
-                </TabsContent>
-                <TabsContent value="preview" className="mt-2">
-                  <JsonViewer
-                    data={tryParseJson(selected.response.content?.text) ?? selected.response.content}
-                    className="max-h-[400px]"
-                  />
-                </TabsContent>
-                <TabsContent value="response" className="mt-2">
-                  <pre className="rounded-md border border-border bg-card p-3 text-xs font-mono overflow-auto max-h-[400px] whitespace-pre-wrap break-all">
-                    {selected.response.content?.text ?? "(empty)"}
-                  </pre>
-                </TabsContent>
-                <TabsContent value="timing" className="mt-2">
-                  <TimingPanel timings={selected.timings} total={selected.time} />
-                </TabsContent>
-              </Tabs>
-            </div>
+            <button onClick={() => setSelectedIndex(null)} className="text-muted-foreground hover:text-foreground ml-2 flex-shrink-0">
+              <X className="h-3.5 w-3.5" />
+            </button>
           </div>
-        )}
-      </div>
+          {(() => {
+            const oktaRequestId = selected.response.headers.find(h => h.name.toLowerCase() === "x-okta-request-id")?.value;
+            const hostname      = (() => { try { return new URL(selected.request.url).hostname; } catch { return ""; } })();
+            const cached        = orgInfoCache[hostname];
+            const orgId         = cached?.id ?? null;
+            const cell          = cached?.cell ?? null;
+            const orgPending    = orgPendingRef.current.has(hostname);
+            return (
+              <div className="flex-1 overflow-auto min-h-0 p-3">
+                <Tabs defaultValue="headers">
+                  <TabsList className="h-7 text-xs">
+                    <TabsTrigger value="headers"  className="text-xs h-6 px-2">Headers</TabsTrigger>
+                    <TabsTrigger value="preview"  className="text-xs h-6 px-2">Preview</TabsTrigger>
+                    <TabsTrigger value="response" className="text-xs h-6 px-2">Response</TabsTrigger>
+                    <TabsTrigger value="timing"   className="text-xs h-6 px-2">Timing</TabsTrigger>
+                    {oktaRequestId && (
+                      <TabsTrigger value="splunk" className="text-xs h-6 px-2 text-violet-600 dark:text-violet-400 data-[state=active]:text-violet-700 dark:data-[state=active]:text-violet-300">
+                        Splunk
+                      </TabsTrigger>
+                    )}
+                  </TabsList>
+                  <TabsContent value="headers" className="mt-2">
+                    <HeadersPanel entry={selected} />
+                  </TabsContent>
+                  <TabsContent value="preview" className="mt-2">
+                    <JsonViewer
+                      data={tryParseJson(selected.response.content?.text) ?? selected.response.content}
+                      className="max-h-[220px]"
+                    />
+                  </TabsContent>
+                  <TabsContent value="response" className="mt-2">
+                    <pre className="rounded-md border border-border bg-card p-3 text-xs font-mono overflow-auto max-h-[220px] whitespace-pre-wrap break-all">
+                      {selected.response.content?.text ?? "(empty)"}
+                    </pre>
+                  </TabsContent>
+                  <TabsContent value="timing" className="mt-2">
+                    <TimingPanel timings={selected.timings} total={selected.time} />
+                  </TabsContent>
+                  {oktaRequestId && (
+                    <TabsContent value="splunk" className="mt-2">
+                      <SplunkPanel entry={selected} orgId={orgId} cell={cell} orgPending={orgPending || !(hostname in orgInfoCache)} />
+                    </TabsContent>
+                  )}
+                </Tabs>
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
       {/* Status bar */}
-      <div className="flex items-center gap-4 px-3 py-1.5 border-t border-border bg-muted/30 text-[11px] text-muted-foreground font-mono flex-wrap">
+      <div className="flex items-center gap-4 px-3 py-1.5 border-t border-border bg-muted/30 text-[11px] text-muted-foreground font-mono flex-wrap flex-shrink-0">
         <span>{filtered.length} requests</span>
         <span>
           {formatBytes(filtered.reduce((s, e) => s + Math.max(0, e.response.content?.size ?? e.response.bodySize ?? 0), 0))} transferred
