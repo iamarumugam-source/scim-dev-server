@@ -8,10 +8,11 @@ export interface ExtensionField {
   name:         string;
   type:         "string" | "integer" | "boolean" | "dateTime" | "reference" | "complex";
   multiValued?: boolean;
-  source:       "user_prop" | "random" | "static";
+  source:       "user_prop" | "random" | "static" | "raw_json";
   userProp?:    string;   // dot-path into the SCIM user (e.g. "name.formatted")
   generator?:   string;   // faker method path  (e.g. "person.jobTitle")
-  staticValue?: unknown;  // literal value
+  staticValue?: unknown;  // literal value (primitive)
+  rawJson?:     string;   // JSON string for complex objects / arrays
 }
 
 export interface SchemaExtension {
@@ -62,12 +63,50 @@ function callFaker(generatorPath: string): unknown {
   }
 }
 
+// ─── Template interpolation ────────────────────────────────────────────────────
+//
+// String values inside a raw_json template may contain {{...}} expressions:
+//   {{user.name.formatted}}   → reads that dot-path from the SCIM user object
+//   {{faker.person.jobTitle}} → calls the corresponding faker method
+//
+// Non-string values (numbers, booleans, null, nested objects/arrays) are left
+// as-is. Objects and arrays are walked recursively so deeply-nested templates
+// are resolved correctly.
+
+const EXPR_RE = /^\{\{(.+?)\}\}$/;
+
+function resolveExpr(expr: string, user: Record<string, unknown>): unknown {
+  const e = expr.trim();
+  if (e.startsWith("user."))  return getNestedValue(user, e.slice(5));
+  if (e.startsWith("faker.")) return callFaker(e.slice(6));
+  // bare path → try as user property
+  return getNestedValue(user, e);
+}
+
+function interpolate(value: unknown, user: Record<string, unknown>): unknown {
+  if (typeof value === "string") {
+    const m = value.match(EXPR_RE);
+    return m ? resolveExpr(m[1], user) : value;
+  }
+  if (Array.isArray(value)) return value.map((v) => interpolate(v, user));
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, interpolate(v, user)]),
+    );
+  }
+  return value;
+}
+
 function resolveField(field: ExtensionField, user: Record<string, unknown>): unknown {
   switch (field.source) {
-    case "user_prop": return getNestedValue(user, field.userProp ?? "");
-    case "random":    return callFaker(field.generator ?? "");
-    case "static":    return field.staticValue ?? null;
-    default:          return null;
+    case "user_prop":  return getNestedValue(user, field.userProp ?? "");
+    case "random":     return callFaker(field.generator ?? "");
+    case "static":     return field.staticValue ?? null;
+    case "raw_json": {
+      if (!field.rawJson?.trim()) return null;
+      try { return interpolate(JSON.parse(field.rawJson), user); } catch { return null; }
+    }
+    default: return null;
   }
 }
 
@@ -211,7 +250,20 @@ export class ExtensionService {
 
       const extData: Record<string, unknown> = {};
       for (const field of ext.fields) {
-        extData[field.name] = resolveField(field, user);
+        const value = resolveField(field, user);
+
+        if (!field.name.trim()) {
+          // Empty-named field: if the value is a plain object, spread its keys
+          // directly into the extension.  This lets you define the whole
+          // extension structure as a single raw_json template.
+          if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+            Object.assign(extData, value);
+          }
+          // Non-object values with no name are silently skipped.
+          continue;
+        }
+
+        extData[field.name] = value;
       }
 
       result[ext.schemaUrn] = extData;

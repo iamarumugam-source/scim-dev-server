@@ -1,5 +1,5 @@
 "use client";
-import { UsersRound, BuildingIcon, ChevronRight, ShieldCheck, Network, KeyRound, FlaskConical, Fingerprint } from "lucide-react";
+import { UsersRound, BuildingIcon, ChevronRight, ShieldCheck, Network, KeyRound, FlaskConical, Fingerprint, LayoutDashboard, Webhook, Layers, ScrollText, Puzzle, Activity, LockKeyhole } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -75,17 +75,17 @@ const FormSchema = z.object({
 
 // Menu items.
 const items = [
-  { title: "Dashboard",  url: "/scim",           icon: IconDashboard },
-  { title: "API",        url: "/scim/keys",       icon: Fingerprint   },
-  { title: "Users",      url: "/scim/users",      icon: UsersRound    },
-  { title: "Groups",     url: "/scim/groups",     icon: BuildingIcon  },
-  { title: "Logs",       url: "/scim/logs",       icon: IconLogs      },
-  { title: "Extensions", url: "/scim/extensions", icon: FlaskConical  },
+  { title: "Dashboard",  url: "/scim",           icon: LayoutDashboard },
+  { title: "API",        url: "/scim/keys",       icon: Webhook         },
+  { title: "Users",      url: "/scim/users",      icon: UsersRound      },
+  { title: "Groups",     url: "/scim/groups",     icon: Layers          },
+  { title: "Logs",       url: "/scim/logs",       icon: ScrollText      },
+  { title: "Extensions", url: "/scim/extensions", icon: Puzzle          },
 ];
 
 const otherTools = [
-  { title: "HAR Analyser", url: "/har-analyser", icon: Network  },
-  { title: "JWE Decoder",  url: "/jwe",          icon: KeyRound },
+  { title: "HAR Analyser", url: "/har-analyser", icon: Activity     },
+  { title: "JWE Decoder",  url: "/jwe",          icon: LockKeyhole  },
 ];
 
 type FormValues = z.infer<typeof FormSchema>;
