@@ -11,5 +11,5 @@ export default withAuth(
 );
 
 export const config = {
-  matcher: ["/((?!api|jwe|login|har-analyser|_next/static|_next/image|favicon\\.ico|.*\\.svg$|.*\\.png$|.*\\.jpg$|.*\\.jpeg$|.*\\.gif$|.*\\.webp$|.*\\.ico$).*)"],
+  matcher: ["/scim/:path*"],
 };

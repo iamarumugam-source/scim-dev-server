@@ -61,8 +61,8 @@ export default function ApiPage() {
   const userId = session?.user?.id ?? "";
 
   const scimEndpoint  = `${BASE_URL}/api/${userId}/scim/v2`;
-  const authorizeUrl  = `${BASE_URL}/api/${userId}/oauth2/authorize`;
-  const tokenUrl      = `${BASE_URL}/api/${userId}/oauth2/token`;
+  const authorizeUrl  = `${BASE_URL}/api/oauth2/authorize`;
+  const tokenUrl      = `${BASE_URL}/api/oauth2/token`;
 
   return (
     <div className="container mx-auto py-6 space-y-8">
