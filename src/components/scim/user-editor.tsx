@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { ScimUser } from "@/lib/scim/models/scimSchemas";
+import { useState, useCallback } from "react";
+import { ScimUser, ScimEntitlement, ScimRole } from "@/lib/scim/models/scimSchemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Pencil, Save, X, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Mail, Pencil, Save, X, Loader2, CheckCircle2, XCircle, BadgeCheck, Crown, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -69,9 +69,14 @@ function EditField({
 }
 
 export function UserEditor({ user, userId, onUpdate }: Props) {
-  const [mode,   setMode]   = useState<"view" | "edit">("view");
-  const [saving, setSaving] = useState(false);
-  const [draft,  setDraft]  = useState<ScimUser>(user);
+  const [mode,               setMode]               = useState<"view" | "edit">("view");
+  const [saving,             setSaving]             = useState(false);
+  const [draft,              setDraft]              = useState<ScimUser>(user);
+  const [allEntitlements,    setAllEntitlements]    = useState<ScimEntitlement[]>([]);
+  const [allRoles,           setAllRoles]           = useState<ScimRole[]>([]);
+  const [loadingCatalog,     setLoadingCatalog]     = useState(false);
+  const [entitlementSearch,  setEntitlementSearch]  = useState("");
+  const [roleSearch,         setRoleSearch]         = useState("");
 
   const set = (key: keyof ScimUser, value: any) =>
     setDraft((p) => ({ ...p, [key]: value }));
@@ -85,8 +90,59 @@ export function UserEditor({ user, userId, onUpdate }: Props) {
       emails: (p.emails || []).map((e) => (e.primary ? { ...e, value } : e)),
     }));
 
-  const startEdit = () => { setDraft({ ...user }); setMode("edit"); };
-  const cancel    = () => setMode("view");
+  const loadCatalog = useCallback(async () => {
+    if (allEntitlements.length > 0 || allRoles.length > 0) return;
+    setLoadingCatalog(true);
+    try {
+      const [entRes, roleRes] = await Promise.all([
+        fetch(`/api/${userId}/scim/v2/Entitlements?startIndex=1&count=200`),
+        fetch(`/api/${userId}/scim/v2/Roles?startIndex=1&count=200`),
+      ]);
+      if (entRes.ok)  setAllEntitlements((await entRes.json()).Resources  ?? []);
+      if (roleRes.ok) setAllRoles((await roleRes.json()).Resources ?? []);
+    } finally {
+      setLoadingCatalog(false);
+    }
+  }, [userId, allEntitlements.length, allRoles.length]);
+
+  const startEdit = () => { setDraft({ ...user }); setMode("edit"); loadCatalog(); };
+  const cancel    = () => { setMode("view"); setEntitlementSearch(""); setRoleSearch(""); };
+
+  const addEntitlement = (e: ScimEntitlement) => {
+    if ((draft.entitlements ?? []).some((x) => x.value === e.id)) return;
+    set("entitlements", [...(draft.entitlements ?? []), { value: e.id, display: e.displayName, type: e.type }]);
+    setEntitlementSearch("");
+  };
+
+  const removeEntitlement = (id: string) =>
+    set("entitlements", (draft.entitlements ?? []).filter((x) => x.value !== id));
+
+  const addRole = (r: ScimRole) => {
+    if ((draft.roles ?? []).some((x) => x.value === r.id)) return;
+    set("roles", [...(draft.roles ?? []), { value: r.id, display: r.displayName }]);
+    setRoleSearch("");
+  };
+
+  const removeRole = (id: string) =>
+    set("roles", (draft.roles ?? []).filter((x) => x.value !== id));
+
+  const assignedEntIds = new Set((draft.entitlements ?? []).map((e) => e.value));
+  const assignedRoleIds = new Set((draft.roles ?? []).map((r) => r.value));
+
+  const filteredEntitlements = entitlementSearch.trim().length > 0
+    ? allEntitlements.filter((e) =>
+        !assignedEntIds.has(e.id) &&
+        (e.displayName.toLowerCase().includes(entitlementSearch.toLowerCase()) ||
+         e.type.toLowerCase().includes(entitlementSearch.toLowerCase()))
+      ).slice(0, 6)
+    : [];
+
+  const filteredRoles = roleSearch.trim().length > 0
+    ? allRoles.filter((r) =>
+        !assignedRoleIds.has(r.id) &&
+        r.displayName.toLowerCase().includes(roleSearch.toLowerCase())
+      ).slice(0, 6)
+    : [];
 
   const save = async () => {
     setSaving(true);
@@ -270,6 +326,118 @@ export function UserEditor({ user, userId, onUpdate }: Props) {
             </div>
             {mode === "edit" && (
               <p className="text-[11px] text-muted-foreground/60">Manage memberships from the Groups page.</p>
+            )}
+          </div>
+        )}
+
+        {(mode === "edit" || (draft.entitlements && draft.entitlements.length > 0)) && (
+          <div className="space-y-2">
+            <SectionLabel>Entitlements</SectionLabel>
+
+            {/* Assigned entitlements */}
+            <div className="flex flex-wrap gap-1.5 min-h-[24px]">
+              {(mode === "edit" ? draft.entitlements : user.entitlements ?? [])?.map((e) => (
+                <span
+                  key={e.value}
+                  className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+                >
+                  <BadgeCheck className="h-3 w-3" />
+                  {e.display ?? e.value}
+                  {e.type && <span className="opacity-60">· {e.type}</span>}
+                  {mode === "edit" && (
+                    <button type="button" onClick={() => removeEntitlement(e.value)} className="ml-0.5 hover:text-destructive transition-colors">
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  )}
+                </span>
+              ))}
+              {(mode === "edit" ? draft.entitlements : user.entitlements ?? [])?.length === 0 && mode !== "edit" && (
+                <span className="text-xs text-muted-foreground/40">None assigned.</span>
+              )}
+            </div>
+
+            {/* Add entitlement in edit mode */}
+            {mode === "edit" && (
+              <div className="relative">
+                <Input
+                  className="h-7 text-xs"
+                  placeholder={loadingCatalog ? "Loading…" : "Search entitlements to assign…"}
+                  value={entitlementSearch}
+                  disabled={loadingCatalog}
+                  onChange={(e) => setEntitlementSearch(e.target.value)}
+                />
+                {filteredEntitlements.length > 0 && (
+                  <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover shadow-md overflow-hidden">
+                    {filteredEntitlements.map((e) => (
+                      <button
+                        key={e.id} type="button"
+                        className="flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted transition-colors text-left"
+                        onMouseDown={() => addEntitlement(e)}
+                      >
+                        <BadgeCheck className="h-3 w-3 text-emerald-500 flex-shrink-0" />
+                        <span className="flex-1 font-medium truncate">{e.displayName}</span>
+                        <span className="text-muted-foreground text-[10px] flex-shrink-0">{e.type}</span>
+                        <Plus className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {(mode === "edit" || (draft.roles && draft.roles.length > 0)) && (
+          <div className="space-y-2">
+            <SectionLabel>Roles</SectionLabel>
+
+            {/* Assigned roles */}
+            <div className="flex flex-wrap gap-1.5 min-h-[24px]">
+              {(mode === "edit" ? draft.roles : user.roles ?? [])?.map((r) => (
+                <span
+                  key={r.value}
+                  className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800"
+                >
+                  <Crown className="h-3 w-3" />
+                  {r.display ?? r.value}
+                  {mode === "edit" && (
+                    <button type="button" onClick={() => removeRole(r.value)} className="ml-0.5 hover:text-destructive transition-colors">
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  )}
+                </span>
+              ))}
+              {(mode === "edit" ? draft.roles : user.roles ?? [])?.length === 0 && mode !== "edit" && (
+                <span className="text-xs text-muted-foreground/40">None assigned.</span>
+              )}
+            </div>
+
+            {/* Add role in edit mode */}
+            {mode === "edit" && (
+              <div className="relative">
+                <Input
+                  className="h-7 text-xs"
+                  placeholder={loadingCatalog ? "Loading…" : "Search roles to assign…"}
+                  value={roleSearch}
+                  disabled={loadingCatalog}
+                  onChange={(e) => setRoleSearch(e.target.value)}
+                />
+                {filteredRoles.length > 0 && (
+                  <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover shadow-md overflow-hidden">
+                    {filteredRoles.map((r) => (
+                      <button
+                        key={r.id} type="button"
+                        className="flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted transition-colors text-left"
+                        onMouseDown={() => addRole(r)}
+                      >
+                        <Crown className="h-3 w-3 text-rose-500 flex-shrink-0" />
+                        <span className="flex-1 font-medium truncate">{r.displayName}</span>
+                        <Plus className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}

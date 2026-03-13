@@ -1,5 +1,5 @@
 "use client";
-import { UsersRound, BuildingIcon, ChevronRight, ShieldCheck, Network, KeyRound, FlaskConical, Fingerprint, LayoutDashboard, Webhook, Layers, ScrollText, Puzzle, Activity, LockKeyhole, BookOpen, WandSparkles, Eraser } from "lucide-react";
+import { UsersRound, BuildingIcon, ChevronRight, ShieldCheck, Network, KeyRound, FlaskConical, Fingerprint, LayoutDashboard, Webhook, Layers, ScrollText, Puzzle, Activity, LockKeyhole, BookOpen, WandSparkles, Eraser, BadgeCheck, Crown } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -75,8 +75,10 @@ const items = [
   { title: "Dashboard",  url: "/scim",           icon: LayoutDashboard },
   { title: "API",        url: "/scim/keys",       icon: Webhook         },
   { title: "Users",      url: "/scim/users",      icon: UsersRound      },
-  { title: "Groups",     url: "/scim/groups",     icon: Layers          },
-  { title: "Logs",       url: "/scim/logs",       icon: ScrollText      },
+  { title: "Groups",       url: "/scim/groups",       icon: Layers     },
+  { title: "Entitlements", url: "/scim/entitlements", icon: BadgeCheck },
+  { title: "Roles",        url: "/scim/roles",        icon: Crown      },
+  { title: "Logs",         url: "/scim/logs",         icon: ScrollText },
   { title: "Extensions", url: "/scim/extensions", icon: Puzzle          },
 ];
 
@@ -129,10 +131,10 @@ const userId = session?.user?.id;
     async (data: FormValues) => {
       if (isGenerating) return;
 
-      if (data.deleteExisting) toast.info("Removing existing data...");
+      if (data.deleteExisting) toast.info("Removing existing users, groups, entitlements, and roles...");
 
       setIsGenerating(true);
-      toast.info("Generating new sample data...");
+      toast.info("Generating users, groups, entitlements, and roles...");
       try {
         const res = await fetch(`/api/${userId}/scim/v2/generate`, {
           method: "POST",
@@ -143,9 +145,8 @@ const userId = session?.user?.id;
           throw new Error(errorData.detail || "An unknown error occurred.");
         }
 
-        toast.success(
-          "New data generated successfully! Fetching updated lists...",
-        );
+        const result = await res.json();
+        toast.success(result.message ?? "Data generated successfully.");
 
         clearCache();
 
@@ -167,7 +168,7 @@ const userId = session?.user?.id;
 
     setIsReseting(true);
 
-    toast.error("Deleting/Resetting all users and groups");
+    toast.info("Deleting all users, groups, entitlements, roles, and logs...");
 
     try {
       const res = await fetch(`/api/${userId}/resourceReset`, {
@@ -180,7 +181,7 @@ const userId = session?.user?.id;
         throw new Error(errorData.detail || "An unknown error occurred.");
       }
 
-      toast.success("Data reset completed...");
+      toast.success("All data reset. Users, groups, entitlements, roles, and logs cleared.");
 
       clearCache();
 
@@ -190,7 +191,7 @@ const userId = session?.user?.id;
         window.location.reload();
       }, 1500);
     } catch (e: any) {
-      toast.error(`Error generating data: ${e.message}`);
+      toast.error(`Error resetting data: ${e.message}`);
     } finally {
       setIsReseting(false);
     }
@@ -240,8 +241,8 @@ const userId = session?.user?.id;
                         How would you like to generate mock data?
                       </DialogTitle>
                       <DialogDescription>
-                        You can create new Users on top of the existing list or
-                        you can delete existing users and groups and add a new.
+                        Generates users, groups, entitlements, and roles. You
+                        can add on top of existing data or wipe it first.
                       </DialogDescription>
                     </DialogHeader>
                     <Form {...form}>
@@ -291,9 +292,9 @@ const userId = session?.user?.id;
                                   Delete existing mock data?
                                 </FormLabel>
                                 <FormDescription>
-                                  If checked, all existing users and groups for
-                                  your account will be removed before new ones
-                                  are generated.
+                                  If checked, all existing users, groups,
+                                  entitlements, and roles will be removed before
+                                  new ones are generated.
                                 </FormDescription>
                               </div>
                             </FormItem>
@@ -330,8 +331,8 @@ const userId = session?.user?.id;
                       <DialogTitle>Reset Data</DialogTitle>
                       <DialogDescription>
                         This action cannot be undone. Are you sure you want to
-                        permanently delete users, groups and logs from this
-                        server?
+                        permanently delete all users, groups, entitlements,
+                        roles, and logs from this server?
                       </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>

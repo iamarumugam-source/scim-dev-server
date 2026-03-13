@@ -5,7 +5,7 @@
 
 // Basic SCIM Attribute Types
 interface Meta {
-  resourceType: "User" | "Group";
+  resourceType: "User" | "Group" | "Entitlement";
   created: string;
   lastModified: string;
   location: string;
@@ -41,6 +41,18 @@ export interface ScimGroupMember {
   $ref: string;
 }
 
+export interface ScimEntitlementAttribute {
+  value: string;
+  display?: string;
+  type?: string;
+}
+
+export interface ScimRoleAttribute {
+  value: string;
+  display?: string;
+  primary?: boolean;
+}
+
 export interface ScimUser {
   schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"];
   id: string;
@@ -57,6 +69,8 @@ export interface ScimUser {
   active: boolean;
   emails: Email[];
   groups?: ScimGroupMember[];
+  entitlements?: ScimEntitlementAttribute[];
+  roles?: ScimRoleAttribute[];
   meta: Meta;
 }
 
@@ -65,6 +79,23 @@ export interface ScimGroup {
   id: string;
   displayName: string;
   members: Member[];
+  meta: Meta;
+}
+
+export interface ScimEntitlement {
+  schemas: ["urn:okta:scim:schemas:core:1.0:Entitlement"];
+  id: string;
+  displayName: string;
+  type: string;
+  description?: string;
+  meta: Meta;
+}
+
+export interface ScimRole {
+  schemas: ["urn:okta:scim:schemas:core:1.0:Role"];
+  id: string;
+  displayName: string;
+  description?: string;
   meta: Meta;
 }
 

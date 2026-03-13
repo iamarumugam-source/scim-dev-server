@@ -12,6 +12,22 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     console.log(`Removing all users and groups for tenant: ${userId}...`);
 
+    const { error: deleteRolesError } = await supabase
+      .from("scim_roles")
+      .delete()
+      .eq("tenantId", userId);
+    if (deleteRolesError) {
+      throw new Error(`Failed to delete existing roles: ${deleteRolesError.message}`);
+    }
+
+    const { error: deleteEntitlementsError } = await supabase
+      .from("scim_entitlements")
+      .delete()
+      .eq("tenantId", userId);
+    if (deleteEntitlementsError) {
+      throw new Error(`Failed to delete existing entitlements: ${deleteEntitlementsError.message}`);
+    }
+
     const { error: deleteGroupsError } = await supabase
       .from("scim_groups")
       .delete()

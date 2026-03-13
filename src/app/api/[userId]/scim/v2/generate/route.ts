@@ -1,11 +1,37 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { supabase } from "@/lib/scim/db";
 import { faker } from "@faker-js/faker";
-import { ScimUser, ScimGroup } from "@/lib/scim/models/scimSchemas";
+import { ScimUser, ScimGroup, ScimEntitlement, ScimRole } from "@/lib/scim/models/scimSchemas";
 
 interface RouteParams {
   params: { userId: string };
 }
+
+const ROLES_CATALOG: { displayName: string; description: string }[] = [
+  { displayName: "Super Admin",        description: "Full system access across all tenants" },
+  { displayName: "Admin",              description: "Administrative access within the tenant" },
+  { displayName: "Manager",            description: "Team management and reporting capabilities" },
+  { displayName: "Developer",          description: "Access to development tools and environments" },
+  { displayName: "Read Only",          description: "View-only access to all resources" },
+  { displayName: "Support Agent",      description: "Customer support tooling access" },
+  { displayName: "Auditor",            description: "Read access for compliance and audit purposes" },
+  { displayName: "Security Analyst",   description: "Access to security dashboards and alerts" },
+];
+
+const ENTITLEMENT_CATALOG: { displayName: string; type: string; description: string }[] = [
+  { displayName: "Admin Access",           type: "role",       description: "Full administrative privileges" },
+  { displayName: "Read Only",              type: "role",       description: "View-only access to all resources" },
+  { displayName: "Developer",              type: "role",       description: "Access to development environments and tools" },
+  { displayName: "Manager",               type: "role",       description: "Team management and reporting access" },
+  { displayName: "Billing",               type: "permission", description: "View and manage billing information" },
+  { displayName: "Audit Logs",            type: "permission", description: "Access to audit trail and compliance logs" },
+  { displayName: "API Access",            type: "permission", description: "Programmatic access via API keys" },
+  { displayName: "Premium Support",       type: "license",    description: "Priority support with SLA guarantees" },
+  { displayName: "Standard License",      type: "license",    description: "Standard product license" },
+  { displayName: "Enterprise License",    type: "license",    description: "Full enterprise feature set" },
+  { displayName: "SSO",                   type: "feature",    description: "Single sign-on integration" },
+  { displayName: "Advanced Analytics",    type: "feature",    description: "Access to advanced reporting and analytics" },
+];
 
 const DEPARTMENTS = [
   "Engineering", "Product", "Design", "Marketing", "Sales",
@@ -51,6 +77,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const groupCount     = typeof body.groupCount === "number" ? Math.min(body.groupCount, 100) : 5;
 
     if (deleteExisting) {
+      const { error: er } = await supabase.from("scim_roles").delete().eq("tenantId", userId);
+      if (er) throw new Error(`Failed to delete roles: ${er.message}`);
+      const { error: ee } = await supabase.from("scim_entitlements").delete().eq("tenantId", userId);
+      if (ee) throw new Error(`Failed to delete entitlements: ${ee.message}`);
       const { error: eg } = await supabase.from("scim_groups").delete().eq("tenantId", userId);
       if (eg) throw new Error(`Failed to delete groups: ${eg.message}`);
       const { error: eu } = await supabase.from("scim_users").delete().eq("tenantId", userId);
@@ -166,6 +196,74 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       });
     }
 
+    // Generate a subset of entitlements from the catalog
+    const entitlementCount = faker.number.int({ min: 5, max: ENTITLEMENT_CATALOG.length });
+    const selectedCatalog  = faker.helpers.shuffle([...ENTITLEMENT_CATALOG]).slice(0, entitlementCount);
+    const entitlements: ScimEntitlement[] = selectedCatalog.map((e) => {
+      const id  = faker.string.uuid();
+      const now = new Date().toISOString();
+      return {
+        schemas:     ["urn:okta:scim:schemas:core:1.0:Entitlement"],
+        id,
+        displayName: e.displayName,
+        type:        e.type,
+        description: e.description,
+        meta: {
+          resourceType: "Entitlement",
+          created:      now,
+          lastModified: now,
+          location:     `${BASE_URL}/api/${userId}/scim/v2/Entitlements/${id}`,
+          version:      `W/"${Date.now()}"`,
+        },
+      };
+    });
+
+    // Assign 0–2 random entitlements to each new user
+    if (entitlements.length > 0) {
+      users.forEach((user) => {
+        const count = faker.number.int({ min: 0, max: Math.min(2, entitlements.length) });
+        if (count === 0) return;
+        user.entitlements = faker.helpers.shuffle([...entitlements]).slice(0, count).map((e) => ({
+          value:   e.id,
+          display: e.displayName,
+          type:    e.type,
+        }));
+      });
+    }
+
+    // Generate roles from catalog
+    const roleCount    = faker.number.int({ min: 3, max: ROLES_CATALOG.length });
+    const selectedRoles = faker.helpers.shuffle([...ROLES_CATALOG]).slice(0, roleCount);
+    const roles: ScimRole[] = selectedRoles.map((r) => {
+      const id  = faker.string.uuid();
+      const now = new Date().toISOString();
+      return {
+        schemas:     ["urn:okta:scim:schemas:core:1.0:Role"],
+        id,
+        displayName: r.displayName,
+        description: r.description,
+        meta: {
+          resourceType: "Entitlement",
+          created:      now,
+          lastModified: now,
+          location:     `${BASE_URL}/api/${userId}/scim/v2/Roles/${id}`,
+          version:      `W/"${Date.now()}"`,
+        },
+      };
+    });
+
+    // Assign 0–1 roles to each new user (most users have one role)
+    if (roles.length > 0) {
+      users.forEach((user) => {
+        const count = faker.number.int({ min: 0, max: Math.min(1, roles.length) });
+        if (count === 0) return;
+        user.roles = faker.helpers.shuffle([...roles]).slice(0, count).map((r) => ({
+          value:   r.id,
+          display: r.displayName,
+        }));
+      });
+    }
+
     if (users.length > 0) {
       const { error } = await supabase.from("scim_users").insert(
         users.map((u) => ({ id: u.id, username: u.userName, active: u.active, resource: u, tenantId: userId }))
@@ -188,8 +286,22 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       if (error) throw new Error(`Group insertion failed: ${error.message}`);
     }
 
+    if (entitlements.length > 0) {
+      const { error } = await supabase.from("scim_entitlements").insert(
+        entitlements.map((e) => ({ id: e.id, display_name: e.displayName, resource: e, tenantId: userId }))
+      );
+      if (error) throw new Error(`Entitlement insertion failed: ${error.message}`);
+    }
+
+    if (roles.length > 0) {
+      const { error } = await supabase.from("scim_roles").insert(
+        roles.map((r) => ({ id: r.id, display_name: r.displayName, resource: r, tenantId: userId }))
+      );
+      if (error) throw new Error(`Role insertion failed: ${error.message}`);
+    }
+
     return NextResponse.json({
-      message: `Generated ${users.length} users and ${groups.length} groups. Updated ${existingUsers.length} existing users.`,
+      message: `Generated ${users.length} users, ${groups.length} groups, ${entitlements.length} entitlements, and ${roles.length} roles. Updated ${existingUsers.length} existing users.`,
     });
   } catch (error: any) {
     console.error("Seed failed:", error);

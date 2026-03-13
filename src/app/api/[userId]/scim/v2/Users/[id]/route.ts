@@ -90,6 +90,31 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   }
 }
 
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
+  const { userId, id } = await params;
+  const unauthorizedResponse = await protectWithApiKey(request);
+  if (unauthorizedResponse) {
+    return createAndLogResponse(
+      request,
+      { detail: "Unauthorized", status: "401", schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"] },
+      { status: 401 }, userId,
+    );
+  }
+  try {
+    const body        = await request.clone().json();
+    const patchedUser = await userService.patchUser(id, body);
+    if (!patchedUser) return notFoundResponse(request, userId);
+    const augmented = await withExtensions(patchedUser as unknown as Record<string, unknown>, userId);
+    return createAndLogResponse(request, augmented, { status: 200 }, userId);
+  } catch (error: any) {
+    return createAndLogResponse(
+      request,
+      { schemas: ["urn:ietf:params:scim:api:2.0:Error"], detail: error.message, status: "400" },
+      { status: 400 }, userId,
+    );
+  }
+}
+
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const { userId, id } = await params;
   const unauthorizedResponse = await protectWithApiKey(request);

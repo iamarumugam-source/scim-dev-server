@@ -1,6 +1,17 @@
 import { supabase } from "../db";
-import { ScimUser } from "../models/scimSchemas";
+import { ScimUser, ScimEntitlementAttribute, ScimRoleAttribute } from "../models/scimSchemas";
 import { v4 as uuidv4 } from "uuid";
+
+interface PatchOperation {
+  op: "add" | "replace" | "remove";
+  path?: string;
+  value?: any;
+}
+
+interface ScimPatchOp {
+  schemas: ["urn:ietf:params:scim:api:messages:2.0:PatchOp"];
+  Operations: PatchOperation[];
+}
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 const TABLE_NAME = "scim_users";
@@ -164,6 +175,84 @@ export class UserService {
     }
 
     return updatedUser;
+  }
+
+  public async patchUser(id: string, patchData: ScimPatchOp): Promise<ScimUser | null> {
+    const original = await this.getUserById(id);
+    if (!original) return null;
+
+    const user: ScimUser = JSON.parse(JSON.stringify(original));
+
+    for (const op of patchData.Operations) {
+      const opLower = op.op.toLowerCase();
+      const path    = op.path ?? "";
+
+      switch (opLower) {
+        case "replace": {
+          if (!path && typeof op.value === "object" && op.value !== null) {
+            // replace entire attribute map (e.g. { active: false })
+            Object.assign(user, op.value);
+          } else if (path === "active") {
+            user.active = Boolean(op.value);
+          } else if (path === "displayName") {
+            user.displayName = op.value;
+          } else if (path === "entitlements") {
+            user.entitlements = Array.isArray(op.value) ? op.value as ScimEntitlementAttribute[] : [];
+          } else if (path === "roles") {
+            user.roles = Array.isArray(op.value) ? op.value as ScimRoleAttribute[] : [];
+          }
+          break;
+        }
+
+        case "add": {
+          if (path === "entitlements" || path === "roles") {
+            const incoming = (Array.isArray(op.value) ? op.value : [op.value]) as any[];
+            if (path === "entitlements") {
+              const existing = new Set((user.entitlements ?? []).map((e) => e.value));
+              const toAdd = incoming.filter((e) => !existing.has(e.value));
+              user.entitlements = [...(user.entitlements ?? []), ...toAdd];
+            } else {
+              const existing = new Set((user.roles ?? []).map((r) => r.value));
+              const toAdd = incoming.filter((r) => !existing.has(r.value));
+              user.roles = [...(user.roles ?? []), ...toAdd];
+            }
+          } else if (!path && typeof op.value === "object" && op.value !== null) {
+            Object.assign(user, op.value);
+          }
+          break;
+        }
+
+        case "remove": {
+          // path like: entitlements[value eq "id123"]  or just "entitlements"
+          const entMatch = path.match(/^entitlements(?:\[value eq "(.+?)"\])?$/);
+          const roleMatch = path.match(/^roles(?:\[value eq "(.+?)"\])?$/);
+
+          if (entMatch) {
+            const targetId = entMatch[1];
+            user.entitlements = targetId
+              ? (user.entitlements ?? []).filter((e) => e.value !== targetId)
+              : [];
+          } else if (roleMatch) {
+            const targetId = roleMatch[1];
+            user.roles = targetId
+              ? (user.roles ?? []).filter((r) => r.value !== targetId)
+              : [];
+          }
+          break;
+        }
+      }
+    }
+
+    const now = new Date().toISOString();
+    user.meta = { ...user.meta, lastModified: now, version: `W/"${Date.now()}"` };
+
+    const { error } = await supabase
+      .from(TABLE_NAME)
+      .update({ active: user.active, resource: user, last_modified_at: now })
+      .eq("id", id);
+
+    if (error) throw new Error(`Supabase error patching user: ${error.message}`);
+    return user;
   }
 
   public async deleteUser(id: string): Promise<boolean> {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import {
-  Users, KeyRound,
+  Users, KeyRound, BadgeCheck, Crown,
   CheckCircle2, XCircle, AlertCircle, TrendingUp, Activity,
   Globe, RefreshCw, Layers,
 } from "lucide-react";
@@ -27,9 +27,11 @@ interface Stats {
     topEndpoints: TopEndpoint[];
     recentErrors: RecentError[];
   };
-  users:    { total: number; active: number; inactive: number };
-  groups:   { total: number };
-  apiKeys:  { total: number };
+  users:        { total: number; active: number; inactive: number };
+  groups:       { total: number };
+  entitlements: { total: number };
+  roles:        { total: number };
+  apiKeys:      { total: number };
   pageViews:{ total: number; last7days: number; byPage: Record<string, number> };
 }
 
@@ -184,12 +186,14 @@ export default function ScimDashboard() {
             Refresh
           </Button>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {[
-            { label: "Provisioned Users", href: "/scim/users",  icon: Users,      color: "text-blue-600 dark:text-blue-400",    bg: "bg-blue-50 dark:bg-blue-950/40",    value: stats?.users.total   ?? null },
-            { label: "Groups",            href: "/scim/groups", icon: Layers,     color: "text-violet-600 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-950/40", value: stats?.groups.total  ?? null },
-            { label: "API Keys",          href: "/scim/keys",   icon: KeyRound,   color: "text-amber-600 dark:text-amber-400",   bg: "bg-amber-50 dark:bg-amber-950/40",   value: stats?.apiKeys.total ?? null },
-            { label: "Total API Calls",   href: "/scim/logs",   icon: Activity,   color: "text-teal-600 dark:text-teal-400",     bg: "bg-teal-50 dark:bg-teal-950/40",     value: stats?.calls.total   ?? null },
+            { label: "Provisioned Users", href: "/scim/users",         icon: Users,      color: "text-blue-600 dark:text-blue-400",       bg: "bg-blue-50 dark:bg-blue-950/40",       value: stats?.users.total        ?? null },
+            { label: "Groups",            href: "/scim/groups",        icon: Layers,     color: "text-violet-600 dark:text-violet-400",   bg: "bg-violet-50 dark:bg-violet-950/40",   value: stats?.groups.total       ?? null },
+            { label: "Entitlements",      href: "/scim/entitlements",  icon: BadgeCheck, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950/40", value: stats?.entitlements.total ?? null },
+            { label: "Roles",             href: "/scim/roles",         icon: Crown,      color: "text-rose-600 dark:text-rose-400",       bg: "bg-rose-50 dark:bg-rose-950/40",       value: stats?.roles.total        ?? null },
+            { label: "API Keys",          href: "/scim/keys",          icon: KeyRound,   color: "text-amber-600 dark:text-amber-400",     bg: "bg-amber-50 dark:bg-amber-950/40",     value: stats?.apiKeys.total      ?? null },
+            { label: "Total API Calls",   href: "/scim/logs",          icon: Activity,   color: "text-teal-600 dark:text-teal-400",       bg: "bg-teal-50 dark:bg-teal-950/40",       value: stats?.calls.total        ?? null },
           ].map(({ label, href, icon: Icon, color, bg, value }) => (
             <Link key={label} href={href} className="group">
               <Card className="flex items-center gap-3 p-4 hover:border-primary/40 hover:shadow-sm transition-all cursor-pointer">

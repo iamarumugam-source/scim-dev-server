@@ -20,6 +20,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       groupsResult,
       keysResult,
       analyticsResult,
+      entitlementsResult,
+      rolesResult,
     ] = await Promise.all([
       // Recent 1 000 logs for computing detailed stats
       supabase
@@ -61,14 +63,28 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         .eq("tenantId", userId)
         .order("created_at", { ascending: false })
         .limit(500),
+
+      // Entitlements — total count
+      supabase
+        .from("scim_entitlements")
+        .select("id", { count: "exact", head: true })
+        .eq("tenantId", userId),
+
+      // Roles — total count
+      supabase
+        .from("scim_roles")
+        .select("id", { count: "exact", head: true })
+        .eq("tenantId", userId),
     ]);
 
-    const logs       = logsRecent.data      ?? [];
-    const totalCalls = logsTotalResult.count ?? 0;
-    const users      = usersResult.data      ?? [];
-    const totalGroups = groupsResult.count   ?? 0;
-    const totalKeys  = keysResult.count      ?? 0;
-    const analytics  = analyticsResult.data  ?? [];
+    const logs              = logsRecent.data          ?? [];
+    const totalCalls        = logsTotalResult.count    ?? 0;
+    const users             = usersResult.data         ?? [];
+    const totalGroups       = groupsResult.count       ?? 0;
+    const totalKeys         = keysResult.count         ?? 0;
+    const analytics         = analyticsResult.data     ?? [];
+    const totalEntitlements = entitlementsResult.count ?? 0;
+    const totalRoles        = rolesResult.count        ?? 0;
 
     // ── Call stats ──────────────────────────────────────────────────────────
 
@@ -179,8 +195,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         active:   activeUsers,
         inactive: inactiveUsers,
       },
-      groups:  { total: totalGroups },
-      apiKeys: { total: totalKeys },
+      groups:       { total: totalGroups },
+      entitlements: { total: totalEntitlements },
+      roles:        { total: totalRoles },
+      apiKeys:      { total: totalKeys },
       pageViews: {
         total:    analytics.length,
         last7days: last7daysViews,
