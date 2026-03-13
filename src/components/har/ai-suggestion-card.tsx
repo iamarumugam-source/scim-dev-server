@@ -197,7 +197,7 @@ export function AiSuggestionCard({ entry, onClose }: Props) {
 
   const copyForLLM = () => {
     navigator.clipboard.writeText(buildClipboardText(entry));
-    toast.success("Context copied — paste into any LLM chat.");
+    toast.success("Context copied. Paste into any LLM chat.");
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -330,6 +330,12 @@ export function AiSuggestionCard({ entry, onClose }: Props) {
           <p className="font-medium text-xs">Click "Analyse with AI" to get suggestions for this error.</p>
           <p className="text-[11px]">
             The LLM will reference developer.okta.com to provide specific troubleshooting steps.
+          </p>
+          <p className="text-[10px] text-muted-foreground/50 pt-2 mt-1 border-t border-border/40">
+            AI analysis is only available when running locally. Requires{" "}
+            <code className="font-mono">LLM_BASE_URL</code>,{" "}
+            <code className="font-mono">LLM_API_KEY</code>, and{" "}
+            <code className="font-mono">LLM_MODEL</code> to be configured.
           </p>
         </div>
       )}

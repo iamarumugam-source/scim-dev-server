@@ -205,6 +205,12 @@ export function JsonTemplateConverter() {
             <code className="font-mono text-primary">{"{{faker.*}}"}</code> expressions.
             Ask follow-up messages to refine.
           </p>
+          <p className="text-[10px] text-muted-foreground/50 mt-1">
+            Only available when running locally. Requires{" "}
+            <code className="font-mono">LLM_BASE_URL</code>,{" "}
+            <code className="font-mono">LLM_API_KEY</code>, and{" "}
+            <code className="font-mono">LLM_MODEL</code>.
+          </p>
         </SheetHeader>
 
         {/* Messages */}
