@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import {
-  Users, Building, KeyRound, ScrollText, ArrowRight,
+  Users, KeyRound,
   CheckCircle2, XCircle, AlertCircle, TrendingUp, Activity,
-  Globe, RefreshCw,
+  Globe, RefreshCw, Layers,
 } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -33,14 +33,6 @@ interface Stats {
   pageViews:{ total: number; last7days: number; byPage: Record<string, number> };
 }
 
-// ─── Quick links ──────────────────────────────────────────────────────────────
-
-const QUICK_LINKS = [
-  { title: "Users",    href: "/scim/users",  icon: Users,      color: "text-blue-600 dark:text-blue-400",   bg: "bg-blue-50 dark:bg-blue-950/40",   description: "View and manage provisioned users" },
-  { title: "Groups",   href: "/scim/groups", icon: Building,   color: "text-violet-600 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-950/40", description: "Inspect groups and their members" },
-  { title: "API Keys", href: "/scim/keys",   icon: KeyRound,   color: "text-amber-600 dark:text-amber-400",  bg: "bg-amber-50 dark:bg-amber-950/40",   description: "Manage SCIM bearer tokens" },
-  { title: "Logs",     href: "/scim/logs",   icon: ScrollText, color: "text-teal-600 dark:text-teal-400",    bg: "bg-teal-50 dark:bg-teal-950/40",     description: "Inspect incoming provisioning requests" },
-];
 
 // ─── Method colours ───────────────────────────────────────────────────────────
 
@@ -194,23 +186,25 @@ export default function ScimDashboard() {
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
-            { label: "Provisioned Users",  icon: Users,      color: "text-blue-600 dark:text-blue-400",   bg: "bg-blue-50 dark:bg-blue-950/40",   value: stats?.users.total   ?? null },
-            { label: "Groups",             icon: Building,   color: "text-violet-600 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-950/40", value: stats?.groups.total  ?? null },
-            { label: "API Keys",           icon: KeyRound,   color: "text-amber-600 dark:text-amber-400",  bg: "bg-amber-50 dark:bg-amber-950/40",   value: stats?.apiKeys.total ?? null },
-            { label: "Total API Calls",    icon: Activity,   color: "text-teal-600 dark:text-teal-400",    bg: "bg-teal-50 dark:bg-teal-950/40",     value: stats?.calls.total   ?? null },
-          ].map(({ label, icon: Icon, color, bg, value }) => (
-            <Card key={label} className="flex items-center gap-3 p-4">
-              <div className={cn("flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg", bg)}>
-                <Icon className={cn("h-4 w-4", color)} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-                {isLoading || value === null
-                  ? <Skeleton className="mt-1 h-6 w-12" />
-                  : <p className="text-xl font-bold tabular-nums mt-0.5">{value.toLocaleString()}</p>
-                }
-              </div>
-            </Card>
+            { label: "Provisioned Users", href: "/scim/users",  icon: Users,      color: "text-blue-600 dark:text-blue-400",    bg: "bg-blue-50 dark:bg-blue-950/40",    value: stats?.users.total   ?? null },
+            { label: "Groups",            href: "/scim/groups", icon: Layers,     color: "text-violet-600 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-950/40", value: stats?.groups.total  ?? null },
+            { label: "API Keys",          href: "/scim/keys",   icon: KeyRound,   color: "text-amber-600 dark:text-amber-400",   bg: "bg-amber-50 dark:bg-amber-950/40",   value: stats?.apiKeys.total ?? null },
+            { label: "Total API Calls",   href: "/scim/logs",   icon: Activity,   color: "text-teal-600 dark:text-teal-400",     bg: "bg-teal-50 dark:bg-teal-950/40",     value: stats?.calls.total   ?? null },
+          ].map(({ label, href, icon: Icon, color, bg, value }) => (
+            <Link key={label} href={href} className="group">
+              <Card className="flex items-center gap-3 p-4 hover:border-primary/40 hover:shadow-sm transition-all cursor-pointer">
+                <div className={cn("flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg", bg)}>
+                  <Icon className={cn("h-4 w-4", color)} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground group-hover:text-primary transition-colors">{label}</p>
+                  {isLoading || value === null
+                    ? <Skeleton className="mt-1 h-6 w-12" />
+                    : <p className="text-xl font-bold tabular-nums mt-0.5">{value.toLocaleString()}</p>
+                  }
+                </div>
+              </Card>
+            </Link>
           ))}
         </div>
       </section>
@@ -445,28 +439,6 @@ export default function ScimDashboard() {
         </section>
       )}
 
-      {/* ── Quick access ─────────────────────────────────────────────────── */}
-      <section>
-        <SectionLabel>Quick Access</SectionLabel>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {QUICK_LINKS.map((link) => (
-            <Link key={link.title} href={link.href} className="group">
-              <div className="flex items-center justify-between rounded-lg border border-border bg-card p-4 hover:border-primary/40 hover:shadow-sm transition-all">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={cn("flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md", link.bg)}>
-                    <link.icon className={cn("h-4 w-4", link.color)} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium group-hover:text-primary transition-colors">{link.title}</p>
-                    <p className="text-[11px] text-muted-foreground truncate">{link.description}</p>
-                  </div>
-                </div>
-                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all flex-shrink-0 ml-2" />
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
     </div>
   );
 }

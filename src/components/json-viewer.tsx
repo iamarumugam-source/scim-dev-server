@@ -108,7 +108,7 @@ function PrimitiveValue({ value }: { value: JsonPrimitive }) {
     return <span className="text-sky-600 dark:text-sky-400">{value}</span>;
   }
   return (
-    <span className="text-emerald-600 dark:text-emerald-400">
+    <span className="text-emerald-600 dark:text-emerald-400 break-all">
       &quot;{value}&quot;
     </span>
   );
@@ -170,7 +170,7 @@ function JsonNode({
 
   if (isComplex) {
     return (
-      <div className="min-w-0">
+      <div className="min-w-0 overflow-hidden">
         <div
           className={cn(
             "flex items-center gap-1 group/row rounded px-1 -mx-1 min-w-0 overflow-hidden",
@@ -216,7 +216,7 @@ function JsonNode({
         </div>
 
         {expanded && hasChildren && (
-          <div className="ml-5 border-l border-border/60 pl-3 mt-0.5 min-w-0">
+          <div className="ml-5 border-l border-border/60 pl-3 mt-0.5 min-w-0 overflow-hidden">
             {entries.map(([k, v], i) => (
               <JsonNode
                 key={k}
@@ -251,21 +251,21 @@ function JsonNode({
         : String(value);
 
   return (
-    <div className="flex items-center group/row rounded px-1 -mx-1 hover:bg-muted/60 min-w-0 overflow-hidden">
-      <span className="w-3.5 flex-shrink-0" />
+    <div className="flex items-start group/row rounded px-1 -mx-1 hover:bg-muted/60 min-w-0 overflow-hidden">
+      <span className="w-3.5 flex-shrink-0 mt-0.5" />
       {keyName !== undefined && (
         <>
           <KeyLabel name={keyName} isIndex={isArrayItem} />
-          <span className="text-muted-foreground mx-1 flex-shrink-0">:</span>
+          <span className="text-muted-foreground mx-1 flex-shrink-0 mt-0.5">:</span>
         </>
       )}
-      <span className="truncate min-w-0 ml-1">
+      <span className="break-all min-w-0 ml-1">
         <PrimitiveValue value={value as JsonPrimitive} />
         {!isLast && <span className="text-muted-foreground">,</span>}
       </span>
       <CopyButton
         text={primitiveText}
-        className="ml-1.5 opacity-0 group-hover/row:opacity-100"
+        className="ml-1.5 mt-0.5 opacity-0 group-hover/row:opacity-100 flex-shrink-0"
       />
     </div>
   );
@@ -306,7 +306,7 @@ export function JsonViewer({ data, className }: JsonViewerProps) {
         </button>
         <CopyAllButton data={data} />
       </div>
-      <div className="font-mono text-sm leading-6 p-4 overflow-y-auto overflow-x-hidden min-h-0 flex-1">
+      <div className="font-mono text-xs leading-5 p-4 overflow-y-auto overflow-x-hidden min-h-0 flex-1">
         <JsonNode
           key={treeKey}
           value={data as JsonValue}

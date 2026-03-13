@@ -18,8 +18,9 @@ import {
 } from "./ui/table";
 
 interface LogEntry {
-  log_data: any;
-  response: any;
+  log_data:   any;
+  response:   any;
+  created_at: string;
 }
 
 const PAGE_SIZE = 20;
@@ -49,17 +50,20 @@ function getRowClass(status: number): string {
   return "";
 }
 
-function formatTimestamp(ts: string | number): string {
+function formatTimestamp(ts: string): string {
   const date = new Date(ts);
   const now  = new Date();
-  const isToday =
-    date.getFullYear() === now.getFullYear() &&
-    date.getMonth()    === now.getMonth()    &&
-    date.getDate()     === now.getDate();
-
-  return isToday
-    ? date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-    : date.toLocaleDateString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  const opts: Intl.DateTimeFormatOptions = {
+    day:    "numeric",
+    month:  "short",
+    hour:   "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  };
+  if (date.getFullYear() !== now.getFullYear()) {
+    opts.year = "numeric";
+  }
+  return new Intl.DateTimeFormat("en-GB", opts).format(date);
 }
 
 function safeString(val: any): string {
@@ -144,8 +148,8 @@ const LogViewer: FC = () => {
 
       {/* Table */}
       <div className="overflow-hidden rounded-lg border">
-        <div className="overflow-x-auto">
-          <Table className="min-w-[600px]">
+        <div className="overflow-x-hidden">
+          <Table className="min-w-[600px] table-fixed w-full">
             <TableHeader className="bg-muted">
               <TableRow>
                 <TableHead className="w-9" />
@@ -212,14 +216,14 @@ const LogViewer: FC = () => {
                         </TableCell>
 
                         <TableCell className="text-right font-mono text-xs text-muted-foreground whitespace-nowrap">
-                          {formatTimestamp(log.log_data.timestamp)}
+                          {formatTimestamp(log.created_at)}
                         </TableCell>
                       </TableRow>
 
                       {isExpanded && (
                         <TableRow className="bg-muted/20 hover:bg-muted/20">
-                          <TableCell colSpan={6} className="p-0 border-t border-border/60">
-                            <div className="px-4 py-3">
+                          <TableCell colSpan={6} className="p-0 border-t border-border/60 overflow-hidden">
+                            <div className="px-4 py-3 overflow-hidden w-full">
                               <Tabs defaultValue="request">
                                 <TabsList className="h-7">
                                   <TabsTrigger value="request"  className="text-xs h-6 px-2">Request</TabsTrigger>

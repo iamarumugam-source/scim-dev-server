@@ -1,15 +1,13 @@
 "use client";
-import { UsersRound, BuildingIcon, ChevronRight, ShieldCheck, Network, KeyRound, FlaskConical, Fingerprint, LayoutDashboard, Webhook, Layers, ScrollText, Puzzle, Activity, LockKeyhole, BookOpen } from "lucide-react";
+import { UsersRound, BuildingIcon, ChevronRight, ShieldCheck, Network, KeyRound, FlaskConical, Fingerprint, LayoutDashboard, Webhook, Layers, ScrollText, Puzzle, Activity, LockKeyhole, BookOpen, WandSparkles, Eraser } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 import {
-  IconCirclePlusFilled,
   IconDashboard,
   IconBrandSlack,
   IconLogs,
-  IconRestore,
 } from "@tabler/icons-react";
 import Image from "next/image";
 import {
@@ -84,7 +82,7 @@ const items = [
 ];
 
 const otherTools = [
-  { title: "HAR Analyser", url: "/har-analyser", icon: Activity    },
+  { title: "HAR Analyser", url: "/har-analyser", icon: Network     },
   { title: "JWE Decoder",  url: "/jwe",          icon: LockKeyhole },
 ];
 
@@ -233,7 +231,7 @@ const userId = session?.user?.id;
                       tooltip="Generate Mock"
                       className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground dark:text-sidebar-accent-foreground dark:hover:text-sidebar-accent-foreground dark:active:text-sidebar-accent-foreground min-w-8 duration-200 ease-linear"
                     >
-                      <IconCirclePlusFilled />
+                      <WandSparkles />
                       <span>Generate Mock</span>
                     </SidebarMenuButton>
                   </DialogTrigger>
@@ -325,7 +323,7 @@ const userId = session?.user?.id;
                       className="size-8 group-data-[collapsible=icon]:opacity-0 border justify-center text-muted-foreground hover:text-destructive hover:border-destructive/50 hover:bg-destructive/10 transition-colors"
                       variant="outline"
                     >
-                      <IconRestore />
+                      <Eraser />
                     </SidebarMenuButton>
                   </DialogTrigger>
                   <DialogContent>

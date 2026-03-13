@@ -44,7 +44,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const { data, error, count } = await supabase
       .from(LOG_TABLE)
-      .select("log_data, response", { count: "exact" })
+      .select("log_data, response, created_at", { count: "exact" })
       .eq("tenantId", userId)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
@@ -54,8 +54,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const logs = data.map((item) => ({
-      log_data: item.log_data,
-      response: item.response,
+      log_data:   item.log_data,
+      response:   item.response,
+      created_at: item.created_at,
     }));
 
     const total = count ?? 0;
