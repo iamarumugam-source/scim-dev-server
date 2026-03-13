@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Sparkles, Loader2, AlertCircle, X } from "lucide-react";
+import { Sparkles, Loader2, AlertCircle, X, Clipboard, Check } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -107,10 +108,99 @@ interface Props {
   onClose: () => void;
 }
 
+function buildClipboardText(entry: HarEntry): string {
+  const oidcPhase = getOidcInfo(entry.request.url, entry.request.method)?.label;
+
+  const safeHeaders = Object.fromEntries(
+    entry.request.headers
+      .filter((h) => !["cookie", "authorization", "set-cookie"].includes(h.name.toLowerCase()))
+      .slice(0, 12)
+      .map((h) => [h.name, h.value]),
+  );
+
+  const urlParams: Record<string, string> = {};
+  try { new URL(entry.request.url).searchParams.forEach((v, k) => { urlParams[k] = v; }); } catch {}
+
+  const bodyParams: Record<string, string> = {};
+  const ct = (entry.request.headers.find((h) => h.name.toLowerCase() === "content-type")?.value ?? "").toLowerCase();
+  if (ct.includes("x-www-form-urlencoded") && entry.request.postData?.text) {
+    try { new URLSearchParams(entry.request.postData.text).forEach((v, k) => { bodyParams[k] = v; }); } catch {}
+  }
+
+  const responseJson = (() => { try { return JSON.parse(entry.response.content?.text ?? ""); } catch { return null; } })();
+
+  const lines: string[] = [
+    "You are an expert Okta developer assistant specialising in OIDC/OAuth 2.0, SCIM, and the Okta platform.",
+    "Analyse the failing API request below and provide specific, actionable troubleshooting guidance.",
+    "Reference developer.okta.com for documentation. Identify the root cause first, then give numbered steps to fix it.",
+    "",
+    "---",
+    "",
+    `Analyse this failing ${oidcPhase ? `OIDC ${oidcPhase}` : "API"} request and suggest specific fixes:`,
+    "",
+    `  Endpoint:   ${entry.request.method} ${entry.request.url}`,
+    `  Status:     ${entry.response.status} ${entry.response.statusText}`,
+  ];
+
+  if (oidcPhase) lines.push(`  OIDC Phase: ${oidcPhase}`);
+
+  if (Object.keys(urlParams).length > 0) {
+    lines.push("", "URL query parameters sent:");
+    Object.entries(urlParams).forEach(([k, v]) => lines.push(`  ${k}: ${v}`));
+  }
+
+  if (Object.keys(bodyParams).length > 0) {
+    lines.push("", "Request body parameters sent:");
+    Object.entries(bodyParams).forEach(([k, v]) => lines.push(`  ${k}: ${v}`));
+  }
+
+  if (Object.keys(safeHeaders).length > 0) {
+    lines.push("", "Key request headers:");
+    Object.entries(safeHeaders).forEach(([k, v]) => lines.push(`  ${k}: ${v}`));
+  }
+
+  if (responseJson && typeof responseJson === "object") {
+    const r = responseJson as Record<string, unknown>;
+    lines.push("", "Response error details:");
+    for (const field of ["error", "error_description", "errorCode", "errorSummary", "errorLink", "errorId"]) {
+      if (r[field]) lines.push(`  ${field}: ${r[field]}`);
+    }
+    if (Array.isArray(r.errorCauses) && r.errorCauses.length > 0) {
+      lines.push("  errorCauses:");
+      (r.errorCauses as unknown[]).slice(0, 3).forEach((c) => lines.push(`    - ${JSON.stringify(c)}`));
+    }
+  }
+
+  lines.push(
+    "",
+    "---",
+    "",
+    "Respond in this format:",
+    "## Root Cause",
+    "(one-paragraph explanation referencing the exact parameter values)",
+    "",
+    "## Steps to Fix",
+    "(numbered list with specific values to change or verify)",
+    "",
+    "## Relevant Okta Documentation",
+    "(bulleted list of URLs from developer.okta.com)",
+  );
+
+  return lines.join("\n");
+}
+
 export function AiSuggestionCard({ entry, onClose }: Props) {
   const [phase,      setPhase]      = useState<"idle" | "loading" | "done" | "error">("idle");
   const [suggestion, setSuggestion] = useState("");
+  const [copied,     setCopied]     = useState(false);
   const abortRef                    = useRef<AbortController | null>(null);
+
+  const copyForLLM = () => {
+    navigator.clipboard.writeText(buildClipboardText(entry));
+    toast.success("Context copied — paste into any LLM chat.");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const analyze = async () => {
     abortRef.current?.abort();
@@ -200,7 +290,7 @@ export function AiSuggestionCard({ entry, onClose }: Props) {
             {entry.response.status} {entry.response.statusText} · {urlName(entry.request.url)}
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {phase === "idle" && (
             <Button size="sm" variant="outline" onClick={analyze} className="h-6 text-xs gap-1.5">
               <Sparkles className="h-3 w-3" /> Analyse with AI
@@ -216,7 +306,18 @@ export function AiSuggestionCard({ entry, onClose }: Props) {
               <Sparkles className="h-3 w-3" /> Re-analyse
             </Button>
           )}
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={copyForLLM}
+            title="Copy full context to paste into ChatGPT, Gemini, Claude…"
+            className="h-6 text-xs gap-1.5"
+          >
+            {copied
+              ? <><Check className="h-3 w-3 text-emerald-500" /> Copied</>
+              : <><Clipboard className="h-3 w-3" /> Copy for LLM</>}
+          </Button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors ml-0.5">
             <X className="h-3.5 w-3.5" />
           </button>
         </div>

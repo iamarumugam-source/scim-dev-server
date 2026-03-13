@@ -65,14 +65,10 @@ export default function ApiPage() {
   const tokenUrl      = `${BASE_URL}/api/${userId}/oauth2/token`;
 
   return (
-    <div className="container mx-auto py-10 space-y-8">
-      {/* Page header */}
-      <div>
-        <h1 className="text-2xl font-bold">API</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Configure how Okta authenticates against this SCIM server — using OAuth 2.0 or a static bearer token.
-        </p>
-      </div>
+    <div className="container mx-auto py-6 space-y-8">
+      <p className="text-sm text-muted-foreground">
+        Configure how Okta authenticates against this SCIM server — using OAuth 2.0 or a static bearer token.
+      </p>
 
       {/* SCIM Endpoint — top-level, shared by both auth methods */}
       <div className="rounded-lg border border-border bg-card p-5 space-y-4">

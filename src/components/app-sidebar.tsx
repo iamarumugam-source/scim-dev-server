@@ -1,5 +1,5 @@
 "use client";
-import { UsersRound, BuildingIcon, ChevronRight, ShieldCheck, Network, KeyRound, FlaskConical, Fingerprint, LayoutDashboard, Webhook, Layers, ScrollText, Puzzle, Activity, LockKeyhole } from "lucide-react";
+import { UsersRound, BuildingIcon, ChevronRight, ShieldCheck, Network, KeyRound, FlaskConical, Fingerprint, LayoutDashboard, Webhook, Layers, ScrollText, Puzzle, Activity, LockKeyhole, BookOpen } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -84,8 +84,8 @@ const items = [
 ];
 
 const otherTools = [
-  { title: "HAR Analyser", url: "/har-analyser", icon: Activity     },
-  { title: "JWE Decoder",  url: "/jwe",          icon: LockKeyhole  },
+  { title: "HAR Analyser", url: "/har-analyser", icon: Activity    },
+  { title: "JWE Decoder",  url: "/jwe",          icon: LockKeyhole },
 ];
 
 type FormValues = z.infer<typeof FormSchema>;
@@ -415,9 +415,17 @@ const userId = session?.user?.id;
         <SidebarGroup className="relative flex w-full min-w-0 flex-col p-2 mt-auto">
           <SidebarGroupContent>
             <SidebarMenu>
+              <SidebarMenuItem key="changelog">
+                <SidebarMenuButton asChild size="sm" isActive={pathname === "/changelog"}>
+                  <a href="/changelog">
+                    <BookOpen />
+                    <span>Changelog</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               <SidebarMenuItem key="contact">
                 <SidebarMenuButton asChild size="sm">
-                  <a href="slack://user?team=E017NDYFGQL&id=U096NTCSRMY">
+                  <a href="slack://channel?team=E017NDYFGQL&id=C0AKWV1GCHM">
                     <IconBrandSlack />
                     <span>Support</span>
                   </a>

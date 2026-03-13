@@ -170,22 +170,7 @@ export default function ScimDashboard() {
     : 0;
 
   return (
-    <div className="container mx-auto py-10 space-y-8">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            SCIM provisioning overview for{" "}
-            <span className="font-mono text-xs">{userId}</span>
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={fetchStats} disabled={isLoading} className="gap-1.5">
-          <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} />
-          Refresh
-        </Button>
-      </div>
-
+    <div className="container mx-auto py-6 space-y-6">
       {error && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center gap-2">
           <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -195,7 +180,18 @@ export default function ScimDashboard() {
 
       {/* ── Top metric cards ─────────────────────────────────────────────── */}
       <section>
-        <SectionLabel>Overview</SectionLabel>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <SectionLabel>Overview</SectionLabel>
+            <code className="text-[11px] font-mono bg-muted text-muted-foreground px-1.5 py-0.5 rounded border border-border/60 mb-3">
+              {userId}
+            </code>
+          </div>
+          <Button variant="outline" size="sm" onClick={fetchStats} disabled={isLoading} className="gap-1.5">
+            <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} />
+            Refresh
+          </Button>
+        </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             { label: "Provisioned Users",  icon: Users,      color: "text-blue-600 dark:text-blue-400",   bg: "bg-blue-50 dark:bg-blue-950/40",   value: stats?.users.total   ?? null },
@@ -254,7 +250,7 @@ export default function ScimDashboard() {
             )}
             {!isLoading && (
               <div className={cn(
-                "rounded-md px-3 py-2 text-xs font-medium",
+                "rounded-md px-3 py-2 text-xs font-medium tabular-nums",
                 (calls?.errorRate ?? 0) < 5
                   ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
                   : (calls?.errorRate ?? 0) < 20
@@ -262,7 +258,6 @@ export default function ScimDashboard() {
                     : "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400"
               )}>
                 {calls?.errorRate ?? 0}% error rate
-                {(calls?.errorRate ?? 0) < 5 ? " — healthy" : (calls?.errorRate ?? 0) < 20 ? " — needs attention" : " — critical"}
               </div>
             )}
           </Card>

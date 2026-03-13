@@ -72,16 +72,7 @@ export default function GroupsPage() {
   const to   = Math.min(groupPage * ITEMS_PER_PAGE, totalGroups);
 
   return (
-    <div className="container mx-auto py-10 space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Groups</h1>
-        {!isLoading && totalGroups > 0 && (
-          <p className="text-sm text-muted-foreground">
-            Showing {from}–{to} of {totalGroups}
-          </p>
-        )}
-      </div>
-
+    <div className="container mx-auto py-6 space-y-4">
       {error && <ErrorDisplay message={error} />}
 
       {isLoading ? (

@@ -62,16 +62,13 @@ export default function ExtensionsPage() {
   };
 
   return (
-    <div className="container mx-auto py-10 space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Schema Extensions</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Configure custom SCIM schema extensions injected into user responses on the fly.
-            Values are computed at request time — nothing is stored on the user record.
-          </p>
-        </div>
+    <div className="container mx-auto py-6 space-y-6">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between gap-4">
+        <p className="text-sm text-muted-foreground">
+          Configure custom SCIM schema extensions injected into user responses on the fly.
+          Values are computed at request time — nothing is stored on the user record.
+        </p>
         <div className="flex items-center gap-2 flex-shrink-0">
           <JsonTemplateConverter />
           <Button onClick={() => setShowNew((p) => !p)} className="gap-1.5">

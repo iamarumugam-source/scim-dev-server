@@ -41,14 +41,11 @@ const TOOLS = [
 
 export default function HomePage() {
   return (
-    <div className="container mx-auto py-10 space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold">Okta Admin Tools</h1>
-        <p className="text-muted-foreground mt-1 max-w-xl">
-          A set of developer tools for working with Okta — covering SCIM provisioning,
-          network traffic analysis, and token inspection.
-        </p>
-      </div>
+    <div className="container mx-auto py-6 space-y-6">
+      <p className="text-sm text-muted-foreground max-w-xl">
+        A set of developer tools for working with Okta — covering SCIM provisioning,
+        network traffic analysis, and token inspection.
+      </p>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {TOOLS.map((tool) => (

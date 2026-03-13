@@ -60,7 +60,7 @@ export default async function RootLayout({
                 } as React.CSSProperties
               }
             >
-              <AppSidebar variant="inset" />
+              <AppSidebar />
               <SidebarInset>
                 <SiteHeader />
                 {/**
