@@ -2,7 +2,15 @@
 
 import { GripVertical, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { ExtensionField } from "@/lib/scim/services/extensionService";
 import { FAKER_GENERATORS, USER_PROPS, FIELD_TYPES } from "./constants";
 import { RawJsonEditor } from "./raw-json-editor";
@@ -16,14 +24,16 @@ interface Props {
 export function FieldRow({ field, onChange, onRemove }: Props) {
   return (
     <div className="grid grid-cols-1 gap-2 rounded-md border border-border bg-muted/20 p-3 sm:grid-cols-[auto_1fr_1fr_1fr_auto]">
-      <div className="flex items-center text-muted-foreground sm:mt-1">
+      {/* Drag handle */}
+      <div className="flex items-center text-muted-foreground sm:mt-6">
         <GripVertical className="h-4 w-4" />
       </div>
 
+      {/* Attribute Name */}
       <div className="space-y-1">
-        <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
           Attribute Name
-        </label>
+        </Label>
         <Input
           value={field.name}
           placeholder="e.g. employments"
@@ -38,62 +48,88 @@ export function FieldRow({ field, onChange, onRemove }: Props) {
         )}
       </div>
 
+      {/* Type */}
       <div className="space-y-1">
-        <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Type</label>
-        <select
+        <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Type
+        </Label>
+        <Select
           value={field.type}
-          onChange={(e) => onChange({ ...field, type: e.target.value as ExtensionField["type"] })}
-          className="h-7 w-full rounded-md border border-input bg-background px-2 text-xs"
+          onValueChange={(v) => onChange({ ...field, type: v as ExtensionField["type"] })}
         >
-          {FIELD_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
+          <SelectTrigger className="h-7 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {FIELD_TYPES.map((t) => (
+              <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
+      {/* Source */}
       <div className="space-y-1">
-        <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Source</label>
+        <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Source
+        </Label>
         <div className="space-y-1">
-          <select
+          <Select
             value={field.source}
-            onChange={(e) => onChange({
+            onValueChange={(v) => onChange({
               ...field,
-              source:      e.target.value as ExtensionField["source"],
+              source:      v as ExtensionField["source"],
               userProp:    undefined,
               generator:   undefined,
               staticValue: undefined,
               rawJson:     undefined,
             })}
-            className="h-7 w-full rounded-md border border-input bg-background px-2 text-xs"
           >
-            <option value="user_prop">User Property</option>
-            <option value="random">Random (Faker)</option>
-            <option value="static">Static Value</option>
-            <option value="raw_json">Raw JSON (object / array)</option>
-          </select>
+            <SelectTrigger className="h-7 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="user_prop" className="text-xs">User Property</SelectItem>
+              <SelectItem value="random"    className="text-xs">Random (Faker)</SelectItem>
+              <SelectItem value="static"    className="text-xs">Static Value</SelectItem>
+              <SelectItem value="raw_json"  className="text-xs">Raw JSON (object / array)</SelectItem>
+            </SelectContent>
+          </Select>
 
           {field.source === "user_prop" && (
-            <select
+            <Select
               value={field.userProp ?? ""}
-              onChange={(e) => onChange({ ...field, userProp: e.target.value })}
-              className="h-7 w-full rounded-md border border-input bg-background px-2 text-xs"
+              onValueChange={(v) => onChange({ ...field, userProp: v })}
             >
-              <option value="">— select property —</option>
-              {USER_PROPS.map((p) => (
-                <option key={p.value} value={p.value}>{p.label} ({p.value})</option>
-              ))}
-            </select>
+              <SelectTrigger className="h-7 text-xs">
+                <SelectValue placeholder="— select property —" />
+              </SelectTrigger>
+              <SelectContent>
+                {USER_PROPS.map((p) => (
+                  <SelectItem key={p.value} value={p.value} className="text-xs">
+                    {p.label} <span className="text-muted-foreground font-mono">({p.value})</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
 
           {field.source === "random" && (
-            <select
+            <Select
               value={field.generator ?? ""}
-              onChange={(e) => onChange({ ...field, generator: e.target.value })}
-              className="h-7 w-full rounded-md border border-input bg-background px-2 text-xs"
+              onValueChange={(v) => onChange({ ...field, generator: v })}
             >
-              <option value="">— select generator —</option>
-              {FAKER_GENERATORS.map((g) => (
-                <option key={g.value} value={g.value}>{g.label} ({g.category})</option>
-              ))}
-            </select>
+              <SelectTrigger className="h-7 text-xs">
+                <SelectValue placeholder="— select generator —" />
+              </SelectTrigger>
+              <SelectContent>
+                {FAKER_GENERATORS.map((g) => (
+                  <SelectItem key={g.value} value={g.value} className="text-xs">
+                    {g.label} <span className="text-muted-foreground">({g.category})</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
 
           {field.source === "static" && (
@@ -114,12 +150,15 @@ export function FieldRow({ field, onChange, onRemove }: Props) {
         </div>
       </div>
 
-      <button
+      {/* Remove */}
+      <Button
+        variant="ghost"
+        size="icon"
         onClick={onRemove}
-        className="mt-5 self-start text-muted-foreground hover:text-destructive transition-colors sm:mt-6"
+        className="mt-5 self-start h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 sm:mt-6"
       >
         <X className="h-4 w-4" />
-      </button>
+      </Button>
     </div>
   );
 }

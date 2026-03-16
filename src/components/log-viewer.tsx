@@ -3,7 +3,7 @@
 import { useEffect, useState, FC, useCallback, Fragment } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ChevronDown, ChevronRight, RefreshCw, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronRight, RefreshCw, Loader2, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { JsonViewer } from "@/components/json-viewer";
@@ -226,8 +226,12 @@ const LogViewer: FC = () => {
                             <div className="px-4 py-3 overflow-hidden w-full">
                               <Tabs defaultValue="request">
                                 <TabsList className="h-7">
-                                  <TabsTrigger value="request"  className="text-xs h-6 px-2">Request</TabsTrigger>
-                                  <TabsTrigger value="response" className="text-xs h-6 px-2">Response</TabsTrigger>
+                                  <TabsTrigger value="request"  className="text-xs h-6 px-2 gap-1.5">
+                                    <ArrowDownLeft className="h-3 w-3" />Request
+                                  </TabsTrigger>
+                                  <TabsTrigger value="response" className="text-xs h-6 px-2 gap-1.5">
+                                    <ArrowUpRight className="h-3 w-3" />Response
+                                  </TabsTrigger>
                                 </TabsList>
                                 <TabsContent value="request"  className="mt-2">
                                   <JsonViewer data={log.log_data}   className="max-h-[320px]" />

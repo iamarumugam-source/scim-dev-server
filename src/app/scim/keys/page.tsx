@@ -1,68 +1,25 @@
 "use client";
 
-import { useState } from "react";
 import { useSession } from "next-auth/react";
 import ApiKeyManager from "@/components/ApiKeyManager";
 import { usePageTracking } from "@/hooks/usePageTracking";
-import { Copy, Check, Unlock, KeyRound, Zap, Server } from "lucide-react";
-import { toast } from "sonner";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Unlock, Zap, KeyRound, Server } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { EndpointField } from "@/components/scim/keys/endpoint-field";
+import { CopyButton } from "@/components/scim/keys/copy-button";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "";
-
-function ScimEndpointCopyButton({ value }: { value: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <button
-      onClick={() => { navigator.clipboard.writeText(value); toast.success("Copied to clipboard"); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
-      className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-    >
-      {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-    </button>
-  );
-}
-
-function EndpointField({ method, value }: { method: "GET" | "POST"; value: string }) {
-  const [copied, setCopied] = useState(false);
-  const copy = () => {
-    navigator.clipboard.writeText(value);
-    toast.success("Copied to clipboard");
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-  const methodStyle = method === "GET"
-    ? "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400"
-    : "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400";
-  return (
-    <div className="space-y-1.5">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">URL</p>
-      <div className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-2 py-2">
-        <span className={`flex-shrink-0 text-[10px] font-bold font-mono px-1.5 py-0.5 rounded ${methodStyle}`}>
-          {method}
-        </span>
-        <code className="flex-1 text-xs font-mono text-foreground truncate min-w-0">{value}</code>
-        <button onClick={copy} className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors">
-          {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 
 export default function ApiPage() {
   usePageTracking();
   const { data: session } = useSession();
   const userId = session?.user?.id ?? "";
 
-  const scimEndpoint  = `${BASE_URL}/api/${userId}/scim/v2`;
-  const authorizeUrl  = `${BASE_URL}/api/oauth2/authorize`;
-  const tokenUrl      = `${BASE_URL}/api/oauth2/token`;
+  const scimEndpoint = `${BASE_URL}/api/${userId}/scim/v2`;
+  const authorizeUrl = `${BASE_URL}/api/oauth2/authorize`;
+  const tokenUrl     = `${BASE_URL}/api/oauth2/token`;
 
   return (
     <div className="container mx-auto py-6 space-y-8">
@@ -70,81 +27,87 @@ export default function ApiPage() {
         Configure how Okta authenticates against this SCIM server — using OAuth 2.0 or a static bearer token.
       </p>
 
-      {/* SCIM Endpoint — top-level, shared by both auth methods */}
-      <div className="rounded-lg border border-border bg-card p-5 space-y-4">
-        <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-teal-50 dark:bg-teal-950/40">
-            <Server className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+      {/* ── SCIM Endpoint ────────────────────────────────────────────────── */}
+      <Card>
+        <CardContent className="p-5 space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-teal-50 dark:bg-teal-950/40">
+              <Server className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+            </div>
+            <div>
+              <p className="font-semibold text-sm">SCIM Endpoint</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Use this URL as the SCIM base URL in your identity provider, regardless of which authentication method you choose.
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="font-semibold text-sm">SCIM Endpoint</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Use this URL as the SCIM base URL in your identity provider, regardless of which authentication method you choose.
-            </p>
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">URL</p>
+            <div className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2">
+              <code className="flex-1 text-xs font-mono text-foreground truncate min-w-0">{scimEndpoint}</code>
+              <CopyButton value={scimEndpoint} />
+            </div>
           </div>
-        </div>
-        <div className="space-y-1.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">URL</p>
-          <div className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2">
-            <code className="flex-1 text-xs font-mono text-foreground truncate min-w-0">{scimEndpoint}</code>
-            <ScimEndpointCopyButton value={scimEndpoint} />
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* OAuth setup */}
+      {/* ── OAuth 2.0 ────────────────────────────────────────────────────── */}
       <section className="space-y-4">
-
-        {/* Endpoint cards */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="rounded-lg border border-border bg-card p-5 space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/40">
-                <Zap className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          <Card>
+            <CardContent className="p-5 space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/40">
+                  <Zap className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Authorization Endpoint</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Set this as your app&apos;s <strong className="text-foreground">Authorization endpoint</strong> in the SCIM provisioning settings.
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="font-semibold text-sm">Authorization Endpoint</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Set this as your app's <strong className="text-foreground">Authorization endpoint</strong> in the SCIM provisioning settings.
-                </p>
-              </div>
-            </div>
-            <EndpointField method="GET" value={authorizeUrl} />
-          </div>
+              <EndpointField method="GET" value={authorizeUrl} />
+            </CardContent>
+          </Card>
 
-          <div className="rounded-lg border border-border bg-card p-5 space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-green-50 dark:bg-green-950/40">
-                <KeyRound className="h-4 w-4 text-green-600 dark:text-green-400" />
+          <Card>
+            <CardContent className="p-5 space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-green-50 dark:bg-green-950/40">
+                  <KeyRound className="h-4 w-4 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Token Endpoint</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Set this as your app&apos;s <strong className="text-foreground">Token endpoint</strong>.
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="font-semibold text-sm">Token Endpoint</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Set this as your app's <strong className="text-foreground">Token endpoint</strong>.
-                </p>
-              </div>
-            </div>
-            <EndpointField method="POST" value={tokenUrl} />
-          </div>
+              <EndpointField method="POST" value={tokenUrl} />
+            </CardContent>
+          </Card>
         </div>
 
         {/* Client credentials note */}
-        <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/20 p-4">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-amber-50 dark:bg-amber-950/40 mt-0.5">
-            <Unlock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-          </div>
-          <div className="space-y-1 min-w-0">
-            <p className="text-sm font-medium">Client credentials are not validated</p>
-            <p className="text-xs text-muted-foreground">
-              You can enter <strong className="text-foreground">any value</strong> for{" "}
-              <code className="font-mono text-[11px]">client_id</code> and{" "}
-              <code className="font-mono text-[11px]">client_secret</code> when configuring your Okta SCIM app.
-              Authentication is handled entirely by the OAuth flow with your Okta org.
-            </p>
-          </div>
-        </div>
+        <Card className="bg-muted/20">
+          <CardContent className="p-4 flex items-start gap-3">
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-amber-50 dark:bg-amber-950/40 mt-0.5">
+              <Unlock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div className="space-y-1 min-w-0">
+              <p className="text-sm font-medium">Client credentials are not validated</p>
+              <p className="text-xs text-muted-foreground">
+                You can enter <strong className="text-foreground">any value</strong> for{" "}
+                <code className="font-mono text-[11px]">client_id</code> and{" "}
+                <code className="font-mono text-[11px]">client_secret</code> when configuring your Okta SCIM app.
+                Authentication is handled entirely by the OAuth flow with your Okta org.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* How to configure — accordion */}
+        {/* Setup steps */}
         <Accordion type="single" collapsible className="rounded-lg border border-border bg-card overflow-hidden">
           <AccordionItem value="setup" className="border-0">
             <AccordionTrigger className="px-5 py-4 text-sm font-semibold hover:no-underline hover:bg-muted/30 transition-colors">
@@ -173,14 +136,14 @@ export default function ApiPage() {
         </Accordion>
       </section>
 
-      {/* Divider */}
+      {/* ── Divider ──────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3">
-        <div className="flex-1 border-t border-border/60" />
-        <p className="text-xs text-muted-foreground">or use static bearer tokens</p>
-        <div className="flex-1 border-t border-border/60" />
+        <Separator className="flex-1" />
+        <span className="text-xs text-muted-foreground">or use static bearer tokens</span>
+        <Separator className="flex-1" />
       </div>
 
-      {/* API Keys */}
+      {/* ── API Keys ──────────────────────────────────────────────────────── */}
       <ApiKeyManager />
     </div>
   );

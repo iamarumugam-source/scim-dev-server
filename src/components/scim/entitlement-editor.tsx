@@ -4,6 +4,8 @@ import { useState } from "react";
 import { ScimEntitlement } from "@/lib/scim/models/scimSchemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { Pencil, Save, X, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -12,6 +14,15 @@ interface Props {
   userId: string;
   onUpdate: () => void;
   onDelete: () => void;
+}
+
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mb-2">
+      <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">{children}</p>
+      <Separator />
+    </div>
+  );
 }
 
 export function EntitlementEditor({ entitlement, userId, onUpdate, onDelete }: Props) {
@@ -66,6 +77,7 @@ export function EntitlementEditor({ entitlement, userId, onUpdate, onDelete }: P
 
   return (
     <div className="space-y-4">
+      {/* Toolbar */}
       <div className="flex items-center justify-between">
         <span className="text-xs text-muted-foreground">
           {mode === "edit" ? "Editing entitlement — unsaved changes will be lost on cancel." : "Click Edit to modify this entitlement."}
@@ -76,13 +88,8 @@ export function EntitlementEditor({ entitlement, userId, onUpdate, onDelete }: P
               <Button size="sm" variant="outline" onClick={() => setMode("edit")} className="h-7 text-xs gap-1.5">
                 <Pencil className="h-3 w-3" /> Edit
               </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={remove}
-                disabled={deleting}
-                className="h-7 text-xs gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
-              >
+              <Button size="sm" variant="ghost" onClick={remove} disabled={deleting}
+                className="h-7 text-xs gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10">
                 {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
                 Delete
               </Button>
@@ -102,21 +109,19 @@ export function EntitlementEditor({ entitlement, userId, onUpdate, onDelete }: P
       </div>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        {/* Left — editable fields */}
+        {/* Editable fields */}
         <div className="space-y-3">
-          <h4 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground border-b border-border/60 pb-1">
-            Entitlement Info
-          </h4>
-
+          <SectionHeading>Entitlement Info</SectionHeading>
           {(["displayName", "type", "description"] as const).map((field) => {
-            const labels: Record<string, string> = { displayName: "Display Name", type: "Type", description: "Description" };
-            const vals: Record<string, string>   = { displayName, type, description };
+            const labels:  Record<string, string>              = { displayName: "Display Name", type: "Type", description: "Description" };
+            const vals:    Record<string, string>              = { displayName, type, description };
             const setters: Record<string, (v: string) => void> = { displayName: setDisplayName, type: setType, description: setDescription };
+            const required = field === "displayName" || field === "type";
             return (
-              <div key={field} className="min-w-0">
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block mb-0.5">
-                  {labels[field]}{(field === "displayName" || field === "type") && <span className="text-destructive ml-0.5">*</span>}
-                </label>
+              <div key={field} className="min-w-0 space-y-0.5">
+                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {labels[field]}{required && <span className="text-destructive ml-0.5">*</span>}
+                </Label>
                 {mode === "view" ? (
                   <p className="text-sm font-medium">{vals[field] || <span className="text-muted-foreground/40 font-normal text-xs">—</span>}</p>
                 ) : (
@@ -133,17 +138,15 @@ export function EntitlementEditor({ entitlement, userId, onUpdate, onDelete }: P
           })}
         </div>
 
-        {/* Right — metadata */}
+        {/* Metadata */}
         <div className="space-y-3">
-          <h4 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground border-b border-border/60 pb-1">
-            Metadata
-          </h4>
+          <SectionHeading>Metadata</SectionHeading>
           <div className="grid grid-cols-1 gap-1.5">
             {[
               ["ID",            entitlement.id],
               ["Schema",        entitlement.schemas?.[0]],
               ["Resource Type", entitlement.meta?.resourceType],
-              ["Created",       entitlement.meta?.created ? new Date(entitlement.meta.created).toLocaleString() : undefined],
+              ["Created",       entitlement.meta?.created      ? new Date(entitlement.meta.created).toLocaleString()      : undefined],
               ["Last Modified", entitlement.meta?.lastModified ? new Date(entitlement.meta.lastModified).toLocaleString() : undefined],
               ["Version",       entitlement.meta?.version],
             ].map(([label, value]) => (

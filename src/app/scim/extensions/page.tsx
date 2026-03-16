@@ -6,6 +6,10 @@ import { toast } from "sonner";
 import { Plus, Loader2, FlaskConical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { usePageTracking } from "@/hooks/usePageTracking";
 import { JsonTemplateConverter } from "@/components/scim/json-template-converter";
 import { ExtensionCard } from "@/components/scim/extensions/extension-card";
@@ -79,56 +83,62 @@ export default function ExtensionsPage() {
 
       {/* New extension form */}
       {showNew && (
-        <div className="rounded-lg border border-primary/40 bg-card p-4 space-y-3">
-          <p className="text-sm font-medium">Add Schema Extension</p>
-          <div className="space-y-1">
-            <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Schema URN
-            </label>
-            <Input
-              value={newUrn}
-              onChange={(e) => setNewUrn(e.target.value)}
-              placeholder="urn:ietf:params:scim:schemas:extension:..."
-              className="h-8 text-xs font-mono"
-              onKeyDown={(e) => { if (e.key === "Enter") createExtension(); }}
-            />
-            <div className="flex flex-wrap gap-1.5 mt-1.5">
-              {PRESET_URNS.map((u) => (
-                <button
-                  key={u}
-                  onClick={() => setNewUrn(u)}
-                  className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors font-mono"
-                >
-                  {u.split(":").pop()}
-                </button>
-              ))}
+        <Card className="border-primary/40">
+          <CardContent className="p-4 space-y-3">
+            <p className="text-sm font-medium">Add Schema Extension</p>
+            <Separator />
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Schema URN
+              </Label>
+              <Input
+                value={newUrn}
+                onChange={(e) => setNewUrn(e.target.value)}
+                placeholder="urn:ietf:params:scim:schemas:extension:..."
+                className="h-8 text-xs font-mono"
+                onKeyDown={(e) => { if (e.key === "Enter") createExtension(); }}
+              />
+              <div className="flex flex-wrap gap-1.5 mt-1.5">
+                {PRESET_URNS.map((u) => (
+                  <Button
+                    key={u}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setNewUrn(u)}
+                    className="h-6 text-[10px] px-2 font-mono"
+                  >
+                    {u.split(":").pop()}
+                  </Button>
+                ))}
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2 justify-end">
-            <Button size="sm" variant="ghost" onClick={() => setShowNew(false)}>Cancel</Button>
-            <Button size="sm" onClick={createExtension} disabled={creating} className="gap-1.5">
-              {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-              Create
-            </Button>
-          </div>
-        </div>
+            <div className="flex items-center gap-2 justify-end">
+              <Button size="sm" variant="ghost" onClick={() => setShowNew(false)}>Cancel</Button>
+              <Button size="sm" onClick={createExtension} disabled={creating} className="gap-1.5">
+                {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                Create
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Extension list */}
       {isLoading ? (
         <div className="space-y-3">
-          {[1, 2].map((i) => (
-            <div key={i} className="h-16 rounded-lg border border-border bg-muted/30 animate-pulse" />
-          ))}
+          <Skeleton className="h-16 w-full rounded-lg" />
+          <Skeleton className="h-16 w-full rounded-lg" />
         </div>
       ) : extensions.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-12 text-center space-y-2">
-          <FlaskConical className="h-8 w-8 mx-auto text-muted-foreground/40" />
-          <p className="text-sm font-medium text-muted-foreground">No schema extensions yet</p>
-          <p className="text-xs text-muted-foreground/60">
-            Create an extension to start adding custom attributes to SCIM user responses.
-          </p>
-        </div>
+        <Card className="border-dashed">
+          <CardContent className="p-12 text-center space-y-2">
+            <FlaskConical className="h-8 w-8 mx-auto text-muted-foreground/40" />
+            <p className="text-sm font-medium text-muted-foreground">No schema extensions yet</p>
+            <p className="text-xs text-muted-foreground/60">
+              Create an extension to start adding custom attributes to SCIM user responses.
+            </p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-3">
           {extensions.map((ext) => (
@@ -137,7 +147,6 @@ export default function ExtensionsPage() {
         </div>
       )}
 
-      {/* Reference card */}
       <ReferenceCard />
     </div>
   );

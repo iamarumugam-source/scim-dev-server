@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { CheckCircle2, XCircle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { TEMPLATE_EXAMPLES } from "./constants";
 
@@ -35,28 +38,35 @@ export function RawJsonEditor({ value, onChange }: Props) {
         )}
         onChange={(e) => onChange(e.target.value)}
       />
+
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
           {isValid === true && (
-            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-              ✓ Valid JSON{preview ? ` — ${preview}` : ""}
+            <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+              <CheckCircle2 className="h-3 w-3" />
+              Valid JSON{preview ? ` — ${preview}` : ""}
             </span>
           )}
           {isValid === false && (
-            <span className="text-[10px] text-destructive font-medium">✗ Invalid JSON</span>
+            <span className="inline-flex items-center gap-1 text-[10px] text-destructive font-medium">
+              <XCircle className="h-3 w-3" />
+              Invalid JSON
+            </span>
           )}
         </div>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={() => setShowHint((p) => !p)}
-          className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+          className="h-5 text-[10px] px-1.5 text-muted-foreground"
         >
           {showHint ? "hide hints" : "template syntax ↓"}
-        </button>
+        </Button>
       </div>
 
       {showHint && (
-        <div className="rounded-md border border-border bg-muted/20 p-2.5 space-y-1.5">
+        <div className="rounded-md border border-border bg-muted/20 p-2.5 space-y-2">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Template expressions — any string value can contain:
           </p>
@@ -70,7 +80,8 @@ export function RawJsonEditor({ value, onChange }: Props) {
               </div>
             ))}
           </div>
-          <p className="text-[10px] text-muted-foreground/70 mt-1">
+          <Separator />
+          <p className="text-[10px] text-muted-foreground/70">
             Use any <code className="font-mono">user.*</code> dot-path or{" "}
             <code className="font-mono">faker.*</code> method. Non-string values (numbers, booleans, null) are always kept as-is.
           </p>

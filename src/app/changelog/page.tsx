@@ -1,32 +1,8 @@
-import { ScrollText, Plus, Wrench, Bug, Zap, Shield, Sparkles } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type ChangeType = "new" | "improved" | "fixed" | "breaking" | "security";
-
-interface Change {
-  type:  ChangeType;
-  text:  string;
-}
-
-interface Version {
-  version:     string;
-  date:        string;
-  title:       string;
-  description?: string;
-  changes:     Change[];
-}
-
-// ─── Change-type config ───────────────────────────────────────────────────────
-
-const TYPE_CONFIG: Record<ChangeType, { label: string; icon: React.ElementType; class: string }> = {
-  new:      { label: "New",      icon: Plus,    class: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"     },
-  improved: { label: "Improved", icon: Zap,     class: "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300" },
-  fixed:    { label: "Fixed",    icon: Bug,     class: "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300"  },
-  breaking: { label: "Breaking", icon: Wrench,  class: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" },
-  security: { label: "Security", icon: Shield,  class: "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"     },
-};
+import { ScrollText } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { VersionBlock, type Version } from "@/components/changelog/version-block";
+import { TYPE_CONFIG, type ChangeType } from "@/components/changelog/change-item";
 
 // ─── Changelog data ───────────────────────────────────────────────────────────
 
@@ -98,16 +74,16 @@ const VERSIONS: Version[] = [
     title:   "HAR Analyser",
     description: "Brand new network traffic analysis tool inspired by Chrome DevTools, with Okta-specific intelligence.",
     changes: [
-      { type: "new",      text: "HAR file upload with drag-and-drop; parses Chrome DevTools .har exports" },
-      { type: "new",      text: "Chrome DevTools-style network table: method (colored text), status (colored text), URL, type, size, time, waterfall" },
-      { type: "new",      text: "OIDC endpoint detection: 20+ Okta patterns (authorize, token, userinfo, JWKS, IDX…) highlighted with phase badges" },
-      { type: "new",      text: "Okta request header detection (x-okta-*): rows highlighted with indigo badge" },
-      { type: "new",      text: "Bottom detail drawer: Headers, URL Params (OIDC only), Preview, Response, Timing tabs; resizable with drag handle" },
-      { type: "new",      text: "URL Params tab: annotates every OIDC parameter with plain-English descriptions; decode button for base64url values (state, request, id_token)" },
-      { type: "new",      text: "Splunk tab: fetches /.well-known/okta-organization to get org cell, builds index=\"{cell}*\" \"{requestId}\" query with copy button" },
-      { type: "new",      text: "Filter bar with URL search and type pills (All / Fetch/XHR / Doc / CSS / JS / Font / Img / OIDC)" },
-      { type: "new",      text: "Waterfall column with proportional timing bars (TTFB + download)" },
-      { type: "new",      text: "Status bar showing request count, bytes transferred, total load time" },
+      { type: "new", text: "HAR file upload with drag-and-drop; parses Chrome DevTools .har exports" },
+      { type: "new", text: "Chrome DevTools-style network table: method (colored text), status (colored text), URL, type, size, time, waterfall" },
+      { type: "new", text: "OIDC endpoint detection: 20+ Okta patterns (authorize, token, userinfo, JWKS, IDX…) highlighted with phase badges" },
+      { type: "new", text: "Okta request header detection (x-okta-*): rows highlighted with indigo badge" },
+      { type: "new", text: "Bottom detail drawer: Headers, URL Params (OIDC only), Preview, Response, Timing tabs; resizable with drag handle" },
+      { type: "new", text: "URL Params tab: annotates every OIDC parameter with plain-English descriptions; decode button for base64url values (state, request, id_token)" },
+      { type: "new", text: "Splunk tab: fetches /.well-known/okta-organization to get org cell, builds index=\"{cell}*\" \"{requestId}\" query with copy button" },
+      { type: "new", text: "Filter bar with URL search and type pills (All / Fetch/XHR / Doc / CSS / JS / Font / Img / OIDC)" },
+      { type: "new", text: "Waterfall column with proportional timing bars (TTFB + download)" },
+      { type: "new", text: "Status bar showing request count, bytes transferred, total load time" },
     ],
   },
   {
@@ -160,13 +136,13 @@ const VERSIONS: Version[] = [
     title:   "Dashboard & Analytics",
     description: "New dashboard with live tenant statistics, API health metrics, and page view tracking.",
     changes: [
-      { type: "new",      text: "Dashboard: Total Users, Total Groups, Total API Calls, Active API Keys stat cards with icon avatars" },
-      { type: "new",      text: "Dashboard: API health section — success rate gauge, method breakdown bars, user active/inactive split" },
-      { type: "new",      text: "Dashboard: 7-day call volume chart (proportional bar chart using divs, no external library)" },
-      { type: "new",      text: "Dashboard: Top 5 endpoints by call count with relative bars; last 5 failed requests with status badge, path, and timestamp" },
-      { type: "new",      text: "GET /api/[userId]/scim/v2/stats endpoint aggregates logs, users, groups, API keys, and page views in a single parallel query" },
-      { type: "new",      text: "POST /api/[userId]/analytics: page view tracking stored in scim_analytics table; usePageTracking() hook added to all SCIM pages" },
-      { type: "new",      text: "Dashboard: Quick Access grid linking to Users, Groups, API, Logs" },
+      { type: "new", text: "Dashboard: Total Users, Total Groups, Total API Calls, Active API Keys stat cards with icon avatars" },
+      { type: "new", text: "Dashboard: API health section — success rate gauge, method breakdown bars, user active/inactive split" },
+      { type: "new", text: "Dashboard: 7-day call volume chart (proportional bar chart using divs, no external library)" },
+      { type: "new", text: "Dashboard: Top 5 endpoints by call count with relative bars; last 5 failed requests with status badge, path, and timestamp" },
+      { type: "new", text: "GET /api/[userId]/scim/v2/stats endpoint aggregates logs, users, groups, API keys, and page views in a single parallel query" },
+      { type: "new", text: "POST /api/[userId]/analytics: page view tracking stored in scim_analytics table; usePageTracking() hook added to all SCIM pages" },
+      { type: "new", text: "Dashboard: Quick Access grid linking to Users, Groups, API, Logs" },
     ],
   },
   {
@@ -203,70 +179,6 @@ const VERSIONS: Version[] = [
   },
 ];
 
-// ─── Components ───────────────────────────────────────────────────────────────
-
-function ChangeItem({ change }: { change: Change }) {
-  const { label, icon: Icon, class: cls } = TYPE_CONFIG[change.type];
-  return (
-    <li className="flex items-start gap-2.5 py-1">
-      <span className={cn("flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold flex-shrink-0 mt-0.5", cls)}>
-        <Icon className="h-2.5 w-2.5" />
-        {label}
-      </span>
-      <span className="text-sm text-foreground/80 leading-relaxed">{change.text}</span>
-    </li>
-  );
-}
-
-function VersionBlock({ v, isLatest }: { v: Version; isLatest: boolean }) {
-  return (
-    <div className="relative pl-8">
-      {/* Timeline dot */}
-      <div className={cn(
-        "absolute left-0 top-[18px] h-3 w-3 rounded-full border-2 border-background ring-2",
-        isLatest ? "bg-primary ring-primary/30" : "bg-muted-foreground/40 ring-muted-foreground/10",
-      )} />
-      {/* Timeline line */}
-      <div className="absolute left-[5px] top-[30px] bottom-0 w-px bg-border/60" />
-
-      <div className="rounded-lg border border-border bg-card overflow-hidden mb-6">
-        {/* Version header */}
-        <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-border/60 bg-muted/20">
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className={cn(
-              "text-sm font-bold font-mono px-2 py-0.5 rounded border",
-              isLatest
-                ? "bg-primary/10 text-primary border-primary/30"
-                : "bg-muted text-muted-foreground border-border",
-            )}>
-              v{v.version}
-            </span>
-            <h2 className="text-base font-semibold">{v.title}</h2>
-            {isLatest && (
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
-                Latest
-              </span>
-            )}
-          </div>
-          <time className="text-xs text-muted-foreground tabular-nums flex-shrink-0 mt-0.5">
-            {new Date(v.date).toLocaleDateString("en", { year: "numeric", month: "long", day: "numeric" })}
-          </time>
-        </div>
-
-        {/* Description */}
-        {v.description && (
-          <p className="px-5 pt-3 pb-0 text-sm text-muted-foreground">{v.description}</p>
-        )}
-
-        {/* Changes */}
-        <ul className="px-5 py-3 space-y-0.5">
-          {v.changes.map((c, i) => <ChangeItem key={i} change={c} />)}
-        </ul>
-      </div>
-    </div>
-  );
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ChangelogPage() {
@@ -286,10 +198,14 @@ export default function ChangelogPage() {
         {/* Legend */}
         <div className="flex flex-wrap gap-2 mt-4">
           {(Object.entries(TYPE_CONFIG) as [ChangeType, (typeof TYPE_CONFIG)[ChangeType]][]).map(([, cfg]) => (
-            <span key={cfg.label} className={cn("flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold", cfg.class)}>
+            <Badge
+              key={cfg.label}
+              variant="outline"
+              className={`flex items-center gap-1 text-[10px] font-semibold ${cfg.class}`}
+            >
               <cfg.icon className="h-2.5 w-2.5" />
               {cfg.label}
-            </span>
+            </Badge>
           ))}
         </div>
       </div>

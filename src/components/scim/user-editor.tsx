@@ -5,9 +5,11 @@ import { ScimUser, ScimEntitlement, ScimRole } from "@/lib/scim/models/scimSchem
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
 import { Mail, Pencil, Save, X, Loader2, CheckCircle2, XCircle, BadgeCheck, Crown, Plus } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 
 interface Props {
   user: ScimUser;
@@ -15,24 +17,33 @@ interface Props {
   onUpdate: () => void;
 }
 
+// ─── Section heading ──────────────────────────────────────────────────────────
+
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h4 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground border-b border-border/60 pb-1 mb-2">
-      {children}
-    </h4>
+    <div className="mb-2">
+      <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
+        {children}
+      </p>
+      <Separator />
+    </div>
   );
 }
+
+// ─── Read-only field ──────────────────────────────────────────────────────────
 
 function ReadField({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="min-w-0">
-      <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 text-xs font-mono text-foreground truncate" title={value ?? undefined}>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="mt-0.5 text-xs font-mono text-foreground truncate" title={value ?? undefined}>
         {value || <span className="text-muted-foreground/40">—</span>}
-      </dd>
+      </p>
     </div>
   );
 }
+
+// ─── Editable field ───────────────────────────────────────────────────────────
 
 function EditField({
   label,
@@ -48,10 +59,10 @@ function EditField({
   readOnly?: boolean;
 }) {
   return (
-    <div className="min-w-0">
-      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block mb-0.5">
+    <div className="min-w-0 space-y-0.5">
+      <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
-      </label>
+      </Label>
       {readOnly ? (
         <p className="text-xs font-mono text-muted-foreground truncate py-1" title={value ?? undefined}>
           {value || "—"}
@@ -68,15 +79,17 @@ function EditField({
   );
 }
 
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export function UserEditor({ user, userId, onUpdate }: Props) {
-  const [mode,               setMode]               = useState<"view" | "edit">("view");
-  const [saving,             setSaving]             = useState(false);
-  const [draft,              setDraft]              = useState<ScimUser>(user);
-  const [allEntitlements,    setAllEntitlements]    = useState<ScimEntitlement[]>([]);
-  const [allRoles,           setAllRoles]           = useState<ScimRole[]>([]);
-  const [loadingCatalog,     setLoadingCatalog]     = useState(false);
-  const [entitlementSearch,  setEntitlementSearch]  = useState("");
-  const [roleSearch,         setRoleSearch]         = useState("");
+  const [mode,              setMode]              = useState<"view" | "edit">("view");
+  const [saving,            setSaving]            = useState(false);
+  const [draft,             setDraft]             = useState<ScimUser>(user);
+  const [allEntitlements,   setAllEntitlements]   = useState<ScimEntitlement[]>([]);
+  const [allRoles,          setAllRoles]          = useState<ScimRole[]>([]);
+  const [loadingCatalog,    setLoadingCatalog]    = useState(false);
+  const [entitlementSearch, setEntitlementSearch] = useState("");
+  const [roleSearch,        setRoleSearch]        = useState("");
 
   const set = (key: keyof ScimUser, value: any) =>
     setDraft((p) => ({ ...p, [key]: value }));
@@ -126,8 +139,8 @@ export function UserEditor({ user, userId, onUpdate }: Props) {
   const removeRole = (id: string) =>
     set("roles", (draft.roles ?? []).filter((x) => x.value !== id));
 
-  const assignedEntIds = new Set((draft.entitlements ?? []).map((e) => e.value));
-  const assignedRoleIds = new Set((draft.roles ?? []).map((r) => r.value));
+  const assignedEntIds  = new Set((draft.entitlements ?? []).map((e) => e.value));
+  const assignedRoleIds = new Set((draft.roles        ?? []).map((r) => r.value));
 
   const filteredEntitlements = entitlementSearch.trim().length > 0
     ? allEntitlements.filter((e) =>
@@ -163,13 +176,15 @@ export function UserEditor({ user, userId, onUpdate }: Props) {
     }
   };
 
-  const primaryEmail = user.emails?.find((e) => e.primary);
-
   return (
     <div className="space-y-4">
+
+      {/* ── Toolbar ─────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <span className="text-xs text-muted-foreground">
-          {mode === "edit" ? "Editing user — unsaved changes will be lost on cancel." : "Click Edit to modify this user."}
+          {mode === "edit"
+            ? "Editing user — unsaved changes will be lost on cancel."
+            : "Click Edit to modify this user."}
         </span>
         {mode === "view" ? (
           <Button size="sm" variant="outline" onClick={startEdit} className="h-7 text-xs gap-1.5">
@@ -189,6 +204,8 @@ export function UserEditor({ user, userId, onUpdate }: Props) {
       </div>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+
+        {/* ── Identity ──────────────────────────────────────────────────────── */}
         <div className="space-y-2">
           <SectionLabel>Identity</SectionLabel>
           {mode === "view" ? (
@@ -203,11 +220,12 @@ export function UserEditor({ user, userId, onUpdate }: Props) {
               <EditField label="ID"           value={draft.id}          readOnly />
               <EditField label="Username"     value={draft.userName}    readOnly />
               <EditField label="Display Name" value={draft.displayName} onChange={(v) => set("displayName", v)} placeholder="John Doe" />
-              <EditField label="User Type"    value={draft.userType}    onChange={(v) => set("userType", v)} placeholder="Employee" />
+              <EditField label="User Type"    value={draft.userType}    onChange={(v) => set("userType", v)}    placeholder="Employee" />
             </div>
           )}
         </div>
 
+        {/* ── Name ──────────────────────────────────────────────────────────── */}
         <div className="space-y-2">
           <SectionLabel>Name</SectionLabel>
           {mode === "view" ? (
@@ -224,26 +242,31 @@ export function UserEditor({ user, userId, onUpdate }: Props) {
               <div className="col-span-2">
                 <EditField label="Formatted" value={draft.name?.formatted} onChange={(v) => setName("formatted", v)} placeholder="John M. Doe" />
               </div>
-              <EditField label="Given"   value={draft.name?.givenName}       onChange={(v) => setName("givenName", v)}  placeholder="John" />
-              <EditField label="Family"  value={draft.name?.familyName}      onChange={(v) => setName("familyName", v)} placeholder="Doe" />
-              <EditField label="Middle"  value={draft.name?.middleName}      onChange={(v) => setName("middleName", v)} placeholder="M." />
-              <EditField label="Prefix"  value={draft.name?.honorificPrefix} onChange={(v) => setName("honorificPrefix", v)} placeholder="Mr." />
-              <EditField label="Suffix"  value={draft.name?.honorificSuffix} onChange={(v) => setName("honorificSuffix", v)} placeholder="Jr." />
+              <EditField label="Given"  value={draft.name?.givenName}       onChange={(v) => setName("givenName", v)}       placeholder="John" />
+              <EditField label="Family" value={draft.name?.familyName}      onChange={(v) => setName("familyName", v)}      placeholder="Doe" />
+              <EditField label="Middle" value={draft.name?.middleName}      onChange={(v) => setName("middleName", v)}      placeholder="M." />
+              <EditField label="Prefix" value={draft.name?.honorificPrefix} onChange={(v) => setName("honorificPrefix", v)} placeholder="Mr." />
+              <EditField label="Suffix" value={draft.name?.honorificSuffix} onChange={(v) => setName("honorificSuffix", v)} placeholder="Jr." />
             </div>
           )}
         </div>
 
+        {/* ── Account ───────────────────────────────────────────────────────── */}
         <div className="space-y-2">
           <SectionLabel>Account</SectionLabel>
           {mode === "view" ? (
             <dl className="grid grid-cols-2 gap-2">
               <div className="col-span-2">
-                <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Status</dt>
-                <dd className="mt-0.5 flex items-center gap-1.5">
-                  {user.active
-                    ? <><CheckCircle2 className="h-3.5 w-3.5 text-green-500" /><span className="text-xs text-green-700 dark:text-green-400 font-medium">Active</span></>
-                    : <><XCircle className="h-3.5 w-3.5 text-muted-foreground" /><span className="text-xs text-muted-foreground">Inactive</span></>}
-                </dd>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Status</p>
+                {user.active ? (
+                  <Badge variant="outline" className="gap-1 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/40">
+                    <CheckCircle2 className="h-3 w-3" /> Active
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="gap-1 text-muted-foreground">
+                    <XCircle className="h-3 w-3" /> Inactive
+                  </Badge>
+                )}
               </div>
               <ReadField label="Title"    value={user.title} />
               <ReadField label="Locale"   value={user.locale} />
@@ -253,21 +276,16 @@ export function UserEditor({ user, userId, onUpdate }: Props) {
           ) : (
             <div className="grid grid-cols-2 gap-2">
               <div className="col-span-2 flex items-center gap-3">
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Status</label>
-                <button
-                  type="button"
-                  onClick={() => set("active", !draft.active)}
-                  className={cn(
-                    "flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full border transition-colors",
-                    draft.active
-                      ? "border-green-300 bg-green-50 text-green-700 dark:border-green-700 dark:bg-green-950/40 dark:text-green-400"
-                      : "border-border bg-muted text-muted-foreground",
-                  )}
-                >
-                  {draft.active
-                    ? <><CheckCircle2 className="h-3 w-3" /> Active</>
-                    : <><XCircle className="h-3 w-3" /> Inactive</>}
-                </button>
+                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Active
+                </Label>
+                <Switch
+                  checked={draft.active}
+                  onCheckedChange={(v) => set("active", v)}
+                />
+                <span className="text-xs text-muted-foreground">
+                  {draft.active ? "Active" : "Inactive"}
+                </span>
               </div>
               <div className="col-span-2">
                 <EditField label="Title" value={draft.title} onChange={(v) => set("title", v)} placeholder="Software Engineer" />
@@ -279,6 +297,7 @@ export function UserEditor({ user, userId, onUpdate }: Props) {
           )}
         </div>
 
+        {/* ── Contact ───────────────────────────────────────────────────────── */}
         <div className="space-y-2">
           <SectionLabel>Contact</SectionLabel>
           {mode === "view" ? (
@@ -288,7 +307,7 @@ export function UserEditor({ user, userId, onUpdate }: Props) {
                   <Mail className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                   <span className="text-foreground truncate">{e.value}</span>
                   <div className="flex gap-1 flex-shrink-0">
-                    {e.type && <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">{e.type}</Badge>}
+                    {e.type    && <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">{e.type}</Badge>}
                     {e.primary && <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">primary</Badge>}
                   </div>
                 </div>
@@ -309,19 +328,22 @@ export function UserEditor({ user, userId, onUpdate }: Props) {
                 <div key={i} className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
                   <Mail className="h-3 w-3 flex-shrink-0" />
                   <span className="truncate">{e.value}</span>
-                  {e.type && <span className="text-[10px] flex-shrink-0">({e.type})</span>}
+                  {e.type && <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 flex-shrink-0">{e.type}</Badge>}
                 </div>
               ))}
             </div>
           )}
         </div>
 
+        {/* ── Group memberships ─────────────────────────────────────────────── */}
         {user.groups && user.groups.length > 0 && (
           <div className="space-y-2">
             <SectionLabel>Group Memberships</SectionLabel>
             <div className="flex flex-wrap gap-1.5">
               {user.groups.map((g) => (
-                <Badge key={g.value} variant="secondary" className="text-xs font-mono">{g.display}</Badge>
+                <Badge key={g.value} variant="secondary" className="text-xs font-mono">
+                  {g.display}
+                </Badge>
               ))}
             </div>
             {mode === "edit" && (
@@ -330,33 +352,38 @@ export function UserEditor({ user, userId, onUpdate }: Props) {
           </div>
         )}
 
+        {/* ── Entitlements ──────────────────────────────────────────────────── */}
         {(mode === "edit" || (draft.entitlements && draft.entitlements.length > 0)) && (
           <div className="space-y-2">
             <SectionLabel>Entitlements</SectionLabel>
 
-            {/* Assigned entitlements */}
             <div className="flex flex-wrap gap-1.5 min-h-[24px]">
               {(mode === "edit" ? draft.entitlements : user.entitlements ?? [])?.map((e) => (
-                <span
+                <Badge
                   key={e.value}
-                  className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+                  variant="outline"
+                  className="gap-1 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40"
                 >
                   <BadgeCheck className="h-3 w-3" />
                   {e.display ?? e.value}
                   {e.type && <span className="opacity-60">· {e.type}</span>}
                   {mode === "edit" && (
-                    <button type="button" onClick={() => removeEntitlement(e.value)} className="ml-0.5 hover:text-destructive transition-colors">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-3 w-3 ml-0.5 p-0 hover:bg-transparent hover:text-destructive"
+                      onClick={() => removeEntitlement(e.value)}
+                    >
                       <X className="h-2.5 w-2.5" />
-                    </button>
+                    </Button>
                   )}
-                </span>
+                </Badge>
               ))}
-              {(mode === "edit" ? draft.entitlements : user.entitlements ?? [])?.length === 0 && mode !== "edit" && (
+              {!(mode === "edit" ? draft.entitlements : user.entitlements ?? [])?.length && mode !== "edit" && (
                 <span className="text-xs text-muted-foreground/40">None assigned.</span>
               )}
             </div>
 
-            {/* Add entitlement in edit mode */}
             {mode === "edit" && (
               <div className="relative">
                 <Input
@@ -369,16 +396,17 @@ export function UserEditor({ user, userId, onUpdate }: Props) {
                 {filteredEntitlements.length > 0 && (
                   <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover shadow-md overflow-hidden">
                     {filteredEntitlements.map((e) => (
-                      <button
-                        key={e.id} type="button"
-                        className="flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted transition-colors text-left"
+                      <Button
+                        key={e.id}
+                        variant="ghost"
+                        className="w-full justify-start h-auto px-3 py-1.5 text-xs rounded-none gap-2"
                         onMouseDown={() => addEntitlement(e)}
                       >
                         <BadgeCheck className="h-3 w-3 text-emerald-500 flex-shrink-0" />
-                        <span className="flex-1 font-medium truncate">{e.displayName}</span>
+                        <span className="flex-1 font-medium truncate text-left">{e.displayName}</span>
                         <span className="text-muted-foreground text-[10px] flex-shrink-0">{e.type}</span>
                         <Plus className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 )}
@@ -387,32 +415,37 @@ export function UserEditor({ user, userId, onUpdate }: Props) {
           </div>
         )}
 
+        {/* ── Roles ─────────────────────────────────────────────────────────── */}
         {(mode === "edit" || (draft.roles && draft.roles.length > 0)) && (
           <div className="space-y-2">
             <SectionLabel>Roles</SectionLabel>
 
-            {/* Assigned roles */}
             <div className="flex flex-wrap gap-1.5 min-h-[24px]">
               {(mode === "edit" ? draft.roles : user.roles ?? [])?.map((r) => (
-                <span
+                <Badge
                   key={r.value}
-                  className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800"
+                  variant="outline"
+                  className="gap-1 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40"
                 >
                   <Crown className="h-3 w-3" />
                   {r.display ?? r.value}
                   {mode === "edit" && (
-                    <button type="button" onClick={() => removeRole(r.value)} className="ml-0.5 hover:text-destructive transition-colors">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-3 w-3 ml-0.5 p-0 hover:bg-transparent hover:text-destructive"
+                      onClick={() => removeRole(r.value)}
+                    >
                       <X className="h-2.5 w-2.5" />
-                    </button>
+                    </Button>
                   )}
-                </span>
+                </Badge>
               ))}
-              {(mode === "edit" ? draft.roles : user.roles ?? [])?.length === 0 && mode !== "edit" && (
+              {!(mode === "edit" ? draft.roles : user.roles ?? [])?.length && mode !== "edit" && (
                 <span className="text-xs text-muted-foreground/40">None assigned.</span>
               )}
             </div>
 
-            {/* Add role in edit mode */}
             {mode === "edit" && (
               <div className="relative">
                 <Input
@@ -425,15 +458,16 @@ export function UserEditor({ user, userId, onUpdate }: Props) {
                 {filteredRoles.length > 0 && (
                   <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover shadow-md overflow-hidden">
                     {filteredRoles.map((r) => (
-                      <button
-                        key={r.id} type="button"
-                        className="flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted transition-colors text-left"
+                      <Button
+                        key={r.id}
+                        variant="ghost"
+                        className="w-full justify-start h-auto px-3 py-1.5 text-xs rounded-none gap-2"
                         onMouseDown={() => addRole(r)}
                       >
                         <Crown className="h-3 w-3 text-rose-500 flex-shrink-0" />
-                        <span className="flex-1 font-medium truncate">{r.displayName}</span>
+                        <span className="flex-1 font-medium truncate text-left">{r.displayName}</span>
                         <Plus className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 )}
@@ -442,15 +476,17 @@ export function UserEditor({ user, userId, onUpdate }: Props) {
           </div>
         )}
 
+        {/* ── Meta ──────────────────────────────────────────────────────────── */}
         <div className="space-y-2">
           <SectionLabel>Meta</SectionLabel>
           <dl className="grid grid-cols-1 gap-2">
             <ReadField label="Resource Type" value={user.meta?.resourceType} />
-            <ReadField label="Created"       value={user.meta?.created ? new Date(user.meta.created).toLocaleString() : undefined} />
-            <ReadField label="Last Modified" value={user.meta?.lastModified ? new Date(user.meta.lastModified).toLocaleString() : undefined} />
+            <ReadField label="Created"       value={user.meta?.created       ? new Date(user.meta.created).toLocaleString()       : undefined} />
+            <ReadField label="Last Modified" value={user.meta?.lastModified  ? new Date(user.meta.lastModified).toLocaleString()  : undefined} />
             <ReadField label="Version"       value={user.meta?.version} />
           </dl>
         </div>
+
       </div>
     </div>
   );

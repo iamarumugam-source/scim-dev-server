@@ -4,6 +4,8 @@ import { useState } from "react";
 import { ScimRole } from "@/lib/scim/models/scimSchemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { Pencil, Save, X, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -12,6 +14,15 @@ interface Props {
   userId: string;
   onUpdate: () => void;
   onDelete: () => void;
+}
+
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mb-2">
+      <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">{children}</p>
+      <Separator />
+    </div>
+  );
 }
 
 export function RoleEditor({ role, userId, onUpdate, onDelete }: Props) {
@@ -63,6 +74,7 @@ export function RoleEditor({ role, userId, onUpdate, onDelete }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* Toolbar */}
       <div className="flex items-center justify-between">
         <span className="text-xs text-muted-foreground">
           {mode === "edit" ? "Editing role — unsaved changes will be lost on cancel." : "Click Edit to modify this role."}
@@ -73,10 +85,8 @@ export function RoleEditor({ role, userId, onUpdate, onDelete }: Props) {
               <Button size="sm" variant="outline" onClick={() => setMode("edit")} className="h-7 text-xs gap-1.5">
                 <Pencil className="h-3 w-3" /> Edit
               </Button>
-              <Button
-                size="sm" variant="ghost" onClick={remove} disabled={deleting}
-                className="h-7 text-xs gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
-              >
+              <Button size="sm" variant="ghost" onClick={remove} disabled={deleting}
+                className="h-7 text-xs gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10">
                 {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
                 Delete
               </Button>
@@ -96,19 +106,18 @@ export function RoleEditor({ role, userId, onUpdate, onDelete }: Props) {
       </div>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        {/* Editable fields */}
         <div className="space-y-3">
-          <h4 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground border-b border-border/60 pb-1">
-            Role Info
-          </h4>
+          <SectionHeading>Role Info</SectionHeading>
           {(["displayName", "description"] as const).map((field) => {
-            const labels  = { displayName: "Display Name", description: "Description" };
-            const vals    = { displayName, description };
-            const setters = { displayName: setDisplayName, description: setDescription };
+            const labels:  Record<string, string>              = { displayName: "Display Name", description: "Description" };
+            const vals:    Record<string, string>              = { displayName, description };
+            const setters: Record<string, (v: string) => void> = { displayName: setDisplayName, description: setDescription };
             return (
-              <div key={field} className="min-w-0">
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block mb-0.5">
+              <div key={field} className="min-w-0 space-y-0.5">
+                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {labels[field]}{field === "displayName" && <span className="text-destructive ml-0.5">*</span>}
-                </label>
+                </Label>
                 {mode === "view" ? (
                   <p className="text-sm font-medium">{vals[field] || <span className="text-muted-foreground/40 font-normal text-xs">—</span>}</p>
                 ) : (
@@ -125,15 +134,14 @@ export function RoleEditor({ role, userId, onUpdate, onDelete }: Props) {
           })}
         </div>
 
+        {/* Metadata */}
         <div className="space-y-3">
-          <h4 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground border-b border-border/60 pb-1">
-            Metadata
-          </h4>
+          <SectionHeading>Metadata</SectionHeading>
           <div className="grid grid-cols-1 gap-1.5">
             {[
               ["ID",            role.id],
               ["Schema",        role.schemas?.[0]],
-              ["Created",       role.meta?.created ? new Date(role.meta.created).toLocaleString() : undefined],
+              ["Created",       role.meta?.created      ? new Date(role.meta.created).toLocaleString()      : undefined],
               ["Last Modified", role.meta?.lastModified ? new Date(role.meta.lastModified).toLocaleString() : undefined],
               ["Version",       role.meta?.version],
             ].map(([label, value]) => (

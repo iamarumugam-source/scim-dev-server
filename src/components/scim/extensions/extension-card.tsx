@@ -5,8 +5,22 @@ import { ChevronDown, ChevronRight, Pencil, Trash2, Plus, Save, Loader2 } from "
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import type { SchemaExtension, ExtensionField } from "@/lib/scim/services/extensionService";
 import { FieldRow } from "./field-row";
@@ -19,6 +33,22 @@ interface Props {
   ext:       SchemaExtension;
   userId:    string;
   onRefresh: () => void;
+}
+
+function fieldValue(f: ExtensionField): string {
+  if (f.source === "user_prop") return `user.${f.userProp ?? ""}`;
+  if (f.source === "random")    return `faker.${f.generator ?? ""}`;
+  if (f.source === "static")    return `"${f.staticValue ?? ""}"`;
+  if (f.source === "raw_json") {
+    if (!f.rawJson?.trim()) return "— empty —";
+    try {
+      const p = JSON.parse(f.rawJson);
+      if (Array.isArray(p))                    return `[ array · ${p.length} item${p.length !== 1 ? "s" : ""} ]`;
+      if (typeof p === "object" && p !== null) return `{ object · ${Object.keys(p).length} key${Object.keys(p).length !== 1 ? "s" : ""} }`;
+      return String(p);
+    } catch { return "⚠ invalid JSON"; }
+  }
+  return "";
 }
 
 export function ExtensionCard({ ext, userId, onRefresh }: Props) {
@@ -69,7 +99,7 @@ export function ExtensionCard({ ext, userId, onRefresh }: Props) {
   const remove = async () => {
     toast("Delete this extension?", {
       action: {
-        label: "Delete",
+        label:   "Delete",
         onClick: async () => {
           try {
             const res = await fetch(`/api/${userId}/scim/v2/extensions/${ext.id}`, { method: "DELETE" });
@@ -91,125 +121,155 @@ export function ExtensionCard({ ext, userId, onRefresh }: Props) {
   const removeField = (idx: number) =>
     setFields((p) => p.filter((_, i) => i !== idx));
 
-  return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 gap-3">
-        <button
-          className="flex items-center gap-2 min-w-0 flex-1 text-left"
-          onClick={() => setOpen((p) => !p)}
-        >
-          {open
-            ? <ChevronDown  className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-            : <ChevronRight className="h-4 w-4 flex-shrink-0 text-muted-foreground" />}
-          <div className="min-w-0">
-            <p className="text-sm font-mono font-medium truncate">{ext.schemaUrn}</p>
-            <p className="text-[11px] text-muted-foreground">
-              {ext.fields.length} field{ext.fields.length !== 1 ? "s" : ""}
-            </p>
-          </div>
-        </button>
+  const displayFields = editing ? fields : ext.fields;
 
-        <div className="flex items-center gap-3 flex-shrink-0">
-          <div className="flex items-center gap-2">
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <Card className="overflow-hidden">
+
+        {/* ── Header ─────────────────────────────────────────────────────── */}
+        <div className="flex items-center justify-between gap-3 px-3 py-1.5">
+          <CollapsibleTrigger asChild>
+            <Button
+              variant="ghost"
+              className="flex items-center gap-2 min-w-0 flex-1 justify-start h-7 px-0 hover:bg-transparent"
+            >
+              {open
+                ? <ChevronDown  className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                : <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />}
+              <span className="text-xs font-mono font-medium truncate">{ext.schemaUrn}</span>
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 flex-shrink-0 font-normal">
+                {ext.fields.length} field{ext.fields.length !== 1 ? "s" : ""}
+              </Badge>
+            </Button>
+          </CollapsibleTrigger>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Enabled toggle */}
             <Switch
               checked={ext.enabled}
               onCheckedChange={toggleEnabled}
               disabled={toggling || saving}
               aria-label={ext.enabled ? "Disable extension" : "Enable extension"}
+              className="scale-90"
             />
-            <span className={cn(
-              "text-xs font-medium select-none",
-              ext.enabled ? "text-green-600 dark:text-green-400" : "text-muted-foreground",
-            )}>
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-[10px] font-medium h-4 px-1.5 py-0",
+                ext.enabled
+                  ? "text-green-700 dark:text-green-400 border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/40"
+                  : "text-muted-foreground",
+              )}
+            >
               {ext.enabled ? "Active" : "Disabled"}
-            </span>
+            </Badge>
+
+            <Separator orientation="vertical" className="h-4" />
+
+            {/* Edit */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+              onClick={() => { setEditing((p) => !p); setOpen(true); }}
+            >
+              <Pencil className="h-3 w-3" />
+            </Button>
+
+            {/* Delete */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              onClick={remove}
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
           </div>
-          <button
-            onClick={() => { setEditing((p) => !p); setOpen(true); }}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Pencil className="h-4 w-4" />
-          </button>
-          <button onClick={remove} className="text-muted-foreground hover:text-destructive transition-colors">
-            <Trash2 className="h-4 w-4" />
-          </button>
         </div>
-      </div>
 
-      {open && (
-        <div className="border-t border-border px-4 py-4 space-y-4">
-          {editing && (
-            <div className="space-y-1">
-              <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Schema URN
-              </label>
-              <Input
-                value={urn}
-                onChange={(e) => setUrn(e.target.value)}
-                className="h-7 text-xs font-mono"
-              />
-            </div>
-          )}
+        {/* ── Expanded body ───────────────────────────────────────────────── */}
+        <CollapsibleContent>
+          <Separator />
+          <CardContent className="px-4 py-4 space-y-4">
 
-          <div className="space-y-2">
-            {(editing ? fields : ext.fields).length === 0 ? (
-              <p className="text-xs text-muted-foreground">No fields defined. Add one below.</p>
-            ) : (editing ? fields : ext.fields).map((f, i) =>
-              editing ? (
-                <FieldRow
-                  key={f.id}
-                  field={f}
-                  onChange={(nf) => updateField(i, nf)}
-                  onRemove={() => removeField(i)}
+            {/* Schema URN edit */}
+            {editing && (
+              <div className="space-y-1">
+                <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Schema URN
+                </Label>
+                <Input
+                  value={urn}
+                  onChange={(e) => setUrn(e.target.value)}
+                  className="h-7 text-xs font-mono"
                 />
-              ) : (
-                <div key={f.id} className="flex items-center gap-3 text-xs font-mono py-1 border-b border-border/40 last:border-0">
-                  <span className="font-semibold text-foreground w-40 flex-shrink-0 truncate">{f.name}</span>
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 flex-shrink-0">{f.type}</Badge>
-                  <span className="text-muted-foreground truncate">
-                    {f.source === "user_prop" && `user.${f.userProp}`}
-                    {f.source === "random"    && `faker.${f.generator}`}
-                    {f.source === "static"    && `"${f.staticValue}"`}
-                    {f.source === "raw_json"  && (() => {
-                      if (!f.rawJson?.trim()) return "— empty —";
-                      try {
-                        const p = JSON.parse(f.rawJson);
-                        return Array.isArray(p)
-                          ? `[ array · ${p.length} item${p.length !== 1 ? "s" : ""} ]`
-                          : typeof p === "object" && p !== null
-                            ? `{ object · ${Object.keys(p).length} key${Object.keys(p as object).length !== 1 ? "s" : ""} }`
-                            : String(p);
-                      } catch { return "⚠ invalid JSON"; }
-                    })()}
-                  </span>
-                </div>
-              )
-            )}
-          </div>
-
-          {editing && (
-            <div className="flex items-center gap-2 pt-1">
-              <Button size="sm" variant="outline" onClick={addField} className="h-7 text-xs gap-1.5">
-                <Plus className="h-3.5 w-3.5" /> Add Field
-              </Button>
-              <div className="ml-auto flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => { setEditing(false); setFields(ext.fields); setUrn(ext.schemaUrn); }}
-                  className="h-7 text-xs"
-                >
-                  Cancel
-                </Button>
-                <Button size="sm" onClick={save} disabled={saving} className="h-7 text-xs gap-1.5">
-                  {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                  Save
-                </Button>
               </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+            )}
+
+            {/* Fields */}
+            {displayFields.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No fields defined. Add one below.</p>
+            ) : editing ? (
+              <div className="space-y-2">
+                {fields.map((f, i) => (
+                  <FieldRow
+                    key={f.id}
+                    field={f}
+                    onChange={(nf) => updateField(i, nf)}
+                    onRemove={() => removeField(i)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-md border border-border overflow-hidden">
+                <Table>
+                  <TableBody>
+                    {ext.fields.map((f) => (
+                      <TableRow key={f.id} className="hover:bg-muted/30">
+                        <TableCell className="py-1.5 font-mono text-xs font-semibold text-foreground w-40">
+                          {f.name || <span className="text-muted-foreground/50 font-normal">(spread)</span>}
+                        </TableCell>
+                        <TableCell className="py-1.5 w-24">
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">{f.type}</Badge>
+                        </TableCell>
+                        <TableCell className="py-1.5 font-mono text-xs text-muted-foreground">
+                          {fieldValue(f)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+            {/* Editing actions */}
+            {editing && (
+              <div className="flex items-center gap-2 pt-1">
+                <Button size="sm" variant="outline" onClick={addField} className="h-7 text-xs gap-1.5">
+                  <Plus className="h-3.5 w-3.5" /> Add Field
+                </Button>
+                <div className="ml-auto flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => { setEditing(false); setFields(ext.fields); setUrn(ext.schemaUrn); }}
+                    className="h-7 text-xs"
+                  >
+                    Cancel
+                  </Button>
+                  <Button size="sm" onClick={save} disabled={saving} className="h-7 text-xs gap-1.5">
+                    {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                    Save
+                  </Button>
+                </div>
+              </div>
+            )}
+
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }
