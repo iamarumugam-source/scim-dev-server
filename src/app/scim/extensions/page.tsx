@@ -81,8 +81,8 @@ export default function ExtensionsPage() {
         </p>
         <div className="flex items-center gap-2 flex-shrink-0">
           <JsonTemplateConverter />
-          <Button onClick={() => setShowNew((p) => !p)} className="gap-1.5">
-            <Plus className="h-4 w-4" /> New Extension
+          <Button size="sm" onClick={() => setShowNew((p) => !p)} className="gap-1.5">
+            <Plus className="h-3.5 w-3.5" /> New Extension
           </Button>
         </div>
       </div>

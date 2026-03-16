@@ -1,13 +1,32 @@
 "use client";
-import { UsersRound, Boxes, BuildingIcon, ChevronRight, ShieldCheck, ScanSearch, KeyRound, FlaskConical, Fingerprint, LayoutDashboard, Webhook, ScrollText, Puzzle, Activity, LockKeyhole, BookOpen, WandSparkles, Eraser, BadgeCheck, Crown } from "lucide-react";
+import {
+  UsersRound,
+  Boxes,
+  BuildingIcon,
+  ChevronRight,
+  ShieldCheck,
+  ScanSearch,
+  KeyRound,
+  FlaskConical,
+  Fingerprint,
+  LayoutDashboard,
+  Webhook,
+  ScrollText,
+  Puzzle,
+  Activity,
+  LockKeyhole,
+  BookOpen,
+  WandSparkles,
+  Eraser,
+  BadgeCheck,
+  Crown,
+  LifeBuoy,
+} from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-import {
-  IconDashboard,
-  IconLogs,
-} from "@tabler/icons-react";
+import { IconDashboard, IconLogs } from "@tabler/icons-react";
 import Image from "next/image";
 import {
   Sidebar,
@@ -24,6 +43,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   Collapsible,
@@ -65,32 +85,34 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useHotkeys } from "react-hotkeys-hook";
 
 const FormSchema = z.object({
-  generateUsers:        z.boolean(),
-  generateGroups:       z.boolean(),
+  generateUsers: z.boolean(),
+  generateGroups: z.boolean(),
   generateEntitlements: z.boolean(),
-  generateRoles:        z.boolean(),
-  userCount:            z.transform(Number).pipe(z.number().min(1).max(1000)),
-  groupCount:           z.transform(Number).pipe(z.number().min(1).max(50)),
-  deleteExisting:       z.boolean(),
+  generateRoles: z.boolean(),
+  userCount: z.transform(Number).pipe(z.number().min(1).max(1000)),
+  groupCount: z.transform(Number).pipe(z.number().min(1).max(50)),
+  deleteExisting: z.boolean(),
 });
 
 // Menu items.
 const items = [
-  { title: "Dashboard",  url: "/scim",           icon: LayoutDashboard },
-  { title: "API",        url: "/scim/keys",       icon: Webhook         },
-  { title: "Users",      url: "/scim/users",      icon: UsersRound      },
-  { title: "Groups",       url: "/scim/groups",       icon: Boxes      },
+  { title: "Dashboard", url: "/scim", icon: LayoutDashboard },
+  { title: "API", url: "/scim/keys", icon: Webhook },
+  { title: "Users", url: "/scim/users", icon: UsersRound },
+  { title: "Groups", url: "/scim/groups", icon: Boxes },
   { title: "Entitlements", url: "/scim/entitlements", icon: BadgeCheck },
-  { title: "Roles",        url: "/scim/roles",        icon: Crown      },
-  { title: "Logs",         url: "/scim/logs",         icon: ScrollText },
-  { title: "Extensions", url: "/scim/extensions", icon: Puzzle          },
+  { title: "Roles", url: "/scim/roles", icon: Crown },
+  { title: "Logs", url: "/scim/logs", icon: ScrollText },
+  { title: "Extensions", url: "/scim/extensions", icon: Puzzle },
 ];
 
 const otherTools = [
-  { title: "HAR Analyser", url: "/har-analyser", icon: ScanSearch  },
-  { title: "JWE Decoder",  url: "/jwe",          icon: LockKeyhole },
+  { title: "HAR Analyser", url: "/har-analyser", icon: ScanSearch },
+  { title: "JWE Decoder", url: "/jwe", icon: LockKeyhole },
 ];
 
 type FormValues = z.infer<typeof FormSchema>;
@@ -114,30 +136,68 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isResetting, setIsReseting] = useState(false);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
+  const { toggleSidebar } = useSidebar();
   const [resetSelections, setResetSelections] = useState({
-    users:        true,
-    groups:       true,
+    users: true,
+    groups: true,
     entitlements: true,
-    roles:        true,
-    logs:         true,
-    pageViews:    true,
+    roles: true,
+    logs: true,
+    pageViews: true,
   });
 
+  const router = useRouter();
   const pathname = usePathname();
-  const [scimOpen, setScimOpen] = useState(pathname.startsWith("/scim"));
+  const [scimOpen, setScimOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem("sidebar_scim_open");
+      return saved === null ? true : saved === "true";
+    } catch {
+      return true;
+    }
+  });
 
-const userId = session?.user?.id;
+  const handleScimOpenChange = (open: boolean) => {
+    setScimOpen(open);
+    try {
+      localStorage.setItem("sidebar_scim_open", String(open));
+    } catch {}
+  };
+
+  // ── Keyboard shortcuts ──────────────────────────────────────────────────────
+  useHotkeys("backslash",   () => toggleSidebar(),          { preventDefault: true });
+  useHotkeys("shift+slash", () => setIsShortcutsOpen(true), { preventDefault: true });
+  // Dialogs — Shift modifier prevents accidental triggers
+  useHotkeys("shift+g", () => setIsDialogOpen(true), { preventDefault: true });
+  useHotkeys("shift+r", () => setIsResetDialogOpen(true), {
+    preventDefault: true,
+  });
+  // Navigation — plain letters
+  useHotkeys("g", () => router.push("/scim/groups"), { preventDefault: true });
+  useHotkeys("r", () => router.push("/scim/roles"), { preventDefault: true });
+  useHotkeys("l", () => router.push("/scim/logs"), { preventDefault: true });
+  useHotkeys("u", () => router.push("/scim/users"), { preventDefault: true });
+  useHotkeys("x", () => router.push("/scim/extensions"), {
+    preventDefault: true,
+  });
+  useHotkeys("e", () => router.push("/scim/entitlements"), {
+    preventDefault: true,
+  });
+  useHotkeys("a", () => router.push("/scim/keys"), { preventDefault: true });
+
+  const userId = session?.user?.id;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
-      generateUsers:        true,
-      generateGroups:       true,
+      generateUsers: true,
+      generateGroups: true,
       generateEntitlements: true,
-      generateRoles:        true,
-      userCount:            10,
-      groupCount:           2,
-      deleteExisting:       false,
+      generateRoles: true,
+      userCount: 10,
+      groupCount: 2,
+      deleteExisting: false,
     },
   });
 
@@ -149,7 +209,10 @@ const userId = session?.user?.id;
     async (data: FormValues) => {
       if (isGenerating) return;
 
-      if (data.deleteExisting) toast.info("Removing existing users, groups, entitlements, and roles...");
+      if (data.deleteExisting)
+        toast.info(
+          "Removing existing users, groups, entitlements, and roles...",
+        );
 
       setIsGenerating(true);
       toast.info("Generating users, groups, entitlements, and roles...");
@@ -187,12 +250,12 @@ const userId = session?.user?.id;
     setIsReseting(true);
 
     const RESET_LABELS: Record<string, string> = {
-      users:        "Users",
-      groups:       "Groups",
+      users: "Users",
+      groups: "Groups",
       entitlements: "Entitlements",
-      roles:        "Roles",
-      logs:         "Logs",
-      pageViews:    "Page views",
+      roles: "Roles",
+      logs: "Logs",
+      pageViews: "Page views",
     };
 
     const selectedLabels = Object.entries(resetSelections)
@@ -267,7 +330,7 @@ const userId = session?.user?.id;
                   <DialogTrigger asChild>
                     <SidebarMenuButton
                       tooltip="Generate Mock"
-                      className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground dark:text-sidebar-accent-foreground dark:hover:text-sidebar-accent-foreground dark:active:text-sidebar-accent-foreground min-w-8 duration-200 ease-linear"
+                      className="cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground dark:text-sidebar-accent-foreground dark:hover:text-sidebar-accent-foreground dark:active:text-sidebar-accent-foreground min-w-8 duration-200 ease-linear"
                     >
                       <WandSparkles />
                       <span>Generate Mock</span>
@@ -290,7 +353,9 @@ const userId = session?.user?.id;
                       >
                         {/* What to generate */}
                         <div className="space-y-3">
-                          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">What to generate</p>
+                          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                            What to generate
+                          </p>
 
                           {/* Users */}
                           <FormField
@@ -300,9 +365,14 @@ const userId = session?.user?.id;
                               <FormItem className="flex flex-row items-center justify-between space-y-0">
                                 <div className="flex items-center gap-2.5">
                                   <FormControl>
-                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                    <Checkbox
+                                      checked={field.value}
+                                      onCheckedChange={field.onChange}
+                                    />
                                   </FormControl>
-                                  <FormLabel className="text-sm font-normal cursor-pointer">Users</FormLabel>
+                                  <FormLabel className="text-sm font-normal cursor-pointer">
+                                    Users
+                                  </FormLabel>
                                 </div>
                                 {field.value && (
                                   <FormField
@@ -310,9 +380,15 @@ const userId = session?.user?.id;
                                     name="userCount"
                                     render={({ field: f }) => (
                                       <FormItem className="flex flex-row items-center gap-2 space-y-0">
-                                        <FormLabel className="text-xs text-muted-foreground font-normal whitespace-nowrap">Count</FormLabel>
+                                        <FormLabel className="text-xs text-muted-foreground font-normal whitespace-nowrap">
+                                          Count
+                                        </FormLabel>
                                         <FormControl>
-                                          <Input {...f} type="number" className="h-7 w-20 text-xs" />
+                                          <Input
+                                            {...f}
+                                            type="number"
+                                            className="h-7 w-20 text-xs"
+                                          />
                                         </FormControl>
                                         <FormMessage />
                                       </FormItem>
@@ -331,9 +407,14 @@ const userId = session?.user?.id;
                               <FormItem className="flex flex-row items-center justify-between space-y-0">
                                 <div className="flex items-center gap-2.5">
                                   <FormControl>
-                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                    <Checkbox
+                                      checked={field.value}
+                                      onCheckedChange={field.onChange}
+                                    />
                                   </FormControl>
-                                  <FormLabel className="text-sm font-normal cursor-pointer">Groups</FormLabel>
+                                  <FormLabel className="text-sm font-normal cursor-pointer">
+                                    Groups
+                                  </FormLabel>
                                 </div>
                                 {field.value && (
                                   <FormField
@@ -341,9 +422,15 @@ const userId = session?.user?.id;
                                     name="groupCount"
                                     render={({ field: f }) => (
                                       <FormItem className="flex flex-row items-center gap-2 space-y-0">
-                                        <FormLabel className="text-xs text-muted-foreground font-normal whitespace-nowrap">Count</FormLabel>
+                                        <FormLabel className="text-xs text-muted-foreground font-normal whitespace-nowrap">
+                                          Count
+                                        </FormLabel>
                                         <FormControl>
-                                          <Input {...f} type="number" className="h-7 w-20 text-xs" />
+                                          <Input
+                                            {...f}
+                                            type="number"
+                                            className="h-7 w-20 text-xs"
+                                          />
                                         </FormControl>
                                         <FormMessage />
                                       </FormItem>
@@ -361,10 +448,17 @@ const userId = session?.user?.id;
                             render={({ field }) => (
                               <FormItem className="flex flex-row items-center space-y-0 gap-2.5">
                                 <FormControl>
-                                  <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                  <Checkbox
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                  />
                                 </FormControl>
-                                <FormLabel className="text-sm font-normal cursor-pointer flex-1">Entitlements</FormLabel>
-                                <span className="text-xs text-muted-foreground">from catalog</span>
+                                <FormLabel className="text-sm font-normal cursor-pointer flex-1">
+                                  Entitlements
+                                </FormLabel>
+                                <span className="text-xs text-muted-foreground">
+                                  from catalog
+                                </span>
                               </FormItem>
                             )}
                           />
@@ -376,10 +470,17 @@ const userId = session?.user?.id;
                             render={({ field }) => (
                               <FormItem className="flex flex-row items-center space-y-0 gap-2.5">
                                 <FormControl>
-                                  <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                  <Checkbox
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                  />
                                 </FormControl>
-                                <FormLabel className="text-sm font-normal cursor-pointer flex-1">Roles</FormLabel>
-                                <span className="text-xs text-muted-foreground">from catalog</span>
+                                <FormLabel className="text-sm font-normal cursor-pointer flex-1">
+                                  Roles
+                                </FormLabel>
+                                <span className="text-xs text-muted-foreground">
+                                  from catalog
+                                </span>
                               </FormItem>
                             )}
                           />
@@ -394,12 +495,19 @@ const userId = session?.user?.id;
                           render={({ field }) => (
                             <FormItem className="flex flex-row gap-2.5 items-start space-y-0">
                               <FormControl>
-                                <Checkbox checked={field.value} onCheckedChange={field.onChange} className="mt-0.5" />
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                  className="mt-0.5"
+                                />
                               </FormControl>
                               <div className="space-y-0.5">
-                                <FormLabel className="text-sm">Delete existing data first</FormLabel>
+                                <FormLabel className="text-sm">
+                                  Delete existing data first
+                                </FormLabel>
                                 <FormDescription className="text-xs">
-                                  Removes existing users, groups, entitlements, and roles before generating new ones.
+                                  Removes existing users, groups, entitlements,
+                                  and roles before generating new ones.
                                 </FormDescription>
                               </div>
                             </FormItem>
@@ -408,9 +516,15 @@ const userId = session?.user?.id;
 
                         <DialogFooter>
                           <DialogClose asChild>
-                            <Button variant="outline">Cancel</Button>
+                            <Button variant="outline" size="sm">
+                              Cancel
+                            </Button>
                           </DialogClose>
-                          <Button type="submit" disabled={isGenerating}>
+                          <Button
+                            type="submit"
+                            size="sm"
+                            disabled={isGenerating}
+                          >
                             {isGenerating ? "Generating…" : "Generate"}
                           </Button>
                         </DialogFooter>
@@ -425,7 +539,7 @@ const userId = session?.user?.id;
                   <DialogTrigger asChild>
                     <SidebarMenuButton
                       tooltip="Reset Data"
-                      className="size-8 group-data-[collapsible=icon]:opacity-0 border justify-center text-muted-foreground hover:text-destructive hover:border-destructive/50 hover:bg-destructive/10 transition-colors"
+                      className="cursor-pointer size-8 group-data-[collapsible=icon]:opacity-0 border justify-center text-muted-foreground hover:text-destructive hover:border-destructive/50 hover:bg-destructive/10 transition-colors"
                       variant="outline"
                     >
                       <Eraser />
@@ -435,27 +549,57 @@ const userId = session?.user?.id;
                     <DialogHeader>
                       <DialogTitle>Reset Data</DialogTitle>
                       <DialogDescription>
-                        Select what to permanently delete. This action cannot be undone.
+                        Select what to permanently delete. This action cannot be
+                        undone.
                       </DialogDescription>
                     </DialogHeader>
 
                     <Separator />
 
                     <div className="space-y-3 py-1">
-                      {([
-                        { key: "users",        label: "Users",        desc: "All provisioned user accounts" },
-                        { key: "groups",       label: "Groups",       desc: "All user groups and memberships" },
-                        { key: "entitlements", label: "Entitlements", desc: "All entitlement definitions" },
-                        { key: "roles",        label: "Roles",        desc: "All role definitions" },
-                        { key: "logs",         label: "Logs",         desc: "All API request logs" },
-                        { key: "pageViews",    label: "Page views",   desc: "Page view counters" },
-                      ] as const).map(({ key, label, desc }) => (
+                      {(
+                        [
+                          {
+                            key: "users",
+                            label: "Users",
+                            desc: "All provisioned user accounts",
+                          },
+                          {
+                            key: "groups",
+                            label: "Groups",
+                            desc: "All user groups and memberships",
+                          },
+                          {
+                            key: "entitlements",
+                            label: "Entitlements",
+                            desc: "All entitlement definitions",
+                          },
+                          {
+                            key: "roles",
+                            label: "Roles",
+                            desc: "All role definitions",
+                          },
+                          {
+                            key: "logs",
+                            label: "Logs",
+                            desc: "All API request logs",
+                          },
+                          {
+                            key: "pageViews",
+                            label: "Page views",
+                            desc: "Page view counters",
+                          },
+                        ] as const
+                      ).map(({ key, label, desc }) => (
                         <div key={key} className="flex items-start gap-3">
                           <Checkbox
                             id={`reset-${key}`}
                             checked={resetSelections[key]}
                             onCheckedChange={(checked) =>
-                              setResetSelections((p) => ({ ...p, [key]: checked === true }))
+                              setResetSelections((p) => ({
+                                ...p,
+                                [key]: checked === true,
+                              }))
                             }
                             className="mt-0.5"
                           />
@@ -466,7 +610,9 @@ const userId = session?.user?.id;
                             >
                               {label}
                             </Label>
-                            <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {desc}
+                            </p>
                           </div>
                         </div>
                       ))}
@@ -476,12 +622,18 @@ const userId = session?.user?.id;
 
                     <DialogFooter>
                       <DialogClose asChild>
-                        <Button variant="outline">Cancel</Button>
+                        <Button variant="outline" size="sm">
+                          Cancel
+                        </Button>
                       </DialogClose>
                       <Button
                         variant="destructive"
+                        size="sm"
                         onClick={handleReset}
-                        disabled={isResetting || !Object.values(resetSelections).some(Boolean)}
+                        disabled={
+                          isResetting ||
+                          !Object.values(resetSelections).some(Boolean)
+                        }
                       >
                         {isResetting ? "Deleting…" : "Delete selected"}
                       </Button>
@@ -495,7 +647,11 @@ const userId = session?.user?.id;
         <SidebarGroup>
           <SidebarGroupLabel>Tools</SidebarGroupLabel>
           <SidebarMenu>
-            <Collapsible asChild open={scimOpen} onOpenChange={setScimOpen}>
+            <Collapsible
+              asChild
+              open={scimOpen}
+              onOpenChange={handleScimOpenChange}
+            >
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
@@ -557,7 +713,11 @@ const userId = session?.user?.id;
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem key="changelog">
-                <SidebarMenuButton asChild size="sm" isActive={pathname === "/changelog"}>
+                <SidebarMenuButton
+                  asChild
+                  size="sm"
+                  isActive={pathname === "/changelog"}
+                >
                   <a href="/changelog">
                     <BookOpen />
                     <span>Changelog</span>
@@ -567,9 +727,7 @@ const userId = session?.user?.id;
               <SidebarMenuItem key="contact">
                 <SidebarMenuButton asChild size="sm">
                   <a href="slack://channel?team=E017NDYFGQL&id=C0AKWV1GCHM">
-                    <svg viewBox="0 0 24 24" fill="currentColor" className="size-4">
-                      <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z" />
-                    </svg>
+                    <LifeBuoy />
                     <span>Support</span>
                   </a>
                 </SidebarMenuButton>
@@ -581,6 +739,75 @@ const userId = session?.user?.id;
       <SidebarFooter>
         <NavUser />
       </SidebarFooter>
+
+      {/* ── Keyboard shortcuts reference ─────────────────────────────────── */}
+      <Dialog open={isShortcutsOpen} onOpenChange={setIsShortcutsOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Keyboard Shortcuts</DialogTitle>
+            <DialogDescription>
+              Shortcuts are disabled when focus is inside an input field.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-1">
+            {[
+              {
+                group: "Sidebar",
+                items: [
+                  { keys: ["\\"], label: "Toggle sidebar" },
+                  { keys: ["?"], label: "Show this dialog" },
+                  { keys: ["D"], label: "Toggle theme" },
+                ],
+              },
+              {
+                group: "Actions",
+                items: [
+                  { keys: ["⇧", "G"], label: "Generate mock data" },
+                  { keys: ["⇧", "R"], label: "Reset data" },
+                ],
+              },
+              {
+                group: "Navigate",
+                items: [
+                  { keys: ["U"], label: "Users" },
+                  { keys: ["G"], label: "Groups" },
+                  { keys: ["E"], label: "Entitlements" },
+                  { keys: ["R"], label: "Roles" },
+                  { keys: ["A"], label: "API" },
+                  { keys: ["L"], label: "Logs" },
+                  { keys: ["X"], label: "Extensions" },
+                ],
+              },
+            ].map(({ group, items }) => (
+              <div key={group} className="space-y-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-1">
+                  {group}
+                </p>
+                {items.map(({ keys, label }) => (
+                  <div
+                    key={label}
+                    className="flex items-center justify-between px-1"
+                  >
+                    <span className="text-sm text-muted-foreground">
+                      {label}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      {keys.map((k) => (
+                        <kbd
+                          key={k}
+                          className="pointer-events-none inline-flex h-5 min-w-[20px] items-center justify-center rounded border border-border bg-muted px-1.5 font-mono text-[11px] font-medium text-muted-foreground select-none"
+                        >
+                          {k}
+                        </kbd>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Sidebar>
   );
 }

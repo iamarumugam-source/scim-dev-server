@@ -157,37 +157,37 @@ export default function NavUser() {
             <DropdownMenuSeparator />
 
             {/* ── Session & identity details ────────────────────────────── */}
-            <DropdownMenuLabel className="flex items-center justify-between px-3 py-1 font-normal">
-              <span className="text-xs text-muted-foreground">Login method</span>
-              <Badge variant="secondary" className="text-[10px] font-normal h-4 px-1.5">
-                Okta SSO
-              </Badge>
-            </DropdownMenuLabel>
-            {signedInAt && (
-              <DropdownMenuLabel className="flex items-center justify-between px-3 py-1 font-normal">
-                <span className="text-xs text-muted-foreground">Signed in</span>
-                <span className="text-[11px] text-foreground/80">{formatRelative(signedInAt)}</span>
-              </DropdownMenuLabel>
-            )}
-            {session?.expires && (
-              <DropdownMenuLabel className="flex items-center justify-between px-3 py-1 font-normal">
-                <span className="text-xs text-muted-foreground">Session expires</span>
-                <span className="text-[11px] text-foreground/80">in {formatExpiry(session.expires)}</span>
-              </DropdownMenuLabel>
-            )}
-            <DropdownMenuLabel className="flex items-center justify-between px-3 py-1 font-normal">
-              <span className="text-xs text-muted-foreground">Environment</span>
-              <Badge
-                variant="outline"
-                className={`text-[10px] font-normal h-4 px-1.5 gap-1 ${
-                  isLocal
-                    ? "text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40"
-                    : "text-green-700 dark:text-green-400 border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/40"
-                }`}
-              >
-                {isLocal ? <Monitor className="h-2.5 w-2.5" /> : <Globe className="h-2.5 w-2.5" />}
-                {env}
-              </Badge>
+            <DropdownMenuLabel className="px-3 py-1.5 font-normal space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Login method</span>
+                <Badge variant="secondary" className="text-[10px] font-normal h-4 px-1.5">Okta SSO</Badge>
+              </div>
+              {signedInAt && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Signed in</span>
+                  <span className="text-[11px] text-foreground/80">{formatRelative(signedInAt)}</span>
+                </div>
+              )}
+              {session?.expires && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Session expires</span>
+                  <span className="text-[11px] text-foreground/80">in {formatExpiry(session.expires)}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Environment</span>
+                <Badge
+                  variant="outline"
+                  className={`text-[10px] font-normal h-4 px-1.5 gap-1 ${
+                    isLocal
+                      ? "text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40"
+                      : "text-green-700 dark:text-green-400 border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/40"
+                  }`}
+                >
+                  {isLocal ? <Monitor className="h-2.5 w-2.5" /> : <Globe className="h-2.5 w-2.5" />}
+                  {env}
+                </Badge>
+              </div>
             </DropdownMenuLabel>
 
             <DropdownMenuSeparator />

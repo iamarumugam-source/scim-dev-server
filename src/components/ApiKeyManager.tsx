@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
-import { Copy, Trash2, PlusCircle, KeyRound, Check } from "lucide-react";
+import { Copy, Trash2, Plus, KeyRound, Check } from "lucide-react";
 
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -157,7 +157,7 @@ export default function ApiKeyManager() {
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm" onClick={handleOpenDialog} className="gap-1.5">
-                <PlusCircle className="h-3.5 w-3.5" /> Generate New Key
+                <Plus className="h-3.5 w-3.5" /> New API Key
               </Button>
             </DialogTrigger>
             <DialogContent

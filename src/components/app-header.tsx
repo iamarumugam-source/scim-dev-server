@@ -19,7 +19,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import { useHotkeys } from "react-hotkeys-hook";
-import { IconBrandGithub } from "@tabler/icons-react";
 import React from "react";
 
 import { META_THEME_COLORS } from "@/config/site";
@@ -33,19 +32,22 @@ import { SunMediumIcon } from "@/components/animated-icons/sun-medium";
 
 type Crumb = { label: string; href?: string };
 
+const TOOLS: Crumb = { label: "Tools", href: "/" };
+const SCIM:  Crumb = { label: "SCIM",  href: "/scim" };
+
 const BREADCRUMBS: Record<string, Crumb[]> = {
-  "/":                 [{ label: "Home" }],
-  "/scim":             [{ label: "SCIM", href: "/scim" }, { label: "Dashboard" }],
-  "/scim/keys":        [{ label: "SCIM", href: "/scim" }, { label: "API" }],
-  "/scim/users":       [{ label: "SCIM", href: "/scim" }, { label: "Users" }],
-  "/scim/groups":      [{ label: "SCIM", href: "/scim" }, { label: "Groups" }],
-  "/scim/logs":        [{ label: "SCIM", href: "/scim" }, { label: "Logs" }],
-  "/scim/extensions":   [{ label: "SCIM", href: "/scim" }, { label: "Extensions" }],
-  "/scim/entitlements": [{ label: "SCIM", href: "/scim" }, { label: "Entitlements" }],
-  "/scim/roles":        [{ label: "SCIM", href: "/scim" }, { label: "Roles" }],
-  "/har-analyser":     [{ label: "Tools" }, { label: "HAR Analyser" }],
-  "/jwe":              [{ label: "Tools" }, { label: "JWE Decoder" }],
-  "/changelog":        [{ label: "Changelog" }],
+  "/":                  [{ label: "Tools" }],
+  "/scim":              [TOOLS, SCIM, { label: "Dashboard" }],
+  "/scim/keys":         [TOOLS, SCIM, { label: "API" }],
+  "/scim/users":        [TOOLS, SCIM, { label: "Users" }],
+  "/scim/groups":       [TOOLS, SCIM, { label: "Groups" }],
+  "/scim/logs":         [TOOLS, SCIM, { label: "Logs" }],
+  "/scim/extensions":   [TOOLS, SCIM, { label: "Extensions" }],
+  "/scim/entitlements": [TOOLS, SCIM, { label: "Entitlements" }],
+  "/scim/roles":        [TOOLS, SCIM, { label: "Roles" }],
+  "/har-analyser":      [TOOLS, { label: "HAR Analyser" }],
+  "/jwe":               [TOOLS, { label: "JWE Decoder" }],
+  "/changelog":         [TOOLS, { label: "Changelog" }],
 };
 
 // ─── Theme toggle ─────────────────────────────────────────────────────────────
@@ -124,16 +126,6 @@ export function SiteHeader() {
         </Breadcrumb>
 
         <div className="ml-auto flex items-center gap-2">
-          <a
-            href="https://github.com/iamarumugam-source/scim-dev-server"
-            rel="noopener noreferrer"
-            target="_blank"
-            title="View on GitHub"
-            className="hidden sm:flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <IconBrandGithub className="h-4 w-4" />
-            <span className="sr-only">GitHub</span>
-          </a>
           <ThemeToggle />
         </div>
       </div>

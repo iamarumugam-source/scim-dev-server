@@ -1,7 +1,8 @@
 "use client";
 
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
-import { Card, CardContent } from "@/components/ui/card";
+import { CalendarDays } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ChartContainer,
@@ -34,10 +35,11 @@ const chartConfig = {
 export function ActivityChart({ data, isLoading }: ActivityChartProps) {
   return (
     <Card>
-      <CardContent className="p-5">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-          API Calls — Last 7 Days
-        </p>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">API Calls — Last 7 Days</CardTitle>
+        <CalendarDays className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
         {isLoading ? (
           <div className="flex items-end gap-2 h-[120px]">
             {[40, 65, 30, 80, 55, 70, 45].map((h, i) => (

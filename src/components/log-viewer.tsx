@@ -154,7 +154,7 @@ const LogViewer: FC = () => {
           disabled={isRefreshing || isLoading}
           className="gap-1.5"
         >
-          <RefreshCw className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")} />
+          <RefreshCw className={cn("h-3.5 w-3.5", (isRefreshing || isLoading) && "animate-spin")} />
           Refresh
         </Button>
       </div>

@@ -4,14 +4,14 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import {
   UsersRound, Boxes, KeyRound, BadgeCheck, Crown,
   CheckCircle2, XCircle, AlertCircle, TrendingUp, Activity,
-  Globe, RefreshCw,
+  Globe, RefreshCw, SlidersHorizontal, Gauge,
 } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -148,12 +148,7 @@ export default function ScimDashboard() {
       {/* ── Overview ──────────────────────────────────────────────────────── */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <SectionLabel>Overview</SectionLabel>
-            <code className="text-[11px] font-mono bg-muted text-muted-foreground px-1.5 py-0.5 rounded border border-border/60 -mt-3">
-              {userId}
-            </code>
-          </div>
+          <SectionLabel>Overview</SectionLabel>
           <Button variant="outline" size="sm" onClick={fetchStats} disabled={isLoading} className="gap-1.5">
             <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} />
             Refresh
@@ -168,45 +163,45 @@ export default function ScimDashboard() {
           animate="show"
         >
           {[
-            { label: "Provisioned Users", href: "/scim/users",        icon: UsersRound, color: "text-blue-600 dark:text-blue-400",       value: stats?.users.total        ?? null },
-            { label: "Groups",            href: "/scim/groups",       icon: Boxes,      color: "text-violet-600 dark:text-violet-400",   value: stats?.groups.total       ?? null },
-            { label: "Entitlements",      href: "/scim/entitlements", icon: BadgeCheck, color: "text-emerald-600 dark:text-emerald-400", value: stats?.entitlements.total ?? null },
-            { label: "Roles",             href: "/scim/roles",        icon: Crown,      color: "text-rose-600 dark:text-rose-400",       value: stats?.roles.total        ?? null },
-            { label: "API Keys",          href: "/scim/keys",         icon: KeyRound,   color: "text-amber-600 dark:text-amber-400",     value: stats?.apiKeys.total      ?? null },
-            { label: "Total API Calls",   href: "/scim/logs",         icon: Activity,   color: "text-teal-600 dark:text-teal-400",       value: stats?.calls.total        ?? null },
-          ].map(({ label, href, icon: Icon, color, value }) => (
+            { label: "Provisioned Users", href: "/scim/users",        icon: UsersRound, value: stats?.users.total        ?? null },
+            { label: "Groups",            href: "/scim/groups",       icon: Boxes,      value: stats?.groups.total       ?? null },
+            { label: "Entitlements",      href: "/scim/entitlements", icon: BadgeCheck, value: stats?.entitlements.total ?? null },
+            { label: "Roles",             href: "/scim/roles",        icon: Crown,      value: stats?.roles.total        ?? null },
+            { label: "API Keys",          href: "/scim/keys",         icon: KeyRound,   value: stats?.apiKeys.total      ?? null },
+            { label: "Total API Calls",   href: "/scim/logs",         icon: Activity,   value: stats?.calls.total        ?? null },
+          ].map(({ label, href, icon: Icon, value }) => (
             <motion.div key={label} variants={fadeUp}>
               <Link href={href} className="group block h-full">
                 <Card className="hover:border-primary/40 hover:shadow-sm transition-all cursor-pointer h-full">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium group-hover:text-primary transition-colors">
+                  <CardHeader>
+                    <CardDescription className="group-hover:text-primary transition-colors">
                       {label}
+                    </CardDescription>
+                    <CardTitle className="text-2xl font-bold tabular-nums">
+                      <AnimatePresence mode="wait" initial={false}>
+                        {isLoading || value === null ? (
+                          <motion.div
+                            key="skeleton"
+                            initial={{ opacity: 1 }}
+                            exit={{ opacity: 0, transition: { duration: 0.15 } }}
+                          >
+                            <Skeleton className="h-7 w-16" />
+                          </motion.div>
+                        ) : (
+                          <motion.span
+                            key="value"
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0, transition: { duration: 0.3 } }}
+                          >
+                            <CountUp value={value} />
+                          </motion.span>
+                        )}
+                      </AnimatePresence>
                     </CardTitle>
-                    <Icon className={cn("h-4 w-4 flex-shrink-0", color)} />
+                    <CardAction>
+                      <Icon className="h-4 w-4 text-muted-foreground" />
+                    </CardAction>
                   </CardHeader>
-                  <CardContent>
-                    {/* AnimatePresence crossfades skeleton → value without a flash */}
-                    <AnimatePresence mode="wait" initial={false}>
-                      {isLoading || value === null ? (
-                        <motion.div
-                          key="skeleton"
-                          initial={{ opacity: 1 }}
-                          exit={{ opacity: 0, transition: { duration: 0.15 } }}
-                        >
-                          <Skeleton className="h-7 w-16" />
-                        </motion.div>
-                      ) : (
-                        <motion.p
-                          key="value"
-                          className="text-2xl font-bold tabular-nums"
-                          initial={{ opacity: 0, y: 6 }}
-                          animate={{ opacity: 1, y: 0, transition: { duration: 0.3 } }}
-                        >
-                          <CountUp value={value} />
-                        </motion.p>
-                      )}
-                    </AnimatePresence>
-                  </CardContent>
                 </Card>
               </Link>
             </motion.div>
@@ -219,28 +214,36 @@ export default function ScimDashboard() {
         <SectionLabel>API Health</SectionLabel>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
 
+          {/* Success Rate */}
           <Card>
-            <CardContent className="p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Success Rate</p>
-                <AnimatePresence mode="wait" initial={false}>
-                  {!isLoading && (
-                    <motion.span
-                      key="rate"
-                      className={cn(
-                        "text-xl font-bold tabular-nums",
-                        successRate >= 90 ? "text-green-600 dark:text-green-400"
-                        : successRate >= 70 ? "text-amber-600 dark:text-amber-400"
-                        : "text-red-600 dark:text-red-400",
-                      )}
-                      initial={{ opacity: 0, scale: 0.85 }}
-                      animate={{ opacity: 1, scale: 1, transition: { duration: 0.3 } }}
-                    >
-                      {successRate}%
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </div>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
+              <CardAction>
+                <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+              </CardAction>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <AnimatePresence mode="wait" initial={false}>
+                {isLoading ? (
+                  <motion.div key="sk-rate" exit={{ opacity: 0, transition: { duration: 0.15 } }}>
+                    <Skeleton className="h-7 w-16" />
+                  </motion.div>
+                ) : (
+                  <motion.p
+                    key="rate"
+                    className={cn(
+                      "text-2xl font-bold tabular-nums",
+                      successRate >= 90 ? "text-green-600 dark:text-green-400"
+                      : successRate >= 70 ? "text-amber-600 dark:text-amber-400"
+                      : "text-red-600 dark:text-red-400",
+                    )}
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1, transition: { duration: 0.3 } }}
+                  >
+                    {successRate}%
+                  </motion.p>
+                )}
+              </AnimatePresence>
               <AnimatePresence mode="wait" initial={false}>
                 {isLoading ? (
                   <motion.div key="sk" className="space-y-2.5" exit={{ opacity: 0, transition: { duration: 0.15 } }}>
@@ -249,12 +252,7 @@ export default function ScimDashboard() {
                     <Skeleton className="h-2 w-full" />
                   </motion.div>
                 ) : (
-                  <motion.div
-                    key="rows"
-                    className="space-y-2.5"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1, transition: { duration: 0.3 } }}
-                  >
+                  <motion.div key="rows" className="space-y-2.5" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.3 } }}>
                     <MetricRow label="Success (2xx)"       value={calls?.success      ?? 0} max={totalCalls} color="bg-green-500" />
                     <MetricRow label="Client errors (4xx)" value={calls?.clientErrors ?? 0} max={totalCalls} color="bg-amber-500" />
                     <MetricRow label="Server errors (5xx)" value={calls?.serverErrors ?? 0} max={totalCalls} color="bg-red-500" />
@@ -264,10 +262,7 @@ export default function ScimDashboard() {
               </AnimatePresence>
               <AnimatePresence initial={false}>
                 {!isLoading && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0, transition: { duration: 0.3, delay: 0.15 } }}
-                  >
+                  <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.3, delay: 0.15 } }}>
                     <Badge
                       variant="outline"
                       className={cn(
@@ -287,16 +282,28 @@ export default function ScimDashboard() {
             </CardContent>
           </Card>
 
+          {/* By HTTP Method */}
           <Card>
-            <CardContent className="p-5 space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">By HTTP Method</p>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">By HTTP Method</CardTitle>
+              <CardAction>
+                <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+              </CardAction>
+            </CardHeader>
+            <CardContent>
               <MethodChart byMethod={calls?.byMethod ?? {}} totalCalls={totalCalls} isLoading={isLoading} />
             </CardContent>
           </Card>
 
+          {/* User Status */}
           <Card>
-            <CardContent className="p-5 space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">User Status</p>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">User Status</CardTitle>
+              <CardAction>
+                <Gauge className="h-4 w-4 text-muted-foreground" />
+              </CardAction>
+            </CardHeader>
+            <CardContent className="space-y-3">
               <AnimatePresence mode="wait" initial={false}>
                 {isLoading ? (
                   <motion.div key="sk" className="space-y-2.5" exit={{ opacity: 0, transition: { duration: 0.15 } }}>
@@ -304,12 +311,7 @@ export default function ScimDashboard() {
                     <Skeleton className="h-2 w-full" />
                   </motion.div>
                 ) : (
-                  <motion.div
-                    key="rows"
-                    className="space-y-2.5"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1, transition: { duration: 0.3 } }}
-                  >
+                  <motion.div key="rows" className="space-y-2.5" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.3 } }}>
                     <MetricRow label="Active"   value={stats?.users.active   ?? 0} max={stats?.users.total ?? 1} color="bg-green-500" />
                     <MetricRow label="Inactive" value={stats?.users.inactive ?? 0} max={stats?.users.total ?? 1} color="bg-muted-foreground" />
                   </motion.div>
@@ -317,8 +319,8 @@ export default function ScimDashboard() {
               </AnimatePresence>
               <Separator />
               {[
-                { label: "Calls last 7 days", value: calls?.last7days ?? 0,           icon: TrendingUp },
-                { label: "Page views",         value: stats?.pageViews.total     ?? 0, icon: Globe },
+                { label: "Calls last 7 days", value: calls?.last7days ?? 0,        icon: TrendingUp },
+                { label: "Page views",         value: stats?.pageViews.total ?? 0, icon: Globe },
               ].map(({ label, value, icon: Icon }) => (
                 <div key={label} className="flex items-center justify-between text-xs">
                   <span className="flex items-center gap-1.5 text-muted-foreground">
@@ -330,12 +332,7 @@ export default function ScimDashboard() {
                         <Skeleton className="h-3 w-8" />
                       </motion.div>
                     ) : (
-                      <motion.span
-                        key="val"
-                        className="font-medium tabular-nums"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1, transition: { duration: 0.25 } }}
-                      >
+                      <motion.span key="val" className="font-medium tabular-nums" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.25 } }}>
                         {value.toLocaleString()}
                       </motion.span>
                     )}
@@ -367,8 +364,13 @@ export default function ScimDashboard() {
         transition={{ delay: 0.5 }}
       >
         <Card>
-          <CardContent className="p-5 space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Top Endpoints</p>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Top Endpoints</CardTitle>
+            <CardAction>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardAction>
+          </CardHeader>
+          <CardContent className="space-y-3">
             <AnimatePresence mode="wait" initial={false}>
               {isLoading ? (
                 <motion.div key="sk" className="space-y-2" exit={{ opacity: 0, transition: { duration: 0.15 } }}>
@@ -415,11 +417,13 @@ export default function ScimDashboard() {
         </Card>
 
         <Card>
-          <CardContent className="p-5 space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <XCircle className="h-3.5 w-3.5 text-red-500" />
-              Recent Errors
-            </p>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Recent Errors</CardTitle>
+            <CardAction>
+              <XCircle className="h-4 w-4 text-muted-foreground" />
+            </CardAction>
+          </CardHeader>
+          <CardContent className="space-y-3">
             <AnimatePresence mode="wait" initial={false}>
               {isLoading ? (
                 <motion.div key="sk" className="space-y-2" exit={{ opacity: 0, transition: { duration: 0.15 } }}>
@@ -479,9 +483,14 @@ export default function ScimDashboard() {
             animate={{ opacity: 1, y: 0, transition: { duration: 0.35 } }}
             exit={{ opacity: 0 }}
           >
-            <SectionLabel>Page Views</SectionLabel>
             <Card>
-              <CardContent className="p-5">
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Page Views</CardTitle>
+                <CardAction>
+                  <Globe className="h-4 w-4 text-muted-foreground" />
+                </CardAction>
+              </CardHeader>
+              <CardContent>
                 <div className="grid grid-cols-2 gap-x-8 gap-y-1.5 sm:grid-cols-3 lg:grid-cols-4">
                   {Object.entries(stats!.pageViews.byPage)
                     .sort(([, a], [, b]) => b - a)
