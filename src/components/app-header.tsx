@@ -11,10 +11,23 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Moon, Sun } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
+import { useHotkeys } from "react-hotkeys-hook";
 import { IconBrandGithub } from "@tabler/icons-react";
 import React from "react";
+
+import { META_THEME_COLORS } from "@/config/site";
+import { useMetaColor } from "@/hooks/use-meta-color";
+import { useSound } from "@/hooks/use-sound";
+import { SOUNDS } from "@/lib/sounds";
+import { MoonIcon } from "@/components/animated-icons/moon";
+import { SunMediumIcon } from "@/components/animated-icons/sun-medium";
 
 // ─── Breadcrumb map ───────────────────────────────────────────────────────────
 
@@ -39,16 +52,43 @@ const BREADCRUMBS: Record<string, Crumb[]> = {
 
 function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
+  const { setMetaColor }            = useMetaColor();
+  const playClick                   = useSound(SOUNDS.click);
+
+  const switchTheme = (sound = true) => {
+    if (sound) playClick(0.2);
+    setTheme(resolvedTheme === "dark" ? "light" : "dark");
+    setMetaColor(
+      resolvedTheme === "dark" ? META_THEME_COLORS.light : META_THEME_COLORS.dark,
+    );
+  };
+
+  useHotkeys("d", () => switchTheme(false));
+
   return (
-    <button
-      onClick={() => setTheme(isDark ? "light" : "dark")}
-      title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-    >
-      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-      <span className="sr-only">{isDark ? "Light mode" : "Dark mode"}</span>
-    </button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground"
+          onClick={() => switchTheme()}
+        >
+          <MoonIcon
+            size={16}
+            className="relative hidden after:absolute after:-inset-2 dark:block"
+          />
+          <SunMediumIcon
+            size={16}
+            className="relative block after:absolute after:-inset-2 dark:hidden"
+          />
+          <span className="sr-only">Toggle theme</span>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">
+        Toggle theme
+      </TooltipContent>
+    </Tooltip>
   );
 }
 

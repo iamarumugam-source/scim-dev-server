@@ -1,5 +1,5 @@
 "use client";
-import { UsersRound, BuildingIcon, ChevronRight, ShieldCheck, Network, KeyRound, FlaskConical, Fingerprint, LayoutDashboard, Webhook, Layers, ScrollText, Puzzle, Activity, LockKeyhole, BookOpen, WandSparkles, Eraser, BadgeCheck, Crown } from "lucide-react";
+import { UsersRound, Boxes, BuildingIcon, ChevronRight, ShieldCheck, Network, KeyRound, FlaskConical, Fingerprint, LayoutDashboard, Webhook, ScrollText, Puzzle, Activity, LockKeyhole, BookOpen, WandSparkles, Eraser, BadgeCheck, Crown } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -75,7 +75,7 @@ const items = [
   { title: "Dashboard",  url: "/scim",           icon: LayoutDashboard },
   { title: "API",        url: "/scim/keys",       icon: Webhook         },
   { title: "Users",      url: "/scim/users",      icon: UsersRound      },
-  { title: "Groups",       url: "/scim/groups",       icon: Layers     },
+  { title: "Groups",       url: "/scim/groups",       icon: Boxes      },
   { title: "Entitlements", url: "/scim/entitlements", icon: BadgeCheck },
   { title: "Roles",        url: "/scim/roles",        icon: Crown      },
   { title: "Logs",         url: "/scim/logs",         icon: ScrollText },

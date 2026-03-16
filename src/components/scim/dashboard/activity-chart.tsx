@@ -24,7 +24,10 @@ interface ActivityChartProps {
 const chartConfig = {
   count: {
     label: "API Calls",
-    color: "var(--chart-1)",
+    theme: {
+      light: "oklch(0.6 0.15 237)",
+      dark:  "oklch(0.72 0.12 237)",
+    },
   },
 } satisfies ChartConfig;
 

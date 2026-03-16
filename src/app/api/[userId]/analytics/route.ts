@@ -11,15 +11,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const body        = await request.json().catch(() => ({}));
     const path        = typeof body.path === "string" ? body.path : "/";
 
-    const { error } = await supabase.from("scim_analytics").insert({
-      tenantId: userId,
-      event:    "page_view",
-      path,
+    const { error } = await supabase.rpc("increment_page_view", {
+      p_tenant_id: userId,
+      p_path:      path,
     });
 
     if (error) {
       // Fail silently — analytics should never break the app.
-      // The most likely cause is the table not existing yet.
       console.warn("[analytics] Could not record page view:", error.message);
     }
 

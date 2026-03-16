@@ -1,10 +1,13 @@
+"use client";
+
+import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 
 interface MetricRowProps {
-  label: string;
-  value: number;
-  max: number;
-  color: string;
+  label:   string;
+  value:   number;
+  max:     number;
+  color:   string;
   suffix?: string;
 }
 
@@ -17,7 +20,12 @@ export function MetricRow({ label, value, max, color, suffix = "" }: MetricRowPr
         <span className="font-medium tabular-nums">{value.toLocaleString()}{suffix}</span>
       </div>
       <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-        <div className={cn("h-full rounded-full transition-all", color)} style={{ width: `${pct}%` }} />
+        <motion.div
+          className={cn("h-full rounded-full", color)}
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.7, ease: [0.25, 0.1, 0.25, 1] }}
+        />
       </div>
     </div>
   );

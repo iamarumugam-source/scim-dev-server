@@ -37,6 +37,9 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning className="layout-full">
+      <head>
+        <meta name="theme-color" content="#ffffff" />
+      </head>
       <body
         className={cn(
           "font-sans antialiased overscroll-none group/body [--footer-height:calc(var(--spacing)*14)] [--header-height:calc(var(--spacing)*14)] xl:[--footer-height:calc(var(--spacing)*24)]",

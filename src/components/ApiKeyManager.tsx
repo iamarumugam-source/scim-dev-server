@@ -7,6 +7,7 @@ import { Copy, Trash2, PlusCircle, KeyRound, Check } from "lucide-react";
 
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { Skeleton } from "./ui/skeleton";
 import {
   Table,
   TableBody,
@@ -24,8 +25,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { LoadingSpinner } from "./helper-components";
-import { LoadingScreen } from "./LoadingScreen";
 
 interface ApiKey {
   id: string;
@@ -133,30 +132,26 @@ export default function ApiKeyManager() {
           }
         },
       },
-      cancel: {
-        label: "Cancel",
-        onClick: () => {},
-      },
+      cancel: { label: "Cancel", onClick: () => {} },
     });
   };
 
   const handleCloseDialog = () => { setNewKeyName(""); setGeneratedKey(null); setIsDialogOpen(false); };
   const handleOpenDialog  = () => { setNewKeyName(""); setGeneratedKey(null); setIsDialogOpen(true); };
 
-  if (isLoading) return <LoadingScreen />;
-
   return (
     <div className="space-y-6">
-      {/* API Keys — header + generate button + table */}
       <section className="space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
               API Keys
             </h2>
-            <span className="text-xs text-muted-foreground tabular-nums">
-              {keys.length} key{keys.length !== 1 ? "s" : ""}
-            </span>
+            {!isLoading && (
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {keys.length} key{keys.length !== 1 ? "s" : ""}
+              </span>
+            )}
           </div>
 
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -171,9 +166,7 @@ export default function ApiKeyManager() {
             >
               <DialogHeader>
                 <DialogTitle>Generate New API Key</DialogTitle>
-                <DialogDescription>
-                  Provide a descriptive name for your new key.
-                </DialogDescription>
+                <DialogDescription>Provide a descriptive name for your new key.</DialogDescription>
               </DialogHeader>
 
               {generatedKey ? (
@@ -184,9 +177,7 @@ export default function ApiKeyManager() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2 rounded-md border bg-muted px-3 py-2">
-                    <code className="flex-1 text-xs font-mono break-all text-foreground">
-                      {generatedKey}
-                    </code>
+                    <code className="flex-1 text-xs font-mono break-all text-foreground">{generatedKey}</code>
                     <CopyButton text={generatedKey} />
                   </div>
                 </div>
@@ -207,7 +198,7 @@ export default function ApiKeyManager() {
                   <Button onClick={handleCloseDialog}>Done</Button>
                 ) : (
                   <Button onClick={handleGenerateKey} disabled={isGenerating}>
-                    {isGenerating ? <LoadingSpinner /> : "Generate"}
+                    {isGenerating ? "Generating…" : "Generate"}
                   </Button>
                 )}
               </DialogFooter>
@@ -227,7 +218,24 @@ export default function ApiKeyManager() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {keys.length > 0 ? (
+                {isLoading ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Skeleton className="h-7 w-7 rounded-md flex-shrink-0" />
+                          <div className="space-y-1.5">
+                            <Skeleton className="h-3.5 w-28" />
+                            <Skeleton className="h-2.5 w-36" />
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell><Skeleton className="h-5 w-20 rounded" /></TableCell>
+                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell />
+                    </TableRow>
+                  ))
+                ) : keys.length > 0 ? (
                   keys.map((key) => (
                     <TableRow key={key.id} className="hover:bg-muted/40 transition-colors">
                       <TableCell>
@@ -253,8 +261,7 @@ export default function ApiKeyManager() {
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
-                          size="icon"
-                          variant="ghost"
+                          size="icon" variant="ghost"
                           className="h-8 w-8 text-muted-foreground hover:text-destructive transition-colors"
                           onClick={() => handleRevokeKey(key.id, key.name)}
                         >

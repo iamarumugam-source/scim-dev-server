@@ -3,6 +3,7 @@
 import { useEffect, useState, FC, useCallback, Fragment } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { motion, AnimatePresence } from "motion/react";
 import { ChevronDown, ChevronRight, RefreshCw, Loader2, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,7 +11,6 @@ import { JsonViewer } from "@/components/json-viewer";
 import { cn } from "@/lib/utils";
 import {
   Table,
-  TableBody,
   TableCell,
   TableHead,
   TableHeader,
@@ -22,6 +22,14 @@ interface LogEntry {
   response:   any;
   created_at: string;
 }
+
+const MotionTableRow = motion.create(TableRow);
+
+const staggerList = { hidden: {}, show: { transition: { staggerChildren: 0.03 } } };
+const rowVariants  = {
+  hidden: { opacity: 0, x: -6 },
+  show:   { opacity: 1, x: 0, transition: { duration: 0.18, ease: "easeOut" } },
+};
 
 const PAGE_SIZE = 20;
 
@@ -124,7 +132,12 @@ const LogViewer: FC = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <motion.div
+      className="space-y-4"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
       {/* Toolbar */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
@@ -161,7 +174,12 @@ const LogViewer: FC = () => {
               </TableRow>
             </TableHeader>
 
-            <TableBody>
+            <motion.tbody
+              className="[&_tr:last-child]:border-0"
+              variants={staggerList}
+              initial="hidden"
+              animate="show"
+            >
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i} className="animate-pulse">
@@ -185,7 +203,8 @@ const LogViewer: FC = () => {
                   const isExpanded = expandedIndex === index;
                   return (
                     <Fragment key={index}>
-                      <TableRow
+                      <MotionTableRow
+                        variants={rowVariants}
                         onClick={() => setExpandedIndex(isExpanded ? null : index)}
                         className={cn(
                           "cursor-pointer transition-colors hover:bg-muted/40",
@@ -218,12 +237,19 @@ const LogViewer: FC = () => {
                         <TableCell className="text-right font-mono text-xs text-muted-foreground whitespace-nowrap">
                           {formatTimestamp(log.created_at)}
                         </TableCell>
-                      </TableRow>
+                      </MotionTableRow>
 
-                      {isExpanded && (
+                      <AnimatePresence>
+                        {isExpanded && (
                         <TableRow className="bg-muted/20 hover:bg-muted/20">
                           <TableCell colSpan={6} className="p-0 border-t border-border/60 overflow-hidden">
-                            <div className="px-4 py-3 overflow-hidden w-full">
+                            <motion.div
+                              className="px-4 py-3 overflow-hidden w-full"
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.22 }}
+                            >
                               <Tabs defaultValue="request">
                                 <TabsList className="h-7">
                                   <TabsTrigger value="request"  className="text-xs h-6 px-2 gap-1.5">
@@ -240,15 +266,16 @@ const LogViewer: FC = () => {
                                   <JsonViewer data={log.response}   className="max-h-[320px]" />
                                 </TabsContent>
                               </Tabs>
-                            </div>
+                            </motion.div>
                           </TableCell>
                         </TableRow>
-                      )}
+                        )}
+                      </AnimatePresence>
                     </Fragment>
                   );
                 })
               )}
-            </TableBody>
+            </motion.tbody>
           </Table>
         </div>
       </div>
@@ -269,7 +296,7 @@ const LogViewer: FC = () => {
           </Button>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 

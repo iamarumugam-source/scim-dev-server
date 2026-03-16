@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import { Plus, Loader2, FlaskConical } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -66,7 +67,12 @@ export default function ExtensionsPage() {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <motion.div
+      className="container mx-auto py-6 space-y-6"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-4">
         <p className="text-sm text-muted-foreground">
@@ -82,7 +88,14 @@ export default function ExtensionsPage() {
       </div>
 
       {/* New extension form */}
+      <AnimatePresence>
       {showNew && (
+        <motion.div
+          initial={{ opacity: 0, height: 0, overflow: "hidden" }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.22 }}
+        >
         <Card className="border-primary/40">
           <CardContent className="p-4 space-y-3">
             <p className="text-sm font-medium">Add Schema Extension</p>
@@ -121,33 +134,52 @@ export default function ExtensionsPage() {
             </div>
           </CardContent>
         </Card>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* Extension list */}
-      {isLoading ? (
-        <div className="space-y-3">
-          <Skeleton className="h-16 w-full rounded-lg" />
-          <Skeleton className="h-16 w-full rounded-lg" />
-        </div>
-      ) : extensions.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="p-12 text-center space-y-2">
-            <FlaskConical className="h-8 w-8 mx-auto text-muted-foreground/40" />
-            <p className="text-sm font-medium text-muted-foreground">No schema extensions yet</p>
-            <p className="text-xs text-muted-foreground/60">
-              Create an extension to start adding custom attributes to SCIM user responses.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {extensions.map((ext) => (
-            <ExtensionCard key={ext.id} ext={ext} userId={userId!} onRefresh={fetchExtensions} />
-          ))}
-        </div>
-      )}
+      <AnimatePresence mode="wait" initial={false}>
+        {isLoading ? (
+          <motion.div key="loading" className="space-y-3" exit={{ opacity: 0, transition: { duration: 0.15 } }}>
+            <Skeleton className="h-16 w-full rounded-lg" />
+            <Skeleton className="h-16 w-full rounded-lg" />
+          </motion.div>
+        ) : extensions.length === 0 ? (
+          <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <Card className="border-dashed">
+              <CardContent className="p-12 text-center space-y-2">
+                <FlaskConical className="h-8 w-8 mx-auto text-muted-foreground/40" />
+                <p className="text-sm font-medium text-muted-foreground">No schema extensions yet</p>
+                <p className="text-xs text-muted-foreground/60">
+                  Create an extension to start adding custom attributes to SCIM user responses.
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="list"
+            className="space-y-3"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, staggerChildren: 0.06 }}
+          >
+            {extensions.map((ext, i) => (
+              <motion.div
+                key={ext.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, delay: i * 0.06 }}
+              >
+                <ExtensionCard ext={ext} userId={userId!} onRefresh={fetchExtensions} />
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <ReferenceCard />
-    </div>
+    </motion.div>
   );
 }

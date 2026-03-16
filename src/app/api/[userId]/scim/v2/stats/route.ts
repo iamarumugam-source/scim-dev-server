@@ -55,14 +55,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         .select("id", { count: "exact", head: true })
         .eq("tenantId", userId),
 
-      // Page views from analytics table
-      // Returns empty if the table doesn't exist yet — handled gracefully below
+      // Page view counters — one row per (tenant, path)
       supabase
-        .from("scim_analytics")
-        .select("path, created_at")
-        .eq("tenantId", userId)
-        .order("created_at", { ascending: false })
-        .limit(500),
+        .from("scim_page_views")
+        .select("path, count")
+        .eq("tenantId", userId),
 
       // Entitlements — total count
       supabase
@@ -164,15 +161,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // ── Page views ──────────────────────────────────────────────────────────
 
     const viewsByPage: Record<string, number> = {};
-    let last7daysViews = 0;
+    let totalPageViews = 0;
 
-    for (const ev of analytics) {
-      const path = (ev as any).path ?? "/";
-      viewsByPage[path] = (viewsByPage[path] ?? 0) + 1;
-      const ts = (ev as any).created_at
-        ? new Date((ev as any).created_at).getTime()
-        : 0;
-      if (ts >= sevenDaysAgo) last7daysViews++;
+    for (const row of analytics) {
+      const path  = (row as any).path  ?? "/";
+      const count = (row as any).count ?? 0;
+      viewsByPage[path] = count;
+      totalPageViews   += count;
     }
 
     return NextResponse.json({
@@ -200,9 +195,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       roles:        { total: totalRoles },
       apiKeys:      { total: totalKeys },
       pageViews: {
-        total:    analytics.length,
-        last7days: last7daysViews,
-        byPage:   viewsByPage,
+        total:  totalPageViews,
+        byPage: viewsByPage,
       },
     });
   } catch (error: any) {

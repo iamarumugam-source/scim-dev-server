@@ -9,6 +9,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { LogOut, MoreHorizontal } from "lucide-react";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "./ui/sidebar";
 
@@ -42,10 +44,10 @@ export default function NavUser() {
       <SidebarMenu>
         <SidebarMenuItem>
           <SidebarMenuButton size="lg" disabled className="opacity-60 cursor-default">
-            <div className="h-8 w-8 rounded-full bg-muted animate-pulse flex-shrink-0" />
+            <Skeleton className="h-8 w-8 rounded-full flex-shrink-0" />
             <div className="grid flex-1 gap-1">
-              <div className="h-3 w-24 rounded bg-muted animate-pulse" />
-              <div className="h-2.5 w-32 rounded bg-muted animate-pulse" />
+              <Skeleton className="h-3 w-24 rounded" />
+              <Skeleton className="h-2.5 w-32 rounded" />
             </div>
           </SidebarMenuButton>
         </SidebarMenuItem>
@@ -70,9 +72,11 @@ export default function NavUser() {
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold ${color}`}>
-                {initials(name)}
-              </div>
+              <Avatar className="h-8 w-8 flex-shrink-0">
+                <AvatarFallback className={`text-xs font-semibold ${color}`}>
+                  {initials(name)}
+                </AvatarFallback>
+              </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{name}</span>
                 <span className="truncate text-xs text-muted-foreground">{email}</span>
@@ -84,9 +88,11 @@ export default function NavUser() {
           <DropdownMenuContent className="w-64" side="top" align="end" sideOffset={6}>
             <DropdownMenuLabel className="p-0">
               <div className="flex items-center gap-3 px-3 py-2.5">
-                <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold ${color}`}>
-                  {initials(name)}
-                </div>
+                <Avatar className="h-9 w-9 flex-shrink-0">
+                  <AvatarFallback className={`text-sm font-semibold ${color}`}>
+                    {initials(name)}
+                  </AvatarFallback>
+                </Avatar>
                 <div className="grid min-w-0">
                   <span className="text-sm font-medium truncate">{name}</span>
                   <span className="text-xs text-muted-foreground truncate">{email}</span>
