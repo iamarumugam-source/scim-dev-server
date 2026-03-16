@@ -5,70 +5,70 @@ interface RouteParams {
   params: { userId: string };
 }
 
+interface ResetSelections {
+  users?:       boolean;
+  groups?:      boolean;
+  entitlements?: boolean;
+  roles?:       boolean;
+  logs?:        boolean;
+  pageViews?:   boolean;
+}
+
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const { userId } = await params;
-  console.log(`Starting database seeding for tenant: ${userId}`);
+
+  let selections: ResetSelections = {};
+  try {
+    const body = await request.json();
+    selections = body ?? {};
+  } catch {
+    // No body — default to resetting everything for backward compatibility
+    selections = { users: true, groups: true, entitlements: true, roles: true, logs: true, pageViews: true };
+  }
+
+  // If no specific selections provided, reset all
+  const resetAll = Object.keys(selections).length === 0;
+  const should = (key: keyof ResetSelections) => resetAll || selections[key] === true;
 
   try {
-    console.log(`Removing all users and groups for tenant: ${userId}...`);
-
-    const { error: deleteRolesError } = await supabase
-      .from("scim_roles")
-      .delete()
-      .eq("tenantId", userId);
-    if (deleteRolesError) {
-      throw new Error(`Failed to delete existing roles: ${deleteRolesError.message}`);
+    if (should("roles")) {
+      const { error } = await supabase.from("scim_roles").delete().eq("tenantId", userId);
+      if (error) throw new Error(`Failed to delete roles: ${error.message}`);
     }
 
-    const { error: deleteEntitlementsError } = await supabase
-      .from("scim_entitlements")
-      .delete()
-      .eq("tenantId", userId);
-    if (deleteEntitlementsError) {
-      throw new Error(`Failed to delete existing entitlements: ${deleteEntitlementsError.message}`);
+    if (should("entitlements")) {
+      const { error } = await supabase.from("scim_entitlements").delete().eq("tenantId", userId);
+      if (error) throw new Error(`Failed to delete entitlements: ${error.message}`);
     }
 
-    const { error: deleteGroupsError } = await supabase
-      .from("scim_groups")
-      .delete()
-      .eq("tenantId", userId);
-    if (deleteGroupsError) {
-      throw new Error(
-        `Failed to delete existing groups: ${deleteGroupsError.message}`
-      );
+    if (should("groups")) {
+      const { error } = await supabase.from("scim_groups").delete().eq("tenantId", userId);
+      if (error) throw new Error(`Failed to delete groups: ${error.message}`);
     }
 
-    const { error: deleteUsersError } = await supabase
-      .from("scim_users")
-      .delete()
-      .eq("tenantId", userId);
-    if (deleteUsersError) {
-      throw new Error(
-        `Failed to delete existing users: ${deleteUsersError.message}`
-      );
+    if (should("users")) {
+      const { error } = await supabase.from("scim_users").delete().eq("tenantId", userId);
+      if (error) throw new Error(`Failed to delete users: ${error.message}`);
     }
 
-    const { error: deleteLogsError } = await supabase
-      .from("scim_logs")
-      .delete()
-      .eq("tenantId", userId);
-
-    if (deleteLogsError) {
-      throw new Error(
-        `Failed to delete existing logs: ${deleteLogsError.message}`
-      );
+    if (should("logs")) {
+      const { error } = await supabase.from("scim_logs").delete().eq("tenantId", userId);
+      if (error) throw new Error(`Failed to delete logs: ${error.message}`);
     }
 
-    console.log("Successfully removed existing data.");
+    if (should("pageViews")) {
+      const { error } = await supabase.from("scim_page_views").delete().eq("tenantId", userId);
+      if (error) throw new Error(`Failed to delete page views: ${error.message}`);
+    }
 
-    const message = `Database reset completed for tenant ${userId}`;
-    console.log(message);
-    return NextResponse.json({ message });
+    const cleared = Object.entries(selections)
+      .filter(([, v]) => v)
+      .map(([k]) => k)
+      .join(", ");
+
+    return NextResponse.json({ message: `Reset completed for: ${cleared || "all data"}` });
   } catch (error: any) {
-    console.error("Failed to seed database:", error);
-    return NextResponse.json(
-      { detail: "Internal Server Error", error: error.message },
-      { status: 500 }
-    );
+    console.error("Reset failed:", error);
+    return NextResponse.json({ detail: "Internal Server Error", error: error.message }, { status: 500 });
   }
 }

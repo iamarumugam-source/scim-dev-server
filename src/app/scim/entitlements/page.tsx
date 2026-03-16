@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, Fragment } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { ScimEntitlement } from "@/lib/scim/models/scimSchemas";
-import { ChevronRight, BadgeCheck, Plus, Loader2, X } from "lucide-react";
+import { ChevronRight, BadgeCheck, Plus, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 import {
@@ -17,7 +17,9 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -47,7 +49,7 @@ export default function EntitlementsPage() {
   const [isLoading,      setIsLoading]      = useState(true);
   const [error,          setError]          = useState<string | null>(null);
   const [expandedId,     setExpandedId]     = useState<string | null>(null);
-  const [showCreate,     setShowCreate]     = useState(false);
+  const [dialogOpen,     setDialogOpen]     = useState(false);
   const [newDisplayName, setNewDisplayName] = useState("");
   const [newType,        setNewType]        = useState("");
   const [newDescription, setNewDescription] = useState("");
@@ -87,7 +89,7 @@ export default function EntitlementsPage() {
       });
       if (!res.ok) throw new Error((await res.json()).detail || "Failed to create entitlement.");
       toast.success("Entitlement created.");
-      setNewDisplayName(""); setNewType(""); setNewDescription(""); setShowCreate(false);
+      setNewDisplayName(""); setNewType(""); setNewDescription(""); setDialogOpen(false);
       fetchEntitlements(1);
     } catch (e: any) { toast.error(e.message); }
     finally { setCreating(false); }
@@ -108,24 +110,20 @@ export default function EntitlementsPage() {
         <span className="text-xs text-muted-foreground">
           {isLoading ? <Skeleton className="h-3.5 w-28 inline-block" /> : total > 0 ? `${total} entitlement${total !== 1 ? "s" : ""}` : "No entitlements yet."}
         </span>
-        <Button size="sm" variant="outline" onClick={() => setShowCreate((p) => !p)} className="h-7 text-xs gap-1.5">
-          {showCreate ? <X className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
-          {showCreate ? "Cancel" : "New Entitlement"}
-        </Button>
-      </div>
-
-      <AnimatePresence>
-        {showCreate && (
-          <motion.div
-            initial={{ opacity: 0, height: 0, overflow: "hidden" }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.22 }}
-          >
-            <Card className="bg-muted/20">
-            <CardContent className="p-4 space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">New Entitlement</h3>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setNewDisplayName(""); setNewType(""); setNewDescription(""); } }}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="gap-1.5">
+              <Plus className="h-3.5 w-3.5" /> New Entitlement
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>New Entitlement</DialogTitle>
+              <DialogDescription>
+                Create a new entitlement. Fields marked <span className="text-destructive">*</span> are required.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
               {[
                 { label: "Display Name", value: newDisplayName, set: setNewDisplayName, placeholder: "e.g. Admin Access", required: true },
                 { label: "Type",         value: newType,        set: setNewType,        placeholder: "e.g. role",          required: true },
@@ -135,21 +133,20 @@ export default function EntitlementsPage() {
                   <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                     {label}{required && <span className="text-destructive ml-0.5">*</span>}
                   </Label>
-                  <Input className="h-7 text-xs" placeholder={placeholder} value={value} onChange={(e) => set(e.target.value)} />
+                  <Input className="h-8 text-xs" placeholder={placeholder} value={value} onChange={(e) => set(e.target.value)} />
                 </div>
               ))}
             </div>
-            <div className="flex justify-end">
-              <Button size="sm" onClick={createEntitlement} disabled={creating} className="h-7 text-xs gap-1.5">
-                {creating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setDialogOpen(false); setNewDisplayName(""); setNewType(""); setNewDescription(""); }}>Cancel</Button>
+              <Button onClick={createEntitlement} disabled={creating} className="gap-1.5">
+                {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
                 Create
               </Button>
-            </div>
-            </CardContent>
-            </Card>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
 
       <AnimatePresence mode="wait" initial={false}>
         {isLoading ? (

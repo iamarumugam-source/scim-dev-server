@@ -72,9 +72,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     let body: any = {};
     try { body = await request.json(); } catch {}
 
-    const deleteExisting = body.deleteExisting === true;
-    const userCount      = typeof body.userCount  === "number" ? Math.min(body.userCount, 1000) : 20;
-    const groupCount     = typeof body.groupCount === "number" ? Math.min(body.groupCount, 100) : 5;
+    const deleteExisting      = body.deleteExisting      === true;
+    const generateUsers       = body.generateUsers       !== false; // default true
+    const generateGroups      = body.generateGroups      !== false;
+    const generateEntitlements = body.generateEntitlements !== false;
+    const generateRoles       = body.generateRoles       !== false;
+    const userCount           = typeof body.userCount  === "number" ? Math.min(body.userCount, 1000) : 20;
+    const groupCount          = typeof body.groupCount === "number" ? Math.min(body.groupCount, 100) : 5;
 
     if (deleteExisting) {
       const { error: er } = await supabase.from("scim_roles").delete().eq("tenantId", userId);
@@ -97,8 +101,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
+    const actualUserCount  = generateUsers  ? userCount  : 0;
+    const actualGroupCount = generateGroups ? groupCount : 0;
+
     const users: ScimUser[] = [];
-    for (let i = 0; i < userCount; i++) {
+    for (let i = 0; i < actualUserCount; i++) {
       const firstName = faker.person.firstName();
       const lastName  = faker.person.lastName();
       const id        = faker.string.uuid();
@@ -135,9 +142,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       });
     }
 
-    const usedNames = new Set<string>();
+    // Pre-populate usedNames with existing group names for this tenant
+    // so the generation loop never picks a name that would violate the unique constraint.
+    const { data: existingGroupRows } = await supabase
+      .from("scim_groups")
+      .select("display_name")
+      .eq("tenantId", userId);
+    const usedNames = new Set<string>(
+      (existingGroupRows ?? []).map((r: any) => r.display_name as string),
+    );
+
     const groups: ScimGroup[] = [];
-    for (let i = 0; i < groupCount; i++) {
+    for (let i = 0; i < actualGroupCount; i++) {
       let name: string;
       let attempts = 0;
       do {
@@ -145,7 +161,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         const suffix = faker.helpers.arrayElement(["Team", "Group", "Squad", "Chapter"]);
         name = `${dept} ${suffix}`;
         attempts++;
-      } while (usedNames.has(name) && attempts < 20);
+      } while (usedNames.has(name) && attempts < 50);
+      if (usedNames.has(name)) continue; // all combinations exhausted — skip
       usedNames.add(name);
 
       const id  = faker.string.uuid();
@@ -197,7 +214,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Generate a subset of entitlements from the catalog
-    const entitlementCount = faker.number.int({ min: 5, max: ENTITLEMENT_CATALOG.length });
+    const entitlementCount = generateEntitlements ? faker.number.int({ min: 5, max: ENTITLEMENT_CATALOG.length }) : 0;
     const selectedCatalog  = faker.helpers.shuffle([...ENTITLEMENT_CATALOG]).slice(0, entitlementCount);
     const entitlements: ScimEntitlement[] = selectedCatalog.map((e) => {
       const id  = faker.string.uuid();
@@ -232,7 +249,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Generate roles from catalog
-    const roleCount    = faker.number.int({ min: 3, max: ROLES_CATALOG.length });
+    const roleCount    = generateRoles ? faker.number.int({ min: 3, max: ROLES_CATALOG.length }) : 0;
     const selectedRoles = faker.helpers.shuffle([...ROLES_CATALOG]).slice(0, roleCount);
     const roles: ScimRole[] = selectedRoles.map((r) => {
       const id  = faker.string.uuid();

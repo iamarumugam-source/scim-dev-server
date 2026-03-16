@@ -1,5 +1,5 @@
 "use client";
-import { UsersRound, Boxes, BuildingIcon, ChevronRight, ShieldCheck, Network, KeyRound, FlaskConical, Fingerprint, LayoutDashboard, Webhook, ScrollText, Puzzle, Activity, LockKeyhole, BookOpen, WandSparkles, Eraser, BadgeCheck, Crown } from "lucide-react";
+import { UsersRound, Boxes, BuildingIcon, ChevronRight, ShieldCheck, ScanSearch, KeyRound, FlaskConical, Fingerprint, LayoutDashboard, Webhook, ScrollText, Puzzle, Activity, LockKeyhole, BookOpen, WandSparkles, Eraser, BadgeCheck, Crown } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -41,6 +41,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -65,9 +67,13 @@ import { toast } from "sonner";
 import { useSession } from "next-auth/react";
 
 const FormSchema = z.object({
-  userCount: z.transform(Number).pipe(z.number().min(5).max(1000)),
-  groupCount: z.transform(Number).pipe(z.number().min(1).max(50)),
-  deleteExisting: z.boolean(),
+  generateUsers:        z.boolean(),
+  generateGroups:       z.boolean(),
+  generateEntitlements: z.boolean(),
+  generateRoles:        z.boolean(),
+  userCount:            z.transform(Number).pipe(z.number().min(1).max(1000)),
+  groupCount:           z.transform(Number).pipe(z.number().min(1).max(50)),
+  deleteExisting:       z.boolean(),
 });
 
 // Menu items.
@@ -83,7 +89,7 @@ const items = [
 ];
 
 const otherTools = [
-  { title: "HAR Analyser", url: "/har-analyser", icon: Network     },
+  { title: "HAR Analyser", url: "/har-analyser", icon: ScanSearch  },
   { title: "JWE Decoder",  url: "/jwe",          icon: LockKeyhole },
 ];
 
@@ -108,6 +114,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isResetting, setIsReseting] = useState(false);
+  const [resetSelections, setResetSelections] = useState({
+    users:        true,
+    groups:       true,
+    entitlements: true,
+    roles:        true,
+    logs:         true,
+    pageViews:    true,
+  });
 
   const pathname = usePathname();
   const [scimOpen, setScimOpen] = useState(pathname.startsWith("/scim"));
@@ -117,9 +131,13 @@ const userId = session?.user?.id;
   const form = useForm<FormValues>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
-      userCount: 10,
-      groupCount: 2,
-      deleteExisting: false,
+      generateUsers:        true,
+      generateGroups:       true,
+      generateEntitlements: true,
+      generateRoles:        true,
+      userCount:            10,
+      groupCount:           2,
+      deleteExisting:       false,
     },
   });
 
@@ -168,12 +186,32 @@ const userId = session?.user?.id;
 
     setIsReseting(true);
 
-    toast.info("Deleting all users, groups, entitlements, roles, and logs...");
+    const RESET_LABELS: Record<string, string> = {
+      users:        "Users",
+      groups:       "Groups",
+      entitlements: "Entitlements",
+      roles:        "Roles",
+      logs:         "Logs",
+      pageViews:    "Page views",
+    };
+
+    const selectedLabels = Object.entries(resetSelections)
+      .filter(([, v]) => v)
+      .map(([k]) => RESET_LABELS[k] ?? k);
+
+    if (selectedLabels.length === 0) {
+      toast.error("Select at least one item to reset.");
+      setIsReseting(false);
+      return;
+    }
+
+    toast.info(`Deleting ${selectedLabels.join(", ")}…`);
 
     try {
       const res = await fetch(`/api/${userId}/resourceReset`, {
         method: "POST",
-        body: JSON.stringify({}),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(resetSelections),
       });
 
       if (!res.ok) {
@@ -181,7 +219,7 @@ const userId = session?.user?.id;
         throw new Error(errorData.detail || "An unknown error occurred.");
       }
 
-      toast.success("All data reset. Users, groups, entitlements, roles, and logs cleared.");
+      toast.success(`${selectedLabels.join(", ")} deleted successfully.`);
 
       clearCache();
 
@@ -195,7 +233,7 @@ const userId = session?.user?.id;
     } finally {
       setIsReseting(false);
     }
-  }, [isResetting, userId]);
+  }, [isResetting, userId, resetSelections]);
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -248,53 +286,120 @@ const userId = session?.user?.id;
                     <Form {...form}>
                       <form
                         onSubmit={form.handleSubmit(onSubmit)}
-                        className="w-full space-y-6"
+                        className="w-full space-y-5"
                       >
-                        <FormField
-                          control={form.control}
-                          name="userCount"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>User Count</FormLabel>
-                              <FormControl>
-                                <Input {...field} type="number" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="groupCount"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Group Count</FormLabel>
-                              <FormControl>
-                                <Input {...field} type="number" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                        {/* What to generate */}
+                        <div className="space-y-3">
+                          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">What to generate</p>
+
+                          {/* Users */}
+                          <FormField
+                            control={form.control}
+                            name="generateUsers"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-center justify-between space-y-0">
+                                <div className="flex items-center gap-2.5">
+                                  <FormControl>
+                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                  </FormControl>
+                                  <FormLabel className="text-sm font-normal cursor-pointer">Users</FormLabel>
+                                </div>
+                                {field.value && (
+                                  <FormField
+                                    control={form.control}
+                                    name="userCount"
+                                    render={({ field: f }) => (
+                                      <FormItem className="flex flex-row items-center gap-2 space-y-0">
+                                        <FormLabel className="text-xs text-muted-foreground font-normal whitespace-nowrap">Count</FormLabel>
+                                        <FormControl>
+                                          <Input {...f} type="number" className="h-7 w-20 text-xs" />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                )}
+                              </FormItem>
+                            )}
+                          />
+
+                          {/* Groups */}
+                          <FormField
+                            control={form.control}
+                            name="generateGroups"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-center justify-between space-y-0">
+                                <div className="flex items-center gap-2.5">
+                                  <FormControl>
+                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                  </FormControl>
+                                  <FormLabel className="text-sm font-normal cursor-pointer">Groups</FormLabel>
+                                </div>
+                                {field.value && (
+                                  <FormField
+                                    control={form.control}
+                                    name="groupCount"
+                                    render={({ field: f }) => (
+                                      <FormItem className="flex flex-row items-center gap-2 space-y-0">
+                                        <FormLabel className="text-xs text-muted-foreground font-normal whitespace-nowrap">Count</FormLabel>
+                                        <FormControl>
+                                          <Input {...f} type="number" className="h-7 w-20 text-xs" />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                )}
+                              </FormItem>
+                            )}
+                          />
+
+                          {/* Entitlements */}
+                          <FormField
+                            control={form.control}
+                            name="generateEntitlements"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-center space-y-0 gap-2.5">
+                                <FormControl>
+                                  <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                </FormControl>
+                                <FormLabel className="text-sm font-normal cursor-pointer flex-1">Entitlements</FormLabel>
+                                <span className="text-xs text-muted-foreground">from catalog</span>
+                              </FormItem>
+                            )}
+                          />
+
+                          {/* Roles */}
+                          <FormField
+                            control={form.control}
+                            name="generateRoles"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-center space-y-0 gap-2.5">
+                                <FormControl>
+                                  <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                </FormControl>
+                                <FormLabel className="text-sm font-normal cursor-pointer flex-1">Roles</FormLabel>
+                                <span className="text-xs text-muted-foreground">from catalog</span>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <Separator />
+
+                        {/* Delete existing */}
                         <FormField
                           control={form.control}
                           name="deleteExisting"
                           render={({ field }) => (
-                            <FormItem className="flex flex-row">
+                            <FormItem className="flex flex-row gap-2.5 items-start space-y-0">
                               <FormControl>
-                                <Checkbox
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                />
+                                <Checkbox checked={field.value} onCheckedChange={field.onChange} className="mt-0.5" />
                               </FormControl>
-                              <div className="space-y-1 leading-none">
-                                <FormLabel>
-                                  Delete existing mock data?
-                                </FormLabel>
-                                <FormDescription>
-                                  If checked, all existing users, groups,
-                                  entitlements, and roles will be removed before
-                                  new ones are generated.
+                              <div className="space-y-0.5">
+                                <FormLabel className="text-sm">Delete existing data first</FormLabel>
+                                <FormDescription className="text-xs">
+                                  Removes existing users, groups, entitlements, and roles before generating new ones.
                                 </FormDescription>
                               </div>
                             </FormItem>
@@ -306,7 +411,7 @@ const userId = session?.user?.id;
                             <Button variant="outline">Cancel</Button>
                           </DialogClose>
                           <Button type="submit" disabled={isGenerating}>
-                            {isGenerating ? "Generating…" : "Confirm"}
+                            {isGenerating ? "Generating…" : "Generate"}
                           </Button>
                         </DialogFooter>
                       </form>
@@ -330,17 +435,55 @@ const userId = session?.user?.id;
                     <DialogHeader>
                       <DialogTitle>Reset Data</DialogTitle>
                       <DialogDescription>
-                        This action cannot be undone. Are you sure you want to
-                        permanently delete all users, groups, entitlements,
-                        roles, and logs from this server?
+                        Select what to permanently delete. This action cannot be undone.
                       </DialogDescription>
                     </DialogHeader>
+
+                    <Separator />
+
+                    <div className="space-y-3 py-1">
+                      {([
+                        { key: "users",        label: "Users",        desc: "All provisioned user accounts" },
+                        { key: "groups",       label: "Groups",       desc: "All user groups and memberships" },
+                        { key: "entitlements", label: "Entitlements", desc: "All entitlement definitions" },
+                        { key: "roles",        label: "Roles",        desc: "All role definitions" },
+                        { key: "logs",         label: "Logs",         desc: "All API request logs" },
+                        { key: "pageViews",    label: "Page views",   desc: "Page view counters" },
+                      ] as const).map(({ key, label, desc }) => (
+                        <div key={key} className="flex items-start gap-3">
+                          <Checkbox
+                            id={`reset-${key}`}
+                            checked={resetSelections[key]}
+                            onCheckedChange={(checked) =>
+                              setResetSelections((p) => ({ ...p, [key]: checked === true }))
+                            }
+                            className="mt-0.5"
+                          />
+                          <div className="min-w-0">
+                            <Label
+                              htmlFor={`reset-${key}`}
+                              className="text-sm font-medium cursor-pointer leading-none"
+                            >
+                              {label}
+                            </Label>
+                            <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <Separator />
+
                     <DialogFooter>
                       <DialogClose asChild>
                         <Button variant="outline">Cancel</Button>
                       </DialogClose>
-                      <Button variant="destructive" onClick={handleReset}>
-                        {isResetting ? "Deleting…" : "Delete all data"}
+                      <Button
+                        variant="destructive"
+                        onClick={handleReset}
+                        disabled={isResetting || !Object.values(resetSelections).some(Boolean)}
+                      >
+                        {isResetting ? "Deleting…" : "Delete selected"}
                       </Button>
                     </DialogFooter>
                   </DialogContent>

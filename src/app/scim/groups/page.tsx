@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, Fragment } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { ScimGroup } from "@/lib/scim/models/scimSchemas";
-import { ChevronRight, Boxes, Plus, Loader2, X } from "lucide-react";
+import { ChevronRight, Boxes, Plus, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 import {
@@ -17,9 +17,11 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorDisplay } from "@/components/helper-components";
 import DashboardPagination from "@/components/padination-handler";
@@ -48,9 +50,9 @@ export default function GroupsPage() {
   const [isLoading,       setIsLoading]       = useState(true);
   const [error,           setError]           = useState<string | null>(null);
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
-  const [showCreate,      setShowCreate]      = useState(false);
-  const [newName,         setNewName]         = useState("");
-  const [creating,        setCreating]        = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [newName,    setNewName]    = useState("");
+  const [creating,   setCreating]   = useState(false);
 
   const fetchGroups = useCallback(async (page = 1) => {
     if (!userId) return;
@@ -86,7 +88,7 @@ export default function GroupsPage() {
       });
       if (!res.ok) throw new Error((await res.json()).detail || "Failed to create group.");
       toast.success("Group created.");
-      setNewName(""); setShowCreate(false);
+      setNewName(""); setDialogOpen(false);
       fetchGroups(1);
     } catch (e: any) { toast.error(e.message); }
     finally { setCreating(false); }
@@ -108,47 +110,41 @@ export default function GroupsPage() {
         <span className="text-xs text-muted-foreground">
           {isLoading ? <Skeleton className="h-3.5 w-24 inline-block" /> : totalGroups > 0 ? `${totalGroups} group${totalGroups !== 1 ? "s" : ""}` : "No groups yet."}
         </span>
-        <Button size="sm" variant="outline" onClick={() => setShowCreate((p) => !p)} className="h-7 text-xs gap-1.5">
-          {showCreate ? <X className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
-          {showCreate ? "Cancel" : "New Group"}
-        </Button>
-      </div>
-
-      {/* Create form */}
-      <AnimatePresence>
-        {showCreate && (
-          <motion.div
-            initial={{ opacity: 0, height: 0, overflow: "hidden" }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.22 }}
-          >
-            <Card className="bg-muted/20">
-            <CardContent className="p-4 space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">New Group</h3>
-            <div className="max-w-sm space-y-1">
+        <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setNewName(""); }}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="gap-1.5">
+              <Plus className="h-3.5 w-3.5" /> New Group
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle>New Group</DialogTitle>
+              <DialogDescription>
+                Create a new provisioned group.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-2 space-y-1">
               <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Group Name <span className="text-destructive">*</span>
               </Label>
               <Input
-                className="h-7 text-xs"
+                className="h-8 text-xs"
                 placeholder="e.g. Engineering Team"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") createGroup(); }}
               />
             </div>
-            <div className="flex justify-end">
-              <Button size="sm" onClick={createGroup} disabled={creating} className="h-7 text-xs gap-1.5">
-                {creating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setDialogOpen(false); setNewName(""); }}>Cancel</Button>
+              <Button onClick={createGroup} disabled={creating} className="gap-1.5">
+                {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
                 Create
               </Button>
-            </div>
-            </CardContent>
-            </Card>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
 
       <AnimatePresence mode="wait" initial={false}>
         {isLoading ? (

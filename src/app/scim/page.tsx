@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import {
-  Users, Boxes, KeyRound, BadgeCheck, Crown,
+  UsersRound, Boxes, KeyRound, BadgeCheck, Crown,
   CheckCircle2, XCircle, AlertCircle, TrendingUp, Activity,
   Globe, RefreshCw,
 } from "lucide-react";
@@ -168,7 +168,7 @@ export default function ScimDashboard() {
           animate="show"
         >
           {[
-            { label: "Provisioned Users", href: "/scim/users",        icon: Users,      color: "text-blue-600 dark:text-blue-400",       value: stats?.users.total        ?? null },
+            { label: "Provisioned Users", href: "/scim/users",        icon: UsersRound, color: "text-blue-600 dark:text-blue-400",       value: stats?.users.total        ?? null },
             { label: "Groups",            href: "/scim/groups",       icon: Boxes,      color: "text-violet-600 dark:text-violet-400",   value: stats?.groups.total       ?? null },
             { label: "Entitlements",      href: "/scim/entitlements", icon: BadgeCheck, color: "text-emerald-600 dark:text-emerald-400", value: stats?.entitlements.total ?? null },
             { label: "Roles",             href: "/scim/roles",        icon: Crown,      color: "text-rose-600 dark:text-rose-400",       value: stats?.roles.total        ?? null },

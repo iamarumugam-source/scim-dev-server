@@ -15,6 +15,7 @@ import {
   getOidcInfo, hasOktaHeader,
 } from "./har/utils";
 import { DropZone }          from "./har/drop-zone";
+import { useHarHistory }     from "@/hooks/useHarHistory";
 import { HeadersPanel }      from "./har/headers-panel";
 import { TimingPanel }       from "./har/timing-panel";
 import { SplunkPanel }       from "./har/splunk-panel";
@@ -69,6 +70,8 @@ export default function HarAnalyser() {
     }
   }, [orgInfoCache]);
 
+  const { history, addEntry, clearHistory } = useHarHistory();
+
   const handleFile = useCallback((parsed: HarFile, name: string) => {
     setHar(parsed);
     setSelectedIndex(null);
@@ -77,7 +80,8 @@ export default function HarAnalyser() {
     setTypeFilter("All");
     setOrgInfoCache({});
     orgPendingRef.current.clear();
-  }, []);
+    addEntry(name, parsed.log.entries.length);
+  }, [addEntry]);
 
   const handleClear = () => {
     setHar(null);
@@ -117,7 +121,7 @@ export default function HarAnalyser() {
     try { fetchOrgInfo(new URL(selected.request.url).hostname); } catch {}
   }, [selected, fetchOrgInfo]);
 
-  if (!har) return <DropZone onFile={handleFile} />;
+  if (!har) return <DropZone onFile={handleFile} history={history} onClearHistory={clearHistory} />;
 
   return (
     <div className="flex flex-col rounded-lg border border-border overflow-hidden bg-card h-[80vh]">
