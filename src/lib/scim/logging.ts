@@ -80,7 +80,7 @@ export function serializeRequest(request: NextRequest, body: any) {
   });
 
   return {
-    url: request.url,
+    url: new URL(request.nextUrl.pathname + (request.nextUrl.search || ""), APP_HOST).toString(),
     method: request.method,
     headers: headers,
     ip: (request.headers.get("x-forwarded-for") ?? "127.0.0.1")
