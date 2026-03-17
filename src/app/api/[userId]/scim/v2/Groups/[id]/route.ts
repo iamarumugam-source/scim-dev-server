@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { GroupService } from "@/lib/scim/services/groupService";
 import { logExternalRequest } from "@/lib/scim/logging";
 import { protectWithApiKey } from "@/lib/scim/apiHelper";
@@ -79,14 +79,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     return createAndLogResponse(request, updatedGroup, { status: 200 }, userId);
   } catch (error: any) {
-    return NextResponse.json(
-      {
-        schemas: ["urn:ietf:params:scim:api:2.0:Error"],
-        detail: error.message,
-        status: "400",
-      },
-      { status: 400 },
-    );
+    const errorData = { schemas: ["urn:ietf:params:scim:api:2.0:Error"], detail: error.message, status: "400" };
+    return createAndLogResponse(request, errorData, { status: 400 }, userId);
   }
 }
 
@@ -107,19 +101,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const patchedGroup = await groupService.patchGroup(id, body);
 
     if (!patchedGroup) {
-      return notFoundResponse(body, userId);
+      return notFoundResponse(request, userId);
     }
 
     return createAndLogResponse(request, patchedGroup, { status: 200 }, userId);
   } catch (error: any) {
-    return NextResponse.json(
-      {
-        schemas: ["urn:ietf:params:scim:api:2.0:Error"],
-        detail: error.message,
-        status: "400",
-      },
-      { status: 400 },
-    );
+    const errorData = { schemas: ["urn:ietf:params:scim:api:2.0:Error"], detail: error.message, status: "400" };
+    return createAndLogResponse(request, errorData, { status: 400 }, userId);
   }
 }
 
