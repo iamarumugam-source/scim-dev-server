@@ -32,9 +32,9 @@ function getLocalHour(date: Date, tz: string): number {
 }
 
 function blockStyle(localHour: number): string {
-  if (localHour >= 22 || localHour < 6)  return "bg-muted/20 text-muted-foreground/40";
-  if (localHour < 9  || localHour >= 18) return "bg-muted/60 text-muted-foreground/70";
-  return "bg-muted/90 text-foreground/80";
+  if (localHour >= 22 || localHour < 6)  return "bg-background text-muted-foreground/30";
+  if (localHour < 9  || localHour >= 18) return "bg-muted/40 text-muted-foreground/60";
+  return "bg-card text-foreground/70";
 }
 
 function initials(city: string): string {
@@ -235,6 +235,7 @@ function Cursor({
   userTz,
   userTzCity,
   use24h,
+  userOffsetMins,
   onDragStart,
 }: {
   minutes:     number;
@@ -738,7 +739,7 @@ export default function TimeConverterPage() {
                     );
                   })}
 
-                  <div className="absolute top-0 bottom-0 bg-primary/8 pointer-events-none"
+                  <div className="absolute top-0 bottom-0 bg-primary/20 pointer-events-none"
                     style={{ left: loX, width: hiX - loX }} />
 
                   <Cursor minutes={startMinutes} label="Start" variant="start"
@@ -762,38 +763,53 @@ export default function TimeConverterPage() {
 
                 {/* Timezone rows */}
                 <div className="relative">
-                  <div className="absolute top-0 bottom-0 bg-primary/8 pointer-events-none z-0"
-                    style={{ left: loX, width: hiX - loX }} />
-                  <div className="absolute top-0 bottom-0 w-0.5 bg-primary/50 pointer-events-none z-10"
-                    style={{ left: loX, transform: "translateX(-50%)" }} />
-                  <div className="absolute top-0 bottom-0 w-0.5 bg-foreground/40 pointer-events-none z-10"
-                    style={{ left: hiX, transform: "translateX(-50%)" }} />
-
                   {allZones.map((tz) => {
-                    const isUserTz = tz.id === userTz;
-                    // Column c represents user's LOCAL hour c — compute other TZ's local hour
-                    const localHours = Array.from({ length: 24 }, (_, localH) => {
+                    const isUserTz    = tz.id === userTz;
+                    const loLocalMins = toLocalPos(lo);
+                    const hiLocalMins = toLocalPos(hi);
+
+                    const localHours  = Array.from({ length: 24 }, (_, localH) => {
                       const utcMins = ((localH * 60 - userOffsetMins) % 1440 + 1440) % 1440;
                       const d = buildRefDate(dateStr, Math.floor(utcMins / 60), utcMins % 60);
                       return getLocalHour(d, tz.id);
                     });
-                    const loLocalMins = toLocalPos(lo);
-                    const hiLocalMins = toLocalPos(hi);
+
                     return (
-                      <div key={tz.id}
-                        className={cn("flex border-b border-border/30 last:border-0 relative z-0", isUserTz && "bg-primary/[0.02]")}
-                        style={{ height: ROW_H }}>
-                        {localHours.map((lh, localH) => (
-                          <div key={localH}
-                            className={cn(
-                              "flex-shrink-0 flex items-center justify-center text-[11px] font-mono transition-colors",
-                              blockStyle(lh),
-                              localH * 60 >= loLocalMins && localH * 60 < hiLocalMins && "brightness-110",
-                            )}
-                            style={{ width: CELL_W, height: ROW_H }}>
-                            {formatHour(lh, use24h)}
-                          </div>
-                        ))}
+                      <div
+                        key={tz.id}
+                        className={cn(
+                          "flex gap-px border-b border-border/30 last:border-0 px-px",
+                          isUserTz ? "bg-primary/10" : "bg-border/20",
+                        )}
+                        style={{ height: ROW_H }}
+                      >
+                        {localHours.map((lh, localH) => {
+                          const inRange  = localH * 60 >= loLocalMins && localH * 60 < hiLocalMins;
+                          const isFirst  = inRange && (localH - 1) * 60 < loLocalMins;
+                          const isLast   = inRange && (localH + 1) * 60 >= hiLocalMins;
+
+                          return (
+                            <div
+                              key={localH}
+                              className={cn(
+                                "flex-shrink-0 flex items-center justify-center text-[11px] font-mono transition-all my-px",
+                                inRange
+                                  ? cn(
+                                      "bg-primary text-primary-foreground font-semibold shadow-sm",
+                                      isFirst && "rounded-l-md",
+                                      isLast  && "rounded-r-md",
+                                    )
+                                  : cn(
+                                      "rounded-sm",
+                                      blockStyle(lh),
+                                    ),
+                              )}
+                              style={{ width: CELL_W - 1, height: ROW_H - 2 }}
+                            >
+                              {formatHour(lh, use24h)}
+                            </div>
+                          );
+                        })}
                       </div>
                     );
                   })}
