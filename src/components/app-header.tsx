@@ -65,7 +65,7 @@ function ThemeToggle() {
     );
   };
 
-  useHotkeys("d", () => switchTheme(false));
+  useHotkeys("meta+d", () => switchTheme(false), { preventDefault: true });
 
   return (
     <Tooltip>

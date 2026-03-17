@@ -2,8 +2,7 @@
 
 import * as React from "react"
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox"
-import { CheckIcon } from "lucide-react"
-
+import { CheckCircle2, Circle } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 function Checkbox({
@@ -14,16 +13,20 @@ function Checkbox({
     <CheckboxPrimitive.Root
       data-slot="checkbox"
       className={cn(
-        "peer border-input dark:bg-input/30 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:data-[state=checked]:bg-primary data-[state=checked]:border-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive size-4 shrink-0 rounded-[4px] border shadow-xs transition-shadow outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
-        className
+        "group peer relative size-5 shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50",
+        className,
       )}
       {...props}
     >
+      {/* Unchecked — plain circle outline */}
+      <Circle className="size-5 text-muted-foreground group-data-[state=checked]:hidden" />
+
+      {/* Checked — filled primary circle with white check */}
       <CheckboxPrimitive.Indicator
         data-slot="checkbox-indicator"
-        className="flex items-center justify-center text-current transition-none"
+        className="absolute inset-0 flex items-center justify-center transition-none"
       >
-        <CheckIcon className="size-3.5" />
+        <CheckCircle2 className="size-5 fill-primary text-primary-foreground" />
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
   )

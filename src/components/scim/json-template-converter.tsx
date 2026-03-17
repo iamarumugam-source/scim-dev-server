@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Sparkles, Send, Copy, Check, Loader2, RotateCcw, X } from "lucide-react";
+import { Sparkles, Copy, Check, RotateCcw, ArrowUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { LiveWaveform } from "@/components/har/live-waveform";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -27,18 +28,20 @@ interface Message {
 function CopyCode({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <button
+    <Button
+      variant="ghost"
+      size="icon"
+      title="Copy"
+      className="absolute right-2 top-2 h-6 w-6 text-muted-foreground"
       onClick={() => {
         navigator.clipboard.writeText(text);
         toast.success("Copied to clipboard");
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
       }}
-      className="absolute right-2 top-2 text-muted-foreground hover:text-foreground transition-colors"
-      title="Copy"
     >
-      {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-    </button>
+      {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+    </Button>
   );
 }
 
@@ -57,7 +60,6 @@ function MessageBubble({ msg }: { msg: Message }) {
     );
   }
 
-  // Try to extract JSON for nicer display
   const trimmed = msg.content.trim();
   let isJson = false;
   try { JSON.parse(trimmed); isJson = true; } catch {}
@@ -85,18 +87,27 @@ function MessageBubble({ msg }: { msg: Message }) {
 // ─── Converter sheet ──────────────────────────────────────────────────────────
 
 export function JsonTemplateConverter() {
-  const [messages,  setMessages]  = useState<Message[]>([]);
-  const [input,     setInput]     = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const abortRef                  = useRef<AbortController | null>(null);
-  const bottomRef                 = useRef<HTMLDivElement>(null);
-  const textareaRef               = useRef<HTMLTextAreaElement>(null);
+  const [messages,   setMessages]  = useState<Message[]>([]);
+  const [input,      setInput]     = useState("");
+  const [isLoading,  setIsLoading] = useState(false);
+  const [modelName,  setModelName] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/ai/config")
+      .then((r) => r.json())
+      .then((d) => setModelName(d.model ?? null))
+      .catch(() => {});
+  }, []);
+
+  const abortRef    = useRef<AbortController | null>(null);
+  const bottomRef   = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 300)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
   }, [input]);
 
   useEffect(() => {
@@ -176,6 +187,7 @@ export function JsonTemplateConverter() {
   };
 
   const isEmpty = messages.length === 0;
+  const isStreaming = isLoading && messages.at(-1)?.streaming && !messages.at(-1)?.content;
 
   return (
     <Sheet>
@@ -187,15 +199,17 @@ export function JsonTemplateConverter() {
       </SheetTrigger>
 
       <SheetContent side="right" className="flex flex-col w-full sm:max-w-lg p-0 gap-0">
-        <SheetHeader className="flex-shrink-0 px-4 py-3 border-b border-border">
-          <div className="flex items-center justify-between">
+
+        {/* ── Header ── */}
+        <SheetHeader className="flex-shrink-0 px-4 py-3 bg-amber-50/60 dark:bg-amber-950/20 border-b border-border">
+          <div className="flex items-center justify-between pr-8">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-amber-500" />
+              <Sparkles className="h-4 w-4 text-amber-500 flex-shrink-0" />
               <SheetTitle className="text-sm font-semibold">AI Template Builder</SheetTitle>
             </div>
             {!isEmpty && (
-              <Button size="sm" variant="ghost" onClick={reset} className="h-6 text-xs gap-1 text-muted-foreground">
-                <RotateCcw className="h-3 w-3" /> Reset
+              <Button size="sm" variant="outline" onClick={reset} className="gap-1.5 h-7 text-xs">
+                <RotateCcw className="h-3.5 w-3.5" /> Reset
               </Button>
             )}
           </div>
@@ -213,7 +227,7 @@ export function JsonTemplateConverter() {
           </p>
         </SheetHeader>
 
-        {/* Messages */}
+        {/* ── Messages ── */}
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0">
           {isEmpty ? (
             <div className="flex flex-col items-center justify-center h-full gap-3 text-center py-8">
@@ -242,39 +256,68 @@ export function JsonTemplateConverter() {
               </div>
             </div>
           ) : (
-            messages.map((msg, i) => <MessageBubble key={i} msg={msg} />)
+            messages.map((msg, i) => {
+              // Show waveform in place of the empty streaming assistant bubble
+              if (msg.role === "assistant" && msg.streaming && !msg.content) {
+                return (
+                  <div key={i} className="px-2 py-4">
+                    <LiveWaveform
+                      processing
+                      height={32}
+                      barWidth={3}
+                      barGap={2}
+                      barRadius={2}
+                      barColor="#f59e0b"
+                      fadeEdges
+                      fadeWidth={24}
+                      mode="static"
+                      className="w-full max-w-[200px]"
+                    />
+                  </div>
+                );
+              }
+              return <MessageBubble key={i} msg={msg} />;
+            })
           )}
           <div ref={bottomRef} />
         </div>
 
-        {/* Input */}
-        <div className="flex-shrink-0 border-t border-border px-3 py-3 space-y-2">
-          <Textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={isEmpty
-              ? 'Paste your sample JSON here...\n\n{"title": "CISO", "id": "abc-123", ...}'
-              : 'Ask a follow-up, e.g. "keep the country as static" or "use faker for contractId"'}
-            className="min-h-[80px] max-h-[300px] overflow-y-auto text-xs font-mono resize-none transition-none"
-            style={{ height: "80px" }}
-            disabled={isLoading}
-          />
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] text-muted-foreground">⌘ Enter to send</p>
-            <Button
-              size="sm"
-              onClick={handleSubmit}
-              disabled={!input.trim() || isLoading}
-              className="gap-1.5"
-            >
-              {isLoading
-                ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Converting…</>
-                : <><Send className="h-3.5 w-3.5" /> {isEmpty ? "Convert" : "Send"}</>}
-            </Button>
+        {/* ── Input ── */}
+        <div className="flex-shrink-0 p-3">
+          <div className="relative rounded-2xl border border-border bg-muted/40 dark:bg-muted/20 overflow-hidden">
+            <Textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={isEmpty
+                ? `Paste your JSON or describe a template…\n\n{ "contractId": "abc-123",\n  "title": "CISO",\n  "country": "SG" }`
+                : `Ask a follow-up…\n\ne.g. "keep country as static" or\n     "use faker for contractId"`}
+              className="min-h-[130px] max-h-[220px] resize-none border-0 shadow-none focus-visible:ring-0 bg-transparent text-sm px-4 pt-4 pb-14 leading-relaxed placeholder:text-muted-foreground/50 placeholder:text-sm w-full"
+              style={{ height: "130px" }}
+              disabled={isLoading}
+            />
+
+            {/* Gradient fade */}
+            <div className="absolute left-0 right-0 h-8 pointer-events-none bottom-[44px] bg-gradient-to-b from-transparent to-muted/40 dark:to-muted/20" />
+
+            {/* Bottom row */}
+            <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 pb-3 pt-1.5 bg-muted/40 dark:bg-muted/20 rounded-b-2xl">
+              <span className="text-xs text-muted-foreground/70 font-medium truncate max-w-[55%] pointer-events-none">
+                {modelName ?? "AI"}
+              </span>
+              <Button
+                size="icon"
+                className="h-7 w-7 rounded-full flex-shrink-0"
+                onClick={handleSubmit}
+                disabled={!input.trim() || isLoading}
+              >
+                <ArrowUp className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
         </div>
+
       </SheetContent>
     </Sheet>
   );

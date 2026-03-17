@@ -2,20 +2,22 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import type { HarEntry, HarHeader } from "./types";
 
 function HeaderSection({ title, headers }: { title: string; headers: HarHeader[] }) {
   const [open, setOpen] = useState(true);
   return (
     <div className="border-b border-border/60 last:border-0">
-      <button
+      <Button
+        variant="ghost"
         onClick={() => setOpen(p => !p)}
-        className="flex items-center gap-1.5 w-full px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors"
+        className="w-full justify-start h-auto px-3 py-1.5 text-xs font-semibold text-foreground rounded-none gap-1.5"
       >
         <span className={cn("transition-transform", open ? "rotate-90" : "")} style={{ fontSize: 9 }}>▶</span>
         {title}
         <span className="ml-1 text-muted-foreground font-normal">({headers.length})</span>
-      </button>
+      </Button>
       {open && (
         <div className="px-3 pb-2">
           {headers.map((h, i) => (

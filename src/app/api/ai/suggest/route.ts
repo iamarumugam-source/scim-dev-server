@@ -32,29 +32,23 @@ function buildPrompt(body: Record<string, unknown>): string {
     `  Status:   ${status} ${statusText}`,
   ];
 
-  if (oidcPhase) {
-    lines.push(`  OIDC Phase: ${oidcPhase}`);
-  }
+  if (oidcPhase) lines.push(`  OIDC Phase: ${oidcPhase}`);
 
-  // Structured URL query parameters — most relevant for /authorize and similar GET endpoints
   if (urlParams && Object.keys(urlParams as object).length > 0) {
     lines.push("", "URL query parameters sent:");
     lines.push(...kv(urlParams as Record<string, string>));
   }
 
-  // Structured form-body parameters — most relevant for /token, /revoke, /introspect
   if (bodyParams && Object.keys(bodyParams as object).length > 0) {
     lines.push("", "Request body parameters sent:");
     lines.push(...kv(bodyParams as Record<string, string>));
   }
 
-  // Key request headers (already filtered of secrets on the client)
   if (requestHeaders && Object.keys(requestHeaders as object).length > 0) {
     lines.push("", "Key request headers:");
     lines.push(...kv(requestHeaders as Record<string, string>));
   }
 
-  // Structured Okta error response — extract the most useful fields first
   if (responseJson && typeof responseJson === "object") {
     const r = responseJson as Record<string, unknown>;
     lines.push("", "Response error details:");
@@ -67,7 +61,6 @@ function buildPrompt(body: Record<string, unknown>): string {
         lines.push(`    - ${JSON.stringify(c)}`);
       });
     }
-    // Surface any non-standard fields the LLM might find useful
     const knownFields = new Set(["error", "error_description", "errorCode", "errorSummary", "errorLink", "errorId", "errorCauses"]);
     const extra = Object.entries(r).filter(([k]) => !knownFields.has(k)).slice(0, 5);
     if (extra.length > 0) {

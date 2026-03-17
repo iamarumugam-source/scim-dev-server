@@ -55,8 +55,8 @@ export default function ApiPage() {
       <Card>
         <CardContent className="p-5 space-y-4">
           <div className="flex items-start gap-3">
-            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-teal-50 dark:bg-teal-950/40">
-              <Server className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-muted">
+              <Server className="h-4 w-4 text-muted-foreground" />
             </div>
             <div>
               <p className="font-semibold text-sm">SCIM Endpoint</p>
@@ -83,8 +83,8 @@ export default function ApiPage() {
           <Card>
             <CardContent className="p-5 space-y-4">
               <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/40">
-                  <Zap className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-muted">
+                  <Zap className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <div>
                   <p className="font-semibold text-sm">Authorization Endpoint</p>
@@ -100,8 +100,8 @@ export default function ApiPage() {
           <Card>
             <CardContent className="p-5 space-y-4">
               <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-green-50 dark:bg-green-950/40">
-                  <KeyRound className="h-4 w-4 text-green-600 dark:text-green-400" />
+                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-muted">
+                  <KeyRound className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <div>
                   <p className="font-semibold text-sm">Token Endpoint</p>
@@ -119,8 +119,8 @@ export default function ApiPage() {
         <Card className="bg-muted/20">
           <CardContent className="p-4 space-y-3">
             <div className="flex items-start gap-3">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-amber-50 dark:bg-amber-950/40 mt-0.5">
-                <Unlock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-muted mt-0.5">
+                <Unlock className="h-4 w-4 text-muted-foreground" />
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-medium">Client credentials</p>

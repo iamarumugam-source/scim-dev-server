@@ -19,12 +19,12 @@ import { toast } from "sonner";
 // ─── Avatar helpers ────────────────────────────────────────────────────────────
 
 const AVATAR_COLORS = [
-  "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
-  "bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300",
-  "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300",
-  "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
-  "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300",
-  "bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300",
+  "bg-muted text-foreground/70",
+  "bg-primary/10 text-primary",
+  "bg-muted/80 text-foreground/60",
+  "bg-primary/15 text-primary/80",
+  "bg-secondary text-secondary-foreground",
+  "bg-primary/20 text-primary/90",
 ];
 
 export function avatarColor(str: string) {
@@ -144,8 +144,8 @@ export const getColumns = ({ handleDeleteUser }: GetColumnsProps): ColumnDef<Sci
       const active = row.getValue<boolean>("active");
       return active ? (
         <div className="flex items-center gap-1.5">
-          <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-          <span className="text-sm text-green-700 dark:text-green-400 font-medium">Active</span>
+          <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+          <span className="text-sm text-primary font-medium">Active</span>
         </div>
       ) : (
         <div className="flex items-center gap-1.5">

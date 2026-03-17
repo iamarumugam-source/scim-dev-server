@@ -26,8 +26,8 @@ const chartConfig = {
   count: {
     label: "API Calls",
     theme: {
-      light: "oklch(0.6 0.15 237)",
-      dark:  "oklch(0.72 0.12 237)",
+      light: "oklch(0.488 0.243 264.376)",  // --chart-4
+      dark:  "oklch(0.623 0.214 259.815)",  // --chart-2
     },
   },
 } satisfies ChartConfig;
@@ -37,7 +37,9 @@ export function ActivityChart({ data, isLoading }: ActivityChartProps) {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">API Calls — Last 7 Days</CardTitle>
-        <CalendarDays className="h-4 w-4 text-muted-foreground" />
+        <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
+          <CalendarDays className="h-4 w-4 text-foreground/60" />
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (

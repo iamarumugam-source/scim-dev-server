@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { OIDC_PARAM_INFO } from "./constants";
 import { tryBase64UrlDecode } from "./utils";
+import { Button } from "@/components/ui/button";
 import type { HarEntry } from "./types";
 
 export function OidcUrlPanel({ entry }: { entry: HarEntry }) {
@@ -61,12 +62,14 @@ export function OidcUrlPanel({ entry }: { entry: HarEntry }) {
                 )}
               </div>
               {decoded && (
-                <button
+                <Button
+                  variant="link"
+                  size="sm"
                   onClick={() => setExpanded((p) => ({ ...p, [key]: !isOpen }))}
-                  className="flex-shrink-0 text-[10px] font-sans text-primary hover:underline mt-0.5"
+                  className="flex-shrink-0 h-auto p-0 text-[10px] mt-0.5"
                 >
                   {isOpen ? "hide" : "decode"}
-                </button>
+                </Button>
               )}
             </div>
             {decoded && isOpen && (

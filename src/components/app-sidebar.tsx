@@ -21,6 +21,8 @@ import {
   BadgeCheck,
   Crown,
   LifeBuoy,
+  Minus,
+  Plus,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -79,6 +81,7 @@ import {
 
 import { Button } from "./ui/button";
 import NavUser from "./user-menu";
+import { KeyboardShortcuts } from "./keyboard-shortcuts";
 
 import { Input } from "./ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -166,25 +169,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   };
 
   // ── Keyboard shortcuts ──────────────────────────────────────────────────────
-  useHotkeys("backslash",   () => toggleSidebar(),          { preventDefault: true });
-  useHotkeys("shift+slash", () => setIsShortcutsOpen(true), { preventDefault: true });
-  // Dialogs — Shift modifier prevents accidental triggers
-  useHotkeys("shift+g", () => setIsDialogOpen(true), { preventDefault: true });
-  useHotkeys("shift+r", () => setIsResetDialogOpen(true), {
-    preventDefault: true,
-  });
-  // Navigation — plain letters
-  useHotkeys("g", () => router.push("/scim/groups"), { preventDefault: true });
-  useHotkeys("r", () => router.push("/scim/roles"), { preventDefault: true });
-  useHotkeys("l", () => router.push("/scim/logs"), { preventDefault: true });
-  useHotkeys("u", () => router.push("/scim/users"), { preventDefault: true });
-  useHotkeys("x", () => router.push("/scim/extensions"), {
-    preventDefault: true,
-  });
-  useHotkeys("e", () => router.push("/scim/entitlements"), {
-    preventDefault: true,
-  });
-  useHotkeys("a", () => router.push("/scim/keys"), { preventDefault: true });
+  useHotkeys("meta+backslash", () => toggleSidebar(),           { preventDefault: true });
+  useHotkeys("shift+slash",    () => setIsShortcutsOpen(true),  { preventDefault: true });
+  useHotkeys("meta+g",         () => setIsDialogOpen(true),     { preventDefault: true });
+  useHotkeys("meta+backspace",  () => setIsResetDialogOpen(true), { preventDefault: true });
+  useHotkeys("meta+l",         () => router.push("/scim/logs"), { preventDefault: true });
 
   const userId = session?.user?.id;
 
@@ -352,138 +341,164 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         className="w-full space-y-5"
                       >
                         {/* What to generate */}
-                        <div className="space-y-3">
-                          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
                             What to generate
                           </p>
+                          <div className="flex flex-col gap-2">
 
-                          {/* Users */}
-                          <FormField
-                            control={form.control}
-                            name="generateUsers"
-                            render={({ field }) => (
-                              <FormItem className="flex flex-row items-center justify-between space-y-0">
-                                <div className="flex items-center gap-2.5">
-                                  <FormControl>
-                                    <Checkbox
-                                      checked={field.value}
-                                      onCheckedChange={field.onChange}
-                                    />
-                                  </FormControl>
-                                  <FormLabel className="text-sm font-normal cursor-pointer">
-                                    Users
-                                  </FormLabel>
-                                </div>
-                                {field.value && (
-                                  <FormField
-                                    control={form.control}
-                                    name="userCount"
-                                    render={({ field: f }) => (
-                                      <FormItem className="flex flex-row items-center gap-2 space-y-0">
-                                        <FormLabel className="text-xs text-muted-foreground font-normal whitespace-nowrap">
-                                          Count
-                                        </FormLabel>
-                                        <FormControl>
-                                          <Input
-                                            {...f}
-                                            type="number"
-                                            className="h-7 w-20 text-xs"
-                                          />
-                                        </FormControl>
-                                        <FormMessage />
-                                      </FormItem>
+                            {/* Users */}
+                            <FormField
+                              control={form.control}
+                              name="generateUsers"
+                              render={({ field }) => (
+                                <FormItem className="space-y-0">
+                                  <div className="flex items-center justify-between py-1.5">
+                                    <div className="flex items-center gap-3">
+                                      <FormControl>
+                                        <Checkbox
+                                          checked={field.value}
+                                          onCheckedChange={field.onChange}
+                                        />
+                                      </FormControl>
+                                      <FormLabel className="text-sm font-normal cursor-pointer">Users</FormLabel>
+                                    </div>
+                                    {field.value && (
+                                      <FormField
+                                        control={form.control}
+                                        name="userCount"
+                                        render={({ field: f }) => (
+                                          <FormItem className="space-y-0">
+                                            <FormControl>
+                                              <div className="flex items-center rounded-full border border-input bg-background overflow-hidden h-8">
+                                                <input
+                                                  type="number"
+                                                  value={f.value}
+                                                  min={1}
+                                                  max={1000}
+                                                  onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) f.onChange(Math.min(1000, Math.max(1, v))); }}
+                                                  className="w-12 text-sm tabular-nums font-medium text-center bg-transparent outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                />
+                                                <div className="w-px self-stretch bg-border" />
+                                                <button type="button" className="h-full w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => f.onChange(Math.max(1, Number(f.value) - 1))}>
+                                                  <Minus className="h-3.5 w-3.5" />
+                                                </button>
+                                                <div className="w-px self-stretch bg-border" />
+                                                <button type="button" className="h-full w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => f.onChange(Math.min(1000, Number(f.value) + 1))}>
+                                                  <Plus className="h-3.5 w-3.5" />
+                                                </button>
+                                              </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
                                     )}
-                                  />
-                                )}
-                              </FormItem>
-                            )}
-                          />
+                                  </div>
+                                  <Separator />
+                                </FormItem>
+                              )}
+                            />
 
-                          {/* Groups */}
-                          <FormField
-                            control={form.control}
-                            name="generateGroups"
-                            render={({ field }) => (
-                              <FormItem className="flex flex-row items-center justify-between space-y-0">
-                                <div className="flex items-center gap-2.5">
-                                  <FormControl>
-                                    <Checkbox
-                                      checked={field.value}
-                                      onCheckedChange={field.onChange}
-                                    />
-                                  </FormControl>
-                                  <FormLabel className="text-sm font-normal cursor-pointer">
-                                    Groups
-                                  </FormLabel>
-                                </div>
-                                {field.value && (
-                                  <FormField
-                                    control={form.control}
-                                    name="groupCount"
-                                    render={({ field: f }) => (
-                                      <FormItem className="flex flex-row items-center gap-2 space-y-0">
-                                        <FormLabel className="text-xs text-muted-foreground font-normal whitespace-nowrap">
-                                          Count
-                                        </FormLabel>
-                                        <FormControl>
-                                          <Input
-                                            {...f}
-                                            type="number"
-                                            className="h-7 w-20 text-xs"
-                                          />
-                                        </FormControl>
-                                        <FormMessage />
-                                      </FormItem>
+                            {/* Groups */}
+                            <FormField
+                              control={form.control}
+                              name="generateGroups"
+                              render={({ field }) => (
+                                <FormItem className="space-y-0">
+                                  <div className="flex items-center justify-between py-1.5">
+                                    <div className="flex items-center gap-3">
+                                      <FormControl>
+                                        <Checkbox
+                                          checked={field.value}
+                                          onCheckedChange={field.onChange}
+                                        />
+                                      </FormControl>
+                                      <FormLabel className="text-sm font-normal cursor-pointer">Groups</FormLabel>
+                                    </div>
+                                    {field.value && (
+                                      <FormField
+                                        control={form.control}
+                                        name="groupCount"
+                                        render={({ field: f }) => (
+                                          <FormItem className="space-y-0">
+                                            <FormControl>
+                                              <div className="flex items-center rounded-full border border-input bg-background overflow-hidden h-8">
+                                                <input
+                                                  type="number"
+                                                  value={f.value}
+                                                  min={1}
+                                                  max={50}
+                                                  onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) f.onChange(Math.min(50, Math.max(1, v))); }}
+                                                  className="w-12 text-sm tabular-nums font-medium text-center bg-transparent outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                />
+                                                <div className="w-px self-stretch bg-border" />
+                                                <button type="button" className="h-full w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => f.onChange(Math.max(1, Number(f.value) - 1))}>
+                                                  <Minus className="h-3.5 w-3.5" />
+                                                </button>
+                                                <div className="w-px self-stretch bg-border" />
+                                                <button type="button" className="h-full w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => f.onChange(Math.min(50, Number(f.value) + 1))}>
+                                                  <Plus className="h-3.5 w-3.5" />
+                                                </button>
+                                              </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
                                     )}
-                                  />
-                                )}
-                              </FormItem>
-                            )}
-                          />
+                                  </div>
+                                  <Separator />
+                                </FormItem>
+                              )}
+                            />
 
-                          {/* Entitlements */}
-                          <FormField
-                            control={form.control}
-                            name="generateEntitlements"
-                            render={({ field }) => (
-                              <FormItem className="flex flex-row items-center space-y-0 gap-2.5">
-                                <FormControl>
-                                  <Checkbox
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                  />
-                                </FormControl>
-                                <FormLabel className="text-sm font-normal cursor-pointer flex-1">
-                                  Entitlements
-                                </FormLabel>
-                                <span className="text-xs text-muted-foreground">
-                                  from catalog
-                                </span>
-                              </FormItem>
-                            )}
-                          />
+                            {/* Entitlements */}
+                            <FormField
+                              control={form.control}
+                              name="generateEntitlements"
+                              render={({ field }) => (
+                                <FormItem className="space-y-0">
+                                  <div className="flex items-center justify-between py-1.5">
+                                    <div className="flex items-center gap-3">
+                                      <FormControl>
+                                        <Checkbox
+                                          checked={field.value}
+                                          onCheckedChange={field.onChange}
+                                        />
+                                      </FormControl>
+                                      <FormLabel className="text-sm font-normal cursor-pointer">Entitlements</FormLabel>
+                                    </div>
+                                    <span className="text-xs text-muted-foreground">from catalog</span>
+                                  </div>
+                                  <Separator />
+                                </FormItem>
+                              )}
+                            />
 
-                          {/* Roles */}
-                          <FormField
-                            control={form.control}
-                            name="generateRoles"
-                            render={({ field }) => (
-                              <FormItem className="flex flex-row items-center space-y-0 gap-2.5">
-                                <FormControl>
-                                  <Checkbox
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                  />
-                                </FormControl>
-                                <FormLabel className="text-sm font-normal cursor-pointer flex-1">
-                                  Roles
-                                </FormLabel>
-                                <span className="text-xs text-muted-foreground">
-                                  from catalog
-                                </span>
-                              </FormItem>
-                            )}
-                          />
+                            {/* Roles */}
+                            <FormField
+                              control={form.control}
+                              name="generateRoles"
+                              render={({ field }) => (
+                                <FormItem className="space-y-0">
+                                  <div className="flex items-center justify-between py-1.5">
+                                    <div className="flex items-center gap-3">
+                                      <FormControl>
+                                        <Checkbox
+                                          checked={field.value}
+                                          onCheckedChange={field.onChange}
+                                        />
+                                      </FormControl>
+                                      <FormLabel className="text-sm font-normal cursor-pointer">Roles</FormLabel>
+                                    </div>
+                                    <span className="text-xs text-muted-foreground">from catalog</span>
+                                  </div>
+                                </FormItem>
+                              )}
+                            />
+
+                          </div>
                         </div>
 
                         <Separator />
@@ -493,7 +508,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                           control={form.control}
                           name="deleteExisting"
                           render={({ field }) => (
-                            <FormItem className="flex flex-row gap-2.5 items-start space-y-0">
+                            <FormItem className="flex items-start gap-3 space-y-0">
                               <FormControl>
                                 <Checkbox
                                   checked={field.value}
@@ -502,12 +517,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                 />
                               </FormControl>
                               <div className="space-y-0.5">
-                                <FormLabel className="text-sm">
-                                  Delete existing data first
-                                </FormLabel>
+                                <FormLabel className="text-sm">Delete existing data first</FormLabel>
                                 <FormDescription className="text-xs">
-                                  Removes existing users, groups, entitlements,
-                                  and roles before generating new ones.
+                                  Removes existing users, groups, entitlements, and roles before generating new ones.
                                 </FormDescription>
                               </div>
                             </FormItem>
@@ -556,64 +568,38 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
                     <Separator />
 
-                    <div className="space-y-3 py-1">
+                    <div className="flex flex-col gap-2 py-1">
                       {(
                         [
-                          {
-                            key: "users",
-                            label: "Users",
-                            desc: "All provisioned user accounts",
-                          },
-                          {
-                            key: "groups",
-                            label: "Groups",
-                            desc: "All user groups and memberships",
-                          },
-                          {
-                            key: "entitlements",
-                            label: "Entitlements",
-                            desc: "All entitlement definitions",
-                          },
-                          {
-                            key: "roles",
-                            label: "Roles",
-                            desc: "All role definitions",
-                          },
-                          {
-                            key: "logs",
-                            label: "Logs",
-                            desc: "All API request logs",
-                          },
-                          {
-                            key: "pageViews",
-                            label: "Page views",
-                            desc: "Page view counters",
-                          },
+                          { key: "users",        label: "Users",        desc: "All provisioned user accounts"    },
+                          { key: "groups",       label: "Groups",       desc: "All user groups and memberships"  },
+                          { key: "entitlements", label: "Entitlements", desc: "All entitlement definitions"      },
+                          { key: "roles",        label: "Roles",        desc: "All role definitions"             },
+                          { key: "logs",         label: "Logs",         desc: "All API request logs"             },
+                          { key: "pageViews",    label: "Page views",   desc: "Page view counters"               },
                         ] as const
-                      ).map(({ key, label, desc }) => (
-                        <div key={key} className="flex items-start gap-3">
-                          <Checkbox
-                            id={`reset-${key}`}
-                            checked={resetSelections[key]}
-                            onCheckedChange={(checked) =>
-                              setResetSelections((p) => ({
-                                ...p,
-                                [key]: checked === true,
-                              }))
-                            }
-                            className="mt-0.5"
-                          />
-                          <div className="min-w-0">
-                            <Label
-                              htmlFor={`reset-${key}`}
-                              className="text-sm font-medium cursor-pointer leading-none"
-                            >
-                              {label}
-                            </Label>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {desc}
-                            </p>
+                      ).map(({ key, label, desc }, i, arr) => (
+                        <div key={key}>
+                          <div className="flex items-start gap-3 py-1.5">
+                            <Checkbox
+                              id={`reset-${key}`}
+                              checked={resetSelections[key]}
+                              onCheckedChange={(checked) =>
+                                setResetSelections((p) => ({ ...p, [key]: checked === true }))
+                              }
+                              className="mt-0.5"
+                            />
+                            <div className="min-w-0">
+                              <Label
+                                htmlFor={`reset-${key}`}
+                                className="text-sm font-medium cursor-pointer leading-none"
+                              >
+                                {label}
+                              </Label>
+                              <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+                            </div>
                           </div>
+                          {i < arr.length - 1 && <Separator />}
                         </div>
                       ))}
                     </div>
@@ -742,70 +728,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       {/* ── Keyboard shortcuts reference ─────────────────────────────────── */}
       <Dialog open={isShortcutsOpen} onOpenChange={setIsShortcutsOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Keyboard Shortcuts</DialogTitle>
-            <DialogDescription>
-              Shortcuts are disabled when focus is inside an input field.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-1">
-            {[
-              {
-                group: "Sidebar",
-                items: [
-                  { keys: ["\\"], label: "Toggle sidebar" },
-                  { keys: ["?"], label: "Show this dialog" },
-                  { keys: ["D"], label: "Toggle theme" },
-                ],
-              },
-              {
-                group: "Actions",
-                items: [
-                  { keys: ["⇧", "G"], label: "Generate mock data" },
-                  { keys: ["⇧", "R"], label: "Reset data" },
-                ],
-              },
-              {
-                group: "Navigate",
-                items: [
-                  { keys: ["U"], label: "Users" },
-                  { keys: ["G"], label: "Groups" },
-                  { keys: ["E"], label: "Entitlements" },
-                  { keys: ["R"], label: "Roles" },
-                  { keys: ["A"], label: "API" },
-                  { keys: ["L"], label: "Logs" },
-                  { keys: ["X"], label: "Extensions" },
-                ],
-              },
-            ].map(({ group, items }) => (
-              <div key={group} className="space-y-1.5">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-1">
-                  {group}
-                </p>
-                {items.map(({ keys, label }) => (
-                  <div
-                    key={label}
-                    className="flex items-center justify-between px-1"
-                  >
-                    <span className="text-sm text-muted-foreground">
-                      {label}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      {keys.map((k) => (
-                        <kbd
-                          key={k}
-                          className="pointer-events-none inline-flex h-5 min-w-[20px] items-center justify-center rounded border border-border bg-muted px-1.5 font-mono text-[11px] font-medium text-muted-foreground select-none"
-                        >
-                          {k}
-                        </kbd>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
+        <DialogContent className="sm:max-w-sm p-0 gap-0 border-0 bg-transparent shadow-none">
+          <KeyboardShortcuts />
         </DialogContent>
       </Dialog>
     </Sidebar>

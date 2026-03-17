@@ -15,16 +15,16 @@ interface MethodChartProps {
   isLoading:  boolean;
 }
 
-// Per-method fill colours — match the badge palette used elsewhere in the dashboard
+// Per-method fill colours — drawn from the chart-1…chart-5 palette
 const METHOD_FILL: Record<string, string> = {
-  GET:    "oklch(0.6 0.15 237)",
-  POST:   "oklch(0.6 0.15 145)",
-  PUT:    "oklch(0.7 0.15 85)",
-  PATCH:  "oklch(0.7 0.15 85)",
-  DELETE: "oklch(0.55 0.2 25)",
+  GET:    "oklch(0.809 0.105 251.813)",  // --chart-1 (lightest)
+  POST:   "oklch(0.546 0.245 262.881)",  // --chart-3
+  PUT:    "oklch(0.623 0.214 259.815)",  // --chart-2
+  PATCH:  "oklch(0.488 0.243 264.376)",  // --chart-4
+  DELETE: "oklch(0.424 0.199 265.638)",  // --chart-5 (darkest)
 };
 
-const FALLBACK_FILL = "oklch(0.55 0.05 250)";
+const FALLBACK_FILL = "oklch(0.546 0.245 262.881)";  // --chart-3
 
 export function MethodChart({ byMethod, totalCalls, isLoading }: MethodChartProps) {
   const data = Object.entries(byMethod)

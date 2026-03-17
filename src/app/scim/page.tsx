@@ -199,7 +199,9 @@ export default function ScimDashboard() {
                       </AnimatePresence>
                     </CardTitle>
                     <CardAction>
-                      <Icon className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
+                        <Icon className="h-4 w-4 text-foreground/60" />
+                      </div>
                     </CardAction>
                   </CardHeader>
                 </Card>
@@ -219,7 +221,9 @@ export default function ScimDashboard() {
             <CardHeader>
               <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
               <CardAction>
-                <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
+                  <CheckCircle2 className="h-4 w-4 text-foreground/60" />
+                </div>
               </CardAction>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -233,9 +237,9 @@ export default function ScimDashboard() {
                     key="rate"
                     className={cn(
                       "text-2xl font-bold tabular-nums",
-                      successRate >= 90 ? "text-green-600 dark:text-green-400"
-                      : successRate >= 70 ? "text-amber-600 dark:text-amber-400"
-                      : "text-red-600 dark:text-red-400",
+                      successRate >= 90 ? "text-foreground"
+                      : successRate >= 70 ? "text-foreground/70"
+                      : "text-destructive",
                     )}
                     initial={{ opacity: 0, scale: 0.85 }}
                     animate={{ opacity: 1, scale: 1, transition: { duration: 0.3 } }}
@@ -253,10 +257,10 @@ export default function ScimDashboard() {
                   </motion.div>
                 ) : (
                   <motion.div key="rows" className="space-y-2.5" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.3 } }}>
-                    <MetricRow label="Success (2xx)"       value={calls?.success      ?? 0} max={totalCalls} color="bg-green-500" />
-                    <MetricRow label="Client errors (4xx)" value={calls?.clientErrors ?? 0} max={totalCalls} color="bg-amber-500" />
-                    <MetricRow label="Server errors (5xx)" value={calls?.serverErrors ?? 0} max={totalCalls} color="bg-red-500" />
-                    <MetricRow label="Redirects (3xx)"     value={calls?.redirects    ?? 0} max={totalCalls} color="bg-blue-400" />
+                    <MetricRow label="Success (2xx)"       value={calls?.success      ?? 0} max={totalCalls} color="bg-primary" />
+                    <MetricRow label="Client errors (4xx)" value={calls?.clientErrors ?? 0} max={totalCalls} color="bg-muted-foreground" />
+                    <MetricRow label="Server errors (5xx)" value={calls?.serverErrors ?? 0} max={totalCalls} color="bg-destructive" />
+                    <MetricRow label="Redirects (3xx)"     value={calls?.redirects    ?? 0} max={totalCalls} color="bg-primary/40" />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -268,10 +272,10 @@ export default function ScimDashboard() {
                       className={cn(
                         "w-full justify-center text-xs font-medium tabular-nums py-1.5",
                         (calls?.errorRate ?? 0) < 5
-                          ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400 border-green-200 dark:border-green-800"
+                          ? "bg-muted text-foreground/70 border-border"
                           : (calls?.errorRate ?? 0) < 20
-                            ? "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 border-amber-200 dark:border-amber-800"
-                            : "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400 border-red-200 dark:border-red-800",
+                            ? "bg-muted text-foreground/80 border-border"
+                            : "bg-destructive/10 text-destructive border-destructive/30",
                       )}
                     >
                       {calls?.errorRate ?? 0}% error rate
@@ -287,7 +291,9 @@ export default function ScimDashboard() {
             <CardHeader>
               <CardTitle className="text-sm font-medium">By HTTP Method</CardTitle>
               <CardAction>
-                <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+                <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
+                  <SlidersHorizontal className="h-4 w-4 text-foreground/60" />
+                </div>
               </CardAction>
             </CardHeader>
             <CardContent>
@@ -300,7 +306,9 @@ export default function ScimDashboard() {
             <CardHeader>
               <CardTitle className="text-sm font-medium">User Status</CardTitle>
               <CardAction>
-                <Gauge className="h-4 w-4 text-muted-foreground" />
+                <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
+                  <Gauge className="h-4 w-4 text-foreground/60" />
+                </div>
               </CardAction>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -312,7 +320,7 @@ export default function ScimDashboard() {
                   </motion.div>
                 ) : (
                   <motion.div key="rows" className="space-y-2.5" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.3 } }}>
-                    <MetricRow label="Active"   value={stats?.users.active   ?? 0} max={stats?.users.total ?? 1} color="bg-green-500" />
+                    <MetricRow label="Active"   value={stats?.users.active   ?? 0} max={stats?.users.total ?? 1} color="bg-primary" />
                     <MetricRow label="Inactive" value={stats?.users.inactive ?? 0} max={stats?.users.total ?? 1} color="bg-muted-foreground" />
                   </motion.div>
                 )}
@@ -367,7 +375,9 @@ export default function ScimDashboard() {
           <CardHeader>
             <CardTitle className="text-sm font-medium">Top Endpoints</CardTitle>
             <CardAction>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
+                <TrendingUp className="h-4 w-4 text-foreground/60" />
+              </div>
             </CardAction>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -420,7 +430,9 @@ export default function ScimDashboard() {
           <CardHeader>
             <CardTitle className="text-sm font-medium">Recent Errors</CardTitle>
             <CardAction>
-              <XCircle className="h-4 w-4 text-muted-foreground" />
+              <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
+                <XCircle className="h-4 w-4 text-foreground/60" />
+              </div>
             </CardAction>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -447,8 +459,8 @@ export default function ScimDashboard() {
                           className={cn(
                             "text-[10px] font-bold flex-shrink-0 mt-0.5",
                             err.status >= 500
-                              ? "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 border-red-200 dark:border-red-800"
-                              : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-800",
+                              ? "bg-destructive/10 text-destructive border-destructive/30"
+                              : "bg-muted text-foreground/70 border-border",
                           )}
                         >
                           {err.status}
@@ -464,9 +476,9 @@ export default function ScimDashboard() {
                   })}
                 </motion.div>
               ) : (
-                <motion.div key="ok" className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400"
+                <motion.div key="ok" className="flex items-center gap-2 text-xs text-muted-foreground"
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                  <CheckCircle2 className="h-4 w-4" />
+                  <CheckCircle2 className="h-4 w-4 text-primary" />
                   No recent errors — all good!
                 </motion.div>
               )}
@@ -487,7 +499,9 @@ export default function ScimDashboard() {
               <CardHeader>
                 <CardTitle className="text-sm font-medium">Page Views</CardTitle>
                 <CardAction>
-                  <Globe className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
+                    <Globe className="h-4 w-4 text-foreground/60" />
+                  </div>
                 </CardAction>
               </CardHeader>
               <CardContent>

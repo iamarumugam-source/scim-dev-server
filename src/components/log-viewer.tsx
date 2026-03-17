@@ -35,26 +35,26 @@ const PAGE_SIZE = 20;
 
 function getMethodClass(method: string): string {
   switch (method?.toUpperCase()) {
-    case "GET":    return "text-blue-600 dark:text-blue-400";
-    case "POST":   return "text-green-600 dark:text-green-400";
+    case "GET":    return "text-primary";
+    case "POST":   return "text-foreground/80";
     case "PUT":
-    case "PATCH":  return "text-amber-600 dark:text-amber-400";
-    case "DELETE": return "text-red-600 dark:text-red-400";
+    case "PATCH":  return "text-foreground/70";
+    case "DELETE": return "text-destructive";
     default:       return "text-muted-foreground";
   }
 }
 
 function getStatusClass(status: number): string {
-  if (status >= 500) return "text-red-600 dark:text-red-400 font-semibold";
-  if (status >= 400) return "text-red-500 dark:text-red-400";
-  if (status >= 300) return "text-purple-600 dark:text-purple-400";
-  if (status >= 200) return "text-green-600 dark:text-green-400";
+  if (status >= 500) return "text-destructive font-semibold";
+  if (status >= 400) return "text-destructive/80";
+  if (status >= 300) return "text-muted-foreground";
+  if (status >= 200) return "text-foreground/80";
   return "text-muted-foreground";
 }
 
 function getRowClass(status: number): string {
-  if (status >= 500) return "bg-red-50/40 dark:bg-red-950/10";
-  if (status >= 400) return "bg-amber-50/40 dark:bg-amber-950/10";
+  if (status >= 500) return "bg-destructive/5";
+  if (status >= 400) return "bg-muted/30";
   return "";
 }
 

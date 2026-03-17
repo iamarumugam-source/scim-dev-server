@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Copy, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import type { HarEntry } from "./types";
 
 interface Props {
@@ -34,9 +35,9 @@ export function SplunkPanel({ entry, orgId, cell, orgPending }: Props) {
         </p>
         <div className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2">
           <span className="flex-1 break-all text-foreground">{requestId}</span>
-          <button onClick={() => copy(requestId, setCopiedId)} className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors">
-            {copiedId ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-          </button>
+          <Button variant="ghost" size="icon" onClick={() => copy(requestId, setCopiedId)} className="h-6 w-6 flex-shrink-0 text-muted-foreground">
+            {copiedId ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+          </Button>
         </div>
       </div>
 
@@ -74,12 +75,14 @@ export function SplunkPanel({ entry, orgId, cell, orgPending }: Props) {
         {query ? (
           <div className="relative rounded-md border border-border bg-muted/30">
             <pre className="px-3 py-2 pr-10 text-xs overflow-auto whitespace-pre-wrap break-all text-foreground">{query}</pre>
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => copy(query, setCopiedQuery)}
-              className="absolute right-2 top-2 text-muted-foreground hover:text-foreground transition-colors"
+              className="absolute right-2 top-2 h-6 w-6 text-muted-foreground"
             >
-              {copiedQuery ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-            </button>
+              {copiedQuery ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+            </Button>
           </div>
         ) : (
           <div className="text-muted-foreground/60 px-1">

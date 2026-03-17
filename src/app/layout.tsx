@@ -4,22 +4,11 @@ import "./globals.css";
 // import "./codehighlight.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
-import { Geist, Geist_Mono } from "next/font/google";
 import AuthProvider from "@/components/AuthProvider";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/app-header";
 import { Toaster } from "@/components/ui/sonner";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "SCIM Admin Dashboard",
@@ -39,12 +28,16 @@ export default async function RootLayout({
     <html lang="en" suppressHydrationWarning className="layout-full">
       <head>
         <meta name="theme-color" content="#ffffff" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&family=Google+Sans+Code:ital,wght@0,300..800;1,300..800&display=swap"
+          rel="stylesheet"
+        />
       </head>
       <body
         className={cn(
           "font-sans antialiased overscroll-none group/body [--footer-height:calc(var(--spacing)*14)] [--header-height:calc(var(--spacing)*14)] xl:[--footer-height:calc(var(--spacing)*24)]",
-          geistSans.variable,
-          geistMono.variable,
         )}
       >
         <AuthProvider>

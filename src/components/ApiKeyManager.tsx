@@ -33,18 +33,7 @@ interface ApiKey {
   created_at: string;
 }
 
-const KEY_COLORS = [
-  "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400",
-  "bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400",
-  "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400",
-  "bg-teal-50 text-teal-600 dark:bg-teal-950/40 dark:text-teal-400",
-  "bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400",
-];
 
-function keyColor(id: string) {
-  const hash = Array.from(id).reduce((a, c) => a + c.charCodeAt(0), 0);
-  return KEY_COLORS[hash % KEY_COLORS.length];
-}
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -60,7 +49,7 @@ function CopyButton({ text }: { text: string }) {
         setTimeout(() => setCopied(false), 1500);
       }}
     >
-      {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+      {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
     </Button>
   );
 }
@@ -171,8 +160,8 @@ export default function ApiKeyManager() {
 
               {generatedKey ? (
                 <div className="space-y-3 mt-2">
-                  <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-3 py-2.5">
-                    <p className="text-xs text-amber-800 dark:text-amber-300 font-medium">
+                  <div className="rounded-md border border-border bg-muted/50 px-3 py-2.5">
+                    <p className="text-xs text-foreground/70 font-medium">
                       Copy this key now — it will not be shown again.
                     </p>
                   </div>
@@ -240,7 +229,7 @@ export default function ApiKeyManager() {
                     <TableRow key={key.id} className="hover:bg-muted/40 transition-colors">
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md ${keyColor(key.id)}`}>
+                          <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
                             <KeyRound className="h-3.5 w-3.5" />
                           </div>
                           <div className="min-w-0">

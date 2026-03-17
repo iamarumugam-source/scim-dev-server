@@ -1,58 +1,59 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Sparkles, Loader2, AlertCircle, X, Clipboard, Check } from "lucide-react";
+import { Sparkles, AlertCircle, X, Clipboard, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 import { urlName, getOidcInfo } from "./utils";
+import { LiveWaveform } from "./live-waveform";
 import type { HarEntry } from "./types";
 
 // ─── Markdown renderer ────────────────────────────────────────────────────────
 
 const mdComponents: Components = {
   h1: ({ children }) => (
-    <h1 className="text-sm font-bold text-foreground mt-4 mb-1.5 first:mt-0">{children}</h1>
+    <h1 className="text-base font-bold text-foreground mt-4 mb-2 first:mt-0 break-words whitespace-normal">{children}</h1>
   ),
   h2: ({ children }) => (
-    <h2 className="text-xs font-bold text-foreground uppercase tracking-wide mt-4 mb-1.5 first:mt-0 border-b border-border/50 pb-1">
+    <h2 className="text-sm font-bold text-foreground uppercase tracking-wide mt-4 mb-2 first:mt-0 border-b border-border/50 pb-1 break-words whitespace-normal">
       {children}
     </h2>
   ),
   h3: ({ children }) => (
-    <h3 className="text-xs font-semibold text-foreground mt-3 mb-1 first:mt-0">{children}</h3>
+    <h3 className="text-sm font-semibold text-foreground mt-3 mb-1 first:mt-0 break-words whitespace-normal">{children}</h3>
   ),
   p: ({ children }) => (
-    <p className="text-[11px] text-foreground/90 leading-relaxed mb-2 last:mb-0">{children}</p>
+    <p className="text-sm text-foreground/90 leading-relaxed mb-2 last:mb-0 break-words whitespace-normal">{children}</p>
   ),
   ul: ({ children }) => (
-    <ul className="list-disc list-outside ml-4 space-y-0.5 mb-2 last:mb-0 text-[11px] text-foreground/90">
+    <ul className="list-disc list-outside ml-4 space-y-1 mb-2 last:mb-0 text-sm text-foreground/90">
       {children}
     </ul>
   ),
   ol: ({ children }) => (
-    <ol className="list-decimal list-outside ml-4 space-y-0.5 mb-2 last:mb-0 text-[11px] text-foreground/90">
+    <ol className="list-decimal list-outside ml-4 space-y-1 mb-2 last:mb-0 text-sm text-foreground/90">
       {children}
     </ol>
   ),
   li: ({ children }) => (
-    <li className="leading-relaxed pl-0.5">{children}</li>
+    <li className="leading-relaxed pl-0.5 break-words whitespace-normal">{children}</li>
   ),
   pre: ({ children }) => (
-    <pre className="bg-muted rounded-md p-3 overflow-x-auto text-[11px] font-mono text-foreground border border-border/60 mb-2 last:mb-0">
+    <pre className="bg-muted rounded-md p-3 text-xs font-mono text-foreground border border-border/60 mb-2 last:mb-0 whitespace-pre-wrap break-all">
       {children}
     </pre>
   ),
   code: ({ className, children }) => {
     const isBlock = Boolean(className?.startsWith("language-"));
     return isBlock ? (
-      <code className={cn("font-mono text-[11px] text-foreground", className)}>
+      <code className={cn("font-mono text-xs text-foreground break-all", className)}>
         {children}
       </code>
     ) : (
-      <code className="font-mono text-[10px] bg-muted text-foreground px-1 py-0.5 rounded border border-border/50">
+      <code className="font-mono text-xs bg-muted text-foreground px-1 py-0.5 rounded border border-border/50 break-all">
         {children}
       </code>
     );
@@ -62,7 +63,7 @@ const mdComponents: Components = {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-primary hover:underline break-all"
+      className="text-sm text-primary hover:underline break-all"
     >
       {children}
     </a>
@@ -75,13 +76,13 @@ const mdComponents: Components = {
   ),
   hr: () => <hr className="border-border/60 my-3" />,
   blockquote: ({ children }) => (
-    <blockquote className="border-l-2 border-primary/40 pl-3 text-muted-foreground italic text-[11px] mb-2 last:mb-0">
+    <blockquote className="border-l-2 border-primary/40 pl-3 text-muted-foreground italic text-sm mb-2 last:mb-0 break-words whitespace-normal">
       {children}
     </blockquote>
   ),
   table: ({ children }) => (
     <div className="overflow-x-auto mb-2 last:mb-0">
-      <table className="w-full text-[11px] border-collapse border border-border/60 rounded">
+      <table className="w-full text-sm border-collapse border border-border/60 rounded">
         {children}
       </table>
     </div>
@@ -94,10 +95,10 @@ const mdComponents: Components = {
   ),
   tr: ({ children }) => <tr className="divide-x divide-border/40">{children}</tr>,
   th: ({ children }) => (
-    <th className="px-2 py-1 text-left font-semibold">{children}</th>
+    <th className="px-2 py-1.5 text-left font-semibold break-words whitespace-normal">{children}</th>
   ),
   td: ({ children }) => (
-    <td className="px-2 py-1 text-foreground/85">{children}</td>
+    <td className="px-2 py-1.5 text-foreground/85 break-words whitespace-normal">{children}</td>
   ),
 };
 
@@ -218,24 +219,17 @@ export function AiSuggestionCard({ entry, onClose }: Props) {
           .map((h) => [h.name, h.value]),
       );
 
-      // Parse URL query parameters explicitly
       const urlParams: Record<string, string> = {};
-      try {
-        new URL(entry.request.url).searchParams.forEach((v, k) => { urlParams[k] = v; });
-      } catch {}
+      try { new URL(entry.request.url).searchParams.forEach((v, k) => { urlParams[k] = v; }); } catch {}
 
-      // Parse form-encoded body parameters explicitly
       const bodyParams: Record<string, string> = {};
       const contentType = (entry.request.headers.find(
         (h) => h.name.toLowerCase() === "content-type",
       )?.value ?? "").toLowerCase();
       if (contentType.includes("x-www-form-urlencoded") && entry.request.postData?.text) {
-        try {
-          new URLSearchParams(entry.request.postData.text).forEach((v, k) => { bodyParams[k] = v; });
-        } catch {}
+        try { new URLSearchParams(entry.request.postData.text).forEach((v, k) => { bodyParams[k] = v; }); } catch {}
       }
 
-      // Extract structured Okta error fields from JSON response
       const responseJson = (() => {
         try { return JSON.parse(entry.response.content?.text ?? ""); } catch { return null; }
       })();
@@ -280,29 +274,29 @@ export function AiSuggestionCard({ entry, onClose }: Props) {
   };
 
   return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden text-xs">
+    <div className="w-full min-w-0 rounded-lg border border-border bg-card overflow-hidden text-xs">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 bg-amber-50/60 dark:bg-amber-950/20 border-b border-border">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2 px-3 py-2 bg-amber-50/60 dark:bg-amber-950/20 border-b border-border min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
           <Sparkles className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
-          <span className="font-semibold text-foreground">AI Suggestions</span>
-          <span className="text-muted-foreground font-mono">
+          <span className="font-semibold text-foreground flex-shrink-0">AI Suggestions</span>
+          <span className="text-muted-foreground font-mono truncate min-w-0">
             {entry.response.status} {entry.response.statusText} · {urlName(entry.request.url)}
           </span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           {phase === "idle" && (
-            <Button size="sm" variant="outline" onClick={analyze} className="h-6 text-xs gap-1.5">
+            <Button size="sm" onClick={analyze} className="h-7 text-xs gap-1.5">
               <Sparkles className="h-3 w-3" /> Analyse with AI
             </Button>
           )}
           {phase === "loading" && (
-            <Button size="sm" variant="outline" disabled className="h-6 text-xs gap-1.5">
-              <Loader2 className="h-3 w-3 animate-spin" /> Analysing…
+            <Button size="sm" disabled className="h-7 text-xs">
+              Analysing…
             </Button>
           )}
           {(phase === "done" || phase === "error") && (
-            <Button size="sm" variant="ghost" onClick={analyze} className="h-6 text-xs gap-1.5 text-muted-foreground">
+            <Button size="sm" variant="ghost" onClick={analyze} className="h-7 text-xs gap-1.5">
               <Sparkles className="h-3 w-3" /> Re-analyse
             </Button>
           )}
@@ -311,15 +305,15 @@ export function AiSuggestionCard({ entry, onClose }: Props) {
             variant="outline"
             onClick={copyForLLM}
             title="Copy full context to paste into ChatGPT, Gemini, Claude…"
-            className="h-6 text-xs gap-1.5"
+            className="h-7 text-xs gap-1.5"
           >
             {copied
-              ? <><Check className="h-3 w-3 text-emerald-500" /> Copied</>
+              ? <><Check className="h-3 w-3 text-primary" /> Copied</>
               : <><Clipboard className="h-3 w-3" /> Copy for LLM</>}
           </Button>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors ml-0.5">
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-6 w-6 ml-0.5 text-muted-foreground">
             <X className="h-3.5 w-3.5" />
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -340,17 +334,28 @@ export function AiSuggestionCard({ entry, onClose }: Props) {
         </div>
       )}
 
-      {/* Initial spinner before first tokens arrive */}
+      {/* Waveform — shown while waiting for first tokens */}
       {phase === "loading" && !suggestion && (
-        <div className="px-4 py-6 flex items-center justify-center gap-2 text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="text-xs">Contacting LLM…</span>
+        <div className="px-6 py-8 flex flex-col items-center gap-3">
+          <LiveWaveform
+            processing
+            height={40}
+            barWidth={3}
+            barGap={2}
+            barRadius={2}
+            barColor="#f59e0b"
+            fadeEdges
+            fadeWidth={32}
+            mode="static"
+            className="w-full"
+          />
+          <span className="text-[11px] text-muted-foreground">Analysing…</span>
         </div>
       )}
 
-      {/* Markdown output (streams in) */}
+      {/* Markdown output — streams in, wraps correctly with table-layout:fixed on parent */}
       {(phase === "loading" || phase === "done") && suggestion && (
-        <div className="px-4 py-3 max-h-[420px] overflow-auto relative">
+        <div className="px-4 py-3 max-h-[420px] overflow-y-auto break-words">
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
             {suggestion}
           </ReactMarkdown>
@@ -364,7 +369,7 @@ export function AiSuggestionCard({ entry, onClose }: Props) {
       {phase === "error" && (
         <div className="px-4 py-3 flex items-start gap-2 text-destructive">
           <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
-          <span className="font-mono text-[11px] break-all">{suggestion}</span>
+          <span className="text-[11px] break-all">{suggestion}</span>
         </div>
       )}
     </div>

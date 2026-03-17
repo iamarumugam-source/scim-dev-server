@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Pencil, Trash2, Plus, Save, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, Trash2, Plus, Save, Loader2, CheckCircle2, CircleOff } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -156,12 +156,15 @@ export function ExtensionCard({ ext, userId, onRefresh }: Props) {
             <Badge
               variant="outline"
               className={cn(
-                "text-[10px] font-medium h-4 px-1.5 py-0",
+                "text-[10px] font-medium h-4 px-1.5 py-0 gap-1",
                 ext.enabled
-                  ? "text-green-700 dark:text-green-400 border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/40"
+                  ? "text-primary border-primary/30 bg-primary/10"
                   : "text-muted-foreground",
               )}
             >
+              {ext.enabled
+                ? <CheckCircle2 className="h-2.5 w-2.5 text-primary" />
+                : <CircleOff className="h-2.5 w-2.5" />}
               {ext.enabled ? "Active" : "Disabled"}
             </Badge>
 
