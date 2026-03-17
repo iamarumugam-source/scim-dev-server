@@ -12,13 +12,13 @@ import {
 } from "@/components/ui/chart";
 
 interface DailyVolume {
-  date:  string;
+  date: string;
   label: string;
   count: number;
 }
 
 interface ActivityChartProps {
-  data:      DailyVolume[];
+  data: DailyVolume[];
   isLoading: boolean;
 }
 
@@ -26,8 +26,8 @@ const chartConfig = {
   count: {
     label: "API Calls",
     theme: {
-      light: "oklch(0.488 0.243 264.376)",  // --chart-4
-      dark:  "oklch(0.623 0.214 259.815)",  // --chart-2
+      light: "oklch(0.488 0.243 264.376)", // --chart-4
+      dark: "oklch(0.623 0.214 259.815)", // --chart-2
     },
   },
 } satisfies ChartConfig;
@@ -36,16 +36,20 @@ export function ActivityChart({ data, isLoading }: ActivityChartProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">API Calls — Last 7 Days</CardTitle>
-        <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
-          <CalendarDays className="h-4 w-4 text-foreground/60" />
-        </div>
+        <CardTitle className="text-sm font-medium">
+          API Calls — Last 7 Days
+        </CardTitle>
+        <CalendarDays className="h-4 w-4 text-foreground/60" />
       </CardHeader>
       <CardContent>
         {isLoading ? (
           <div className="flex items-end gap-2 h-[120px]">
             {[40, 65, 30, 80, 55, 70, 45].map((h, i) => (
-              <Skeleton key={i} className="flex-1" style={{ height: `${h}%` }} />
+              <Skeleton
+                key={i}
+                className="flex-1"
+                style={{ height: `${h}%` }}
+              />
             ))}
           </div>
         ) : (

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -13,18 +14,32 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LogOut, MoreHorizontal, Monitor, Globe } from "lucide-react";
-import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "./ui/sidebar";
+import {
+  LogOut,
+  ChevronsUpDown,
+  Monitor,
+  Globe,
+  ShieldCheck,
+  Clock,
+  Timer,
+  Server,
+} from "lucide-react";
+import {
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "./ui/sidebar";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const AVATAR_COLORS = [
-  "bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300",
-  "bg-violet-100 text-violet-700 dark:bg-violet-900/60 dark:text-violet-300",
-  "bg-green-100 text-green-700 dark:bg-green-900/60 dark:text-green-300",
-  "bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300",
-  "bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300",
-  "bg-teal-100 text-teal-700 dark:bg-teal-900/60 dark:text-teal-300",
+  "bg-primary/10 text-primary",
+  "bg-muted text-foreground/70",
+  "bg-primary/15 text-primary/80",
+  "bg-muted/80 text-foreground/60",
+  "bg-secondary text-secondary-foreground",
+  "bg-primary/20 text-primary/90",
 ];
 
 function avatarColor(str: string): string {
@@ -41,40 +56,45 @@ function initials(name?: string | null): string {
 }
 
 function formatRelative(iso: string): string {
-  const diff  = Date.now() - new Date(iso).getTime();
-  const mins  = Math.floor(diff / 60_000);
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
   const hours = Math.floor(diff / 3_600_000);
-  const days  = Math.floor(diff / 86_400_000);
-  if (mins  < 1)  return "just now";
-  if (mins  < 60) return `${mins}m ago`;
+  const days = Math.floor(diff / 86_400_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
   if (hours < 24) return `${hours}h ago`;
   return `${days}d ago`;
 }
 
 function formatExpiry(iso: string): string {
-  const diff  = new Date(iso).getTime() - Date.now();
+  const diff = new Date(iso).getTime() - Date.now();
   if (diff <= 0) return "expired";
-  const mins  = Math.floor(diff / 60_000);
+  const mins = Math.floor(diff / 60_000);
   const hours = Math.floor(diff / 3_600_000);
-  const days  = Math.floor(diff / 86_400_000);
-  if (mins  < 60) return `${mins}m`;
+  const days = Math.floor(diff / 86_400_000);
+  if (mins < 60) return `${mins}m`;
   if (hours < 24) return `${hours}h`;
   return `${days}d`;
 }
 
 function envLabel(): string {
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? "";
-  if (!base || base.includes("localhost") || base.includes("127.0.0.1")) return "Local";
-  try { return new URL(base).hostname; } catch { return "Deployed"; }
+  if (!base || base.includes("localhost") || base.includes("127.0.0.1"))
+    return "Local";
+  try {
+    return new URL(base).hostname;
+  } catch {
+    return "Deployed";
+  }
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function NavUser() {
   const { data: session, status } = useSession();
+  const { isMobile } = useSidebar();
   const [signedInAt, setSignedInAt] = useState<string | null>(null);
 
-  // Store sign-in time once per browser session
   useEffect(() => {
     if (status !== "authenticated") return;
     const key = "session_signed_in_at";
@@ -88,7 +108,11 @@ export default function NavUser() {
     return (
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton size="lg" disabled className="opacity-60 cursor-default">
+          <SidebarMenuButton
+            size="lg"
+            disabled
+            className="opacity-60 cursor-default"
+          >
             <Skeleton className="h-8 w-8 rounded-full flex-shrink-0" />
             <div className="grid flex-1 gap-1">
               <Skeleton className="h-3 w-24 rounded" />
@@ -102,12 +126,12 @@ export default function NavUser() {
 
   if (status === "unauthenticated") return null;
 
-  const user    = session?.user;
-  const name    = user?.name   ?? "";
-  const email   = user?.email  ?? "";
-  const userId  = user?.id     ?? "";
-  const color   = avatarColor(userId || email || name);
-  const env     = envLabel();
+  const user = session?.user;
+  const name = user?.name ?? "";
+  const email = user?.email ?? "";
+  const userId = user?.id ?? "";
+  const color = avatarColor(userId || email || name);
+  const env = envLabel();
   const isLocal = env === "Local";
 
   return (
@@ -115,10 +139,7 @@ export default function NavUser() {
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
+            <SidebarMenuButton size="lg" className="aria-expanded:bg-muted">
               <Avatar className="h-8 w-8 flex-shrink-0">
                 <AvatarFallback className={`text-xs font-semibold ${color}`}>
                   {initials(name)}
@@ -126,81 +147,113 @@ export default function NavUser() {
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{name}</span>
-                <span className="truncate text-xs text-muted-foreground">{email}</span>
+                <span className="truncate text-xs text-muted-foreground">
+                  {email}
+                </span>
               </div>
-              <MoreHorizontal className="ml-auto h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <ChevronsUpDown className="ml-auto size-4 text-muted-foreground flex-shrink-0" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
 
-          <DropdownMenuContent className="w-72" side="top" align="end" sideOffset={6}>
-
-            {/* ── Identity header ──────────────────────────────────────── */}
-            <DropdownMenuLabel className="p-0">
-              <div className="flex items-center gap-3 px-3 py-2.5">
-                <Avatar className="h-9 w-9 flex-shrink-0">
-                  <AvatarFallback className={`text-sm font-semibold ${color}`}>
-                    {initials(name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="grid min-w-0 gap-0.5">
-                  <span className="text-sm font-medium truncate">{name}</span>
-                  <span className="text-xs text-muted-foreground truncate">{email}</span>
-                  {userId && (
-                    <span className="text-[10px] text-muted-foreground/60 font-mono truncate">
-                      {userId}
+          <DropdownMenuContent
+            className="min-w-72 rounded-lg"
+            side={isMobile ? "bottom" : "right"}
+            align="end"
+            sideOffset={4}
+          >
+            {/* ── Identity header ── */}
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="p-0 font-normal">
+                <div className="flex items-center gap-3 px-2 py-2">
+                  <Avatar className="h-9 w-9 flex-shrink-0">
+                    <AvatarFallback
+                      className={`text-sm font-semibold ${color}`}
+                    >
+                      {initials(name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="grid min-w-0 gap-0.5">
+                    <span className="text-sm font-medium truncate">{name}</span>
+                    <span className="text-xs text-muted-foreground truncate">
+                      {email}
                     </span>
-                  )}
+                    {userId && (
+                      <span className="text-[10px] text-muted-foreground/60 font-mono truncate">
+                        {userId}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </DropdownMenuLabel>
+              </DropdownMenuLabel>
+            </DropdownMenuGroup>
 
             <DropdownMenuSeparator />
 
-            {/* ── Session & identity details ────────────────────────────── */}
-            <DropdownMenuLabel className="px-3 py-1.5 font-normal space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Login method</span>
-                <Badge variant="secondary" className="text-[10px] font-normal h-4 px-1.5">Okta SSO</Badge>
-              </div>
+            {/* ── Session details ── */}
+            <DropdownMenuGroup>
+              <DropdownMenuItem className="pointer-events-none cursor-default">
+                <ShieldCheck className="h-4 w-4" />
+                Login method
+                <Badge
+                  variant="secondary"
+                  className="ml-auto text-xs font-normal"
+                >
+                  Okta SSO
+                </Badge>
+              </DropdownMenuItem>
               {signedInAt && (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Signed in</span>
-                  <span className="text-[11px] text-foreground/80">{formatRelative(signedInAt)}</span>
-                </div>
+                <DropdownMenuItem className="pointer-events-none cursor-default">
+                  <Clock className="h-4 w-4" />
+                  Signed in
+                  <span className="ml-auto text-sm">
+                    {formatRelative(signedInAt)}
+                  </span>
+                </DropdownMenuItem>
               )}
               {session?.expires && (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Session expires</span>
-                  <span className="text-[11px] text-foreground/80">in {formatExpiry(session.expires)}</span>
-                </div>
+                <DropdownMenuItem className="pointer-events-none cursor-default">
+                  <Timer className="h-4 w-4" />
+                  Session expires
+                  <span className="ml-auto text-sm">
+                    in {formatExpiry(session.expires)}
+                  </span>
+                </DropdownMenuItem>
               )}
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Environment</span>
+              <DropdownMenuItem className="pointer-events-none cursor-default">
+                {isLocal ? (
+                  <Server className="h-4 w-4 " />
+                ) : (
+                  <Globe className="h-4 w-4 t" />
+                )}
+                Environment
                 <Badge
                   variant="outline"
-                  className={`text-[10px] font-normal h-4 px-1.5 gap-1 ${
+                  className={`ml-auto text-xs font-normal gap-1 ${
                     isLocal
                       ? "text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40"
                       : "text-green-700 dark:text-green-400 border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/40"
                   }`}
                 >
-                  {isLocal ? <Monitor className="h-2.5 w-2.5" /> : <Globe className="h-2.5 w-2.5" />}
+                  {isLocal ? (
+                    <Monitor className="h-3 w-3 text-amber-700 dark:text-amber-400" />
+                  ) : (
+                    <Globe className="h-3 w-3 text-green-600 dark:text-green-400" />
+                  )}
                   {env}
                 </Badge>
-              </div>
-            </DropdownMenuLabel>
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
 
             <DropdownMenuSeparator />
 
-            {/* ── Sign out ──────────────────────────────────────────────── */}
+            {/* ── Sign out ── */}
             <DropdownMenuItem
               onClick={() => signOut({ callbackUrl: "/login" })}
-              className="text-destructive focus:text-destructive focus:bg-destructive/10 gap-2 mt-0.5"
+              className="gap-2"
             >
               <LogOut className="h-4 w-4" />
               Sign out
             </DropdownMenuItem>
-
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>

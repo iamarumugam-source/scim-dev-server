@@ -1,11 +1,18 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Sparkles, Copy, Check, RotateCcw, ArrowUp } from "lucide-react";
+import { Sparkles, Copy, Check, RotateCcw, ArrowUp, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupText,
+  InputGroupTextarea,
+} from "@/components/ui/input-group";
+import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
   SheetContent,
@@ -40,7 +47,11 @@ function CopyCode({ text }: { text: string }) {
         setTimeout(() => setCopied(false), 1500);
       }}
     >
-      {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+      {copied ? (
+        <Check className="h-3.5 w-3.5 text-primary" />
+      ) : (
+        <Copy className="h-3.5 w-3.5" />
+      )}
     </Button>
   );
 }
@@ -62,7 +73,10 @@ function MessageBubble({ msg }: { msg: Message }) {
 
   const trimmed = msg.content.trim();
   let isJson = false;
-  try { JSON.parse(trimmed); isJson = true; } catch {}
+  try {
+    JSON.parse(trimmed);
+    isJson = true;
+  } catch {}
 
   return (
     <div className="flex justify-start">
@@ -73,7 +87,8 @@ function MessageBubble({ msg }: { msg: Message }) {
             className={cn(
               "text-xs font-mono whitespace-pre-wrap break-all p-3 leading-relaxed",
               isJson && "pr-8",
-              msg.streaming && "after:content-['▋'] after:animate-pulse after:ml-0.5",
+              msg.streaming &&
+                "after:content-['▋'] after:animate-pulse after:ml-0.5",
             )}
           >
             {msg.content || (msg.streaming ? "" : "—")}
@@ -87,10 +102,10 @@ function MessageBubble({ msg }: { msg: Message }) {
 // ─── Converter sheet ──────────────────────────────────────────────────────────
 
 export function JsonTemplateConverter() {
-  const [messages,   setMessages]  = useState<Message[]>([]);
-  const [input,      setInput]     = useState("");
-  const [isLoading,  setIsLoading] = useState(false);
-  const [modelName,  setModelName] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [modelName, setModelName] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/ai/config")
@@ -99,8 +114,8 @@ export function JsonTemplateConverter() {
       .catch(() => {});
   }, []);
 
-  const abortRef    = useRef<AbortController | null>(null);
-  const bottomRef   = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -114,62 +129,73 @@ export function JsonTemplateConverter() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const send = useCallback(async (text: string) => {
-    if (!text.trim() || isLoading) return;
+  const send = useCallback(
+    async (text: string) => {
+      if (!text.trim() || isLoading) return;
 
-    abortRef.current?.abort();
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
+      abortRef.current?.abort();
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
 
-    const newMessages: Message[] = [
-      ...messages,
-      { role: "user", content: text.trim() },
-    ];
-    setMessages([...newMessages, { role: "assistant", content: "", streaming: true }]);
-    setInput("");
-    setIsLoading(true);
+      const newMessages: Message[] = [
+        ...messages,
+        { role: "user", content: text.trim() },
+      ];
+      setMessages([
+        ...newMessages,
+        { role: "assistant", content: "", streaming: true },
+      ]);
+      setInput("");
+      setIsLoading(true);
 
-    try {
-      const res = await fetch("/api/ai/json-template", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        signal:  ctrl.signal,
-        body:    JSON.stringify({
-          messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
-        }),
-      });
+      try {
+        const res = await fetch("/api/ai/json-template", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: ctrl.signal,
+          body: JSON.stringify({
+            messages: newMessages.map((m) => ({
+              role: m.role,
+              content: m.content,
+            })),
+          }),
+        });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-        throw new Error(err.error || "Conversion failed");
-      }
+        if (!res.ok) {
+          const err = await res
+            .json()
+            .catch(() => ({ error: `HTTP ${res.status}` }));
+          throw new Error(err.error || "Conversion failed");
+        }
 
-      const reader  = res.body!.getReader();
-      const decoder = new TextDecoder();
-      let   content = "";
+        const reader = res.body!.getReader();
+        const decoder = new TextDecoder();
+        let content = "";
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        content += decoder.decode(value, { stream: true });
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          content += decoder.decode(value, { stream: true });
+          setMessages((prev) => [
+            ...prev.slice(0, -1),
+            { role: "assistant", content, streaming: true },
+          ]);
+        }
+
         setMessages((prev) => [
           ...prev.slice(0, -1),
-          { role: "assistant", content, streaming: true },
+          { role: "assistant", content },
         ]);
+      } catch (e: any) {
+        if (e.name === "AbortError") return;
+        toast.error(e.message);
+        setMessages((prev) => prev.slice(0, -1));
+      } finally {
+        setIsLoading(false);
       }
-
-      setMessages((prev) => [
-        ...prev.slice(0, -1),
-        { role: "assistant", content },
-      ]);
-    } catch (e: any) {
-      if (e.name === "AbortError") return;
-      toast.error(e.message);
-      setMessages((prev) => prev.slice(0, -1));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [messages, isLoading]);
+    },
+    [messages, isLoading],
+  );
 
   const handleSubmit = () => send(input);
 
@@ -187,7 +213,8 @@ export function JsonTemplateConverter() {
   };
 
   const isEmpty = messages.length === 0;
-  const isStreaming = isLoading && messages.at(-1)?.streaming && !messages.at(-1)?.content;
+  const isStreaming =
+    isLoading && messages.at(-1)?.streaming && !messages.at(-1)?.content;
 
   return (
     <Sheet>
@@ -198,17 +225,26 @@ export function JsonTemplateConverter() {
         </Button>
       </SheetTrigger>
 
-      <SheetContent side="right" className="flex flex-col w-full sm:max-w-lg p-0 gap-0">
-
+      <SheetContent
+        side="right"
+        className="flex flex-col w-full sm:max-w-lg p-0 gap-0"
+      >
         {/* ── Header ── */}
         <SheetHeader className="flex-shrink-0 px-4 py-3 bg-amber-50/60 dark:bg-amber-950/20 border-b border-border">
           <div className="flex items-center justify-between pr-8">
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-amber-500 flex-shrink-0" />
-              <SheetTitle className="text-sm font-semibold">AI Template Builder</SheetTitle>
+              <SheetTitle className="text-sm font-semibold">
+                AI Template Builder
+              </SheetTitle>
             </div>
             {!isEmpty && (
-              <Button size="sm" variant="outline" onClick={reset} className="gap-1.5 h-7 text-xs">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={reset}
+                className="gap-1.5 h-7 text-xs"
+              >
                 <RotateCcw className="h-3.5 w-3.5" /> Reset
               </Button>
             )}
@@ -216,8 +252,8 @@ export function JsonTemplateConverter() {
           <p className="text-xs text-muted-foreground mt-0.5">
             Paste a sample JSON and I'll convert it to a template with{" "}
             <code className="font-mono text-primary">{"{{user.*}}"}</code> /{" "}
-            <code className="font-mono text-primary">{"{{faker.*}}"}</code> expressions.
-            Ask follow-up messages to refine.
+            <code className="font-mono text-primary">{"{{faker.*}}"}</code>{" "}
+            expressions. Ask follow-up messages to refine.
           </p>
           <p className="text-[10px] text-muted-foreground/50 mt-1">
             Only available when running locally. Requires{" "}
@@ -235,10 +271,12 @@ export function JsonTemplateConverter() {
                 <Sparkles className="h-5 w-5 text-amber-500" />
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Paste a sample JSON below</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Paste a sample JSON below
+                </p>
                 <p className="text-xs text-muted-foreground/60 mt-1 max-w-xs">
-                  I'll convert string values to dynamic expressions.
-                  You can then ask me to adjust specific fields.
+                  I'll convert string values to dynamic expressions. You can
+                  then ask me to adjust specific fields.
                 </p>
               </div>
               <div className="rounded-lg border border-border bg-muted/30 p-3 text-left text-xs font-mono text-muted-foreground max-w-xs space-y-0.5">
@@ -284,40 +322,50 @@ export function JsonTemplateConverter() {
 
         {/* ── Input ── */}
         <div className="flex-shrink-0 p-3">
-          <div className="relative rounded-2xl border border-border bg-muted/40 dark:bg-muted/20 overflow-hidden">
-            <Textarea
+          <InputGroup>
+            <InputGroupTextarea
               ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={isEmpty
-                ? `Paste your JSON or describe a template…\n\n{ "contractId": "abc-123",\n  "title": "CISO",\n  "country": "SG" }`
-                : `Ask a follow-up…\n\ne.g. "keep country as static" or\n     "use faker for contractId"`}
-              className="min-h-[130px] max-h-[220px] resize-none border-0 shadow-none focus-visible:ring-0 bg-transparent text-sm px-4 pt-4 pb-14 leading-relaxed placeholder:text-muted-foreground/50 placeholder:text-sm w-full"
+              placeholder={
+                isEmpty
+                  ? `Paste your JSON or describe a template…\n\n{ "contractId": "abc-123",\n  "title": "CISO",\n  "country": "SG" }`
+                  : `Ask a follow-up…\n\ne.g. "keep country as static" or\n     "use faker for contractId"`
+              }
+              className="min-h-[130px] max-h-[220px] px-4 pt-4 pb-3 text-sm leading-relaxed placeholder:text-muted-foreground/50"
               style={{ height: "130px" }}
               disabled={isLoading}
             />
-
-            {/* Gradient fade */}
-            <div className="absolute left-0 right-0 h-8 pointer-events-none bottom-[44px] bg-gradient-to-b from-transparent to-muted/40 dark:to-muted/20" />
-
-            {/* Bottom row */}
-            <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 pb-3 pt-1.5 bg-muted/40 dark:bg-muted/20 rounded-b-2xl">
-              <span className="text-xs text-muted-foreground/70 font-medium truncate max-w-[55%] pointer-events-none">
+            <InputGroupAddon align="block-end">
+              <InputGroupButton
+                variant="outline"
+                size="icon-xs"
+                className="rounded-full"
+                aria-label="Clear conversation"
+                onClick={reset}
+                disabled={isEmpty || isLoading}
+              >
+                <Sparkles className="size-3 text-[#4285F4]" />
+              </InputGroupButton>
+              <InputGroupText className="mr-auto truncate max-w-[40%]">
                 {modelName ?? "AI"}
-              </span>
-              <Button
-                size="icon"
-                className="h-7 w-7 rounded-full flex-shrink-0"
+              </InputGroupText>
+
+              <Separator orientation="vertical" className="h-4" />
+              <InputGroupButton
+                variant="default"
+                size="icon-xs"
+                className="rounded-full"
                 onClick={handleSubmit}
                 disabled={!input.trim() || isLoading}
               >
-                <ArrowUp className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          </div>
+                <ArrowUp className="h-3 w-3" />
+                <span className="sr-only">Send</span>
+              </InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
         </div>
-
       </SheetContent>
     </Sheet>
   );
