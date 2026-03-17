@@ -23,6 +23,7 @@ import {
   LifeBuoy,
   Minus,
   Plus,
+  Clock,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -114,8 +115,9 @@ const items = [
 ];
 
 const otherTools = [
-  { title: "HAR Analyser", url: "/har-analyser", icon: ScanSearch },
-  { title: "JWE Decoder", url: "/jwe", icon: LockKeyhole },
+  { title: "HAR Analyser",     url: "/har-analyser",    icon: ScanSearch  },
+  { title: "JWE Decoder",      url: "/jwe",             icon: LockKeyhole },
+  { title: "Time Converter",   url: "/time-converter",  icon: Clock       },
 ];
 
 type FormValues = z.infer<typeof FormSchema>;

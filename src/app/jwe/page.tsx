@@ -8,6 +8,14 @@ import { JweEmptyState } from "@/components/jwe/jwe-empty-state";
 import { JweResultView } from "@/components/jwe/jwe-result-view";
 import { toast } from "sonner";
 import { Lock, KeyRound, FileJson, AlertCircle, Loader2 } from "lucide-react";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 interface DecryptResult {
   type:        "JWE" | "JWT";
@@ -62,38 +70,54 @@ export default function JwePage() {
   };
 
   return (
-    <div className="flex gap-4 p-4 h-[calc(100vh-var(--header-height))]">
+    <div
+      className="flex gap-4 p-4"
+      style={{ height: "calc(100dvh - var(--header-height) - 2rem)" }}
+    >
       {/* ── Input panel ───────────────────────────────────────────────────── */}
-      <div className="flex flex-col w-1/2 gap-3 min-h-0">
+      <div className="flex flex-col w-1/2 gap-4 min-h-0">
+
         {/* Key input */}
-        <div className="flex flex-col flex-1 rounded-lg border border-border overflow-hidden">
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/40 flex-shrink-0">
-            <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-xs font-semibold">Private / Symmetric Key</span>
-            <span className="ml-auto text-[10px] text-muted-foreground">JWK or JWKS · optional for plain JWT</span>
-          </div>
-          <Textarea
-            placeholder={'Paste a JWK, JWKS, or leave empty for plain JWT\n\n{"kty":"RSA","d":"...","n":"...",...}\n{"keys":[{...},{...}]}'}
-            className="flex-1 rounded-none border-none resize-none font-mono text-xs focus-visible:ring-0"
-            value={keyInput}
-            onChange={(e) => setKeyInput(e.target.value)}
-          />
-        </div>
+        <Card className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <CardHeader className="flex-shrink-0">
+            <CardTitle className="text-sm font-medium">Private / Symmetric Key</CardTitle>
+            <CardDescription>JWK or JWKS · optional for plain JWT</CardDescription>
+            <CardAction>
+              <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
+                <KeyRound className="h-4 w-4 text-foreground/60" />
+              </div>
+            </CardAction>
+          </CardHeader>
+          <CardContent className="flex-1 min-h-0 p-0 overflow-hidden">
+            <Textarea
+              placeholder={'Paste a JWK, JWKS, or leave empty for plain JWT\n\n{"kty":"RSA","d":"...","n":"...",...}\n{"keys":[{...},{...}]}'}
+              className="h-full rounded-none border-0 resize-none font-mono text-xs focus-visible:ring-0"
+              value={keyInput}
+              onChange={(e) => setKeyInput(e.target.value)}
+            />
+          </CardContent>
+        </Card>
 
         {/* Token input */}
-        <div className="flex flex-col flex-1 rounded-lg border border-border overflow-hidden">
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/40 flex-shrink-0">
-            <FileJson className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-xs font-semibold">Token</span>
-            <span className="ml-auto text-[10px] text-muted-foreground">JWE (5 parts) or JWT (3 parts)</span>
-          </div>
-          <Textarea
-            placeholder="eyJhbGciOiJSU0EtT0FFUC0yNTYiLCJlbmMiOiJBMjU2R0NNIn0..."
-            className="flex-1 rounded-none border-none resize-none font-mono text-xs focus-visible:ring-0"
-            value={tokenInput}
-            onChange={(e) => setTokenInput(e.target.value)}
-          />
-        </div>
+        <Card className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <CardHeader className="flex-shrink-0">
+            <CardTitle className="text-sm font-medium">Token</CardTitle>
+            <CardDescription>JWE (5 parts) or JWT (3 parts)</CardDescription>
+            <CardAction>
+              <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
+                <FileJson className="h-4 w-4 text-foreground/60" />
+              </div>
+            </CardAction>
+          </CardHeader>
+          <CardContent className="flex-1 min-h-0 p-0 overflow-hidden">
+            <Textarea
+              placeholder="eyJhbGciOiJSU0EtT0FFUC0yNTYiLCJlbmMiOiJBMjU2R0NNIn0..."
+              className="h-full rounded-none border-0 resize-none font-mono text-xs focus-visible:ring-0"
+              value={tokenInput}
+              onChange={(e) => setTokenInput(e.target.value)}
+            />
+          </CardContent>
+        </Card>
 
         <Button onClick={handleDecode} disabled={isDecoding} className="ml-auto gap-1.5">
           {isDecoding && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
@@ -102,25 +126,31 @@ export default function JwePage() {
       </div>
 
       {/* ── Output panel ──────────────────────────────────────────────────── */}
-      <div className="flex flex-col w-1/2 rounded-lg border border-border overflow-hidden">
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/40 flex-shrink-0">
-          <Lock className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-xs font-semibold">Decoded Output</span>
-        </div>
+      <Card className="flex flex-col w-1/2 min-h-0 overflow-hidden">
+        <CardHeader className="flex-shrink-0">
+          <CardTitle className="text-sm font-medium">Decoded Output</CardTitle>
+          <CardAction>
+            <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
+              <Lock className="h-4 w-4 text-foreground/60" />
+            </div>
+          </CardAction>
+        </CardHeader>
 
-        {decodeError ? (
-          <div className="p-4">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{decodeError}</AlertDescription>
-            </Alert>
-          </div>
-        ) : result ? (
-          <JweResultView result={result} />
-        ) : (
-          <JweEmptyState />
-        )}
-      </div>
+        <CardContent className="flex-1 min-h-0 p-0 overflow-hidden">
+          {decodeError ? (
+            <div className="p-4">
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{decodeError}</AlertDescription>
+              </Alert>
+            </div>
+          ) : result ? (
+            <JweResultView result={result} />
+          ) : (
+            <JweEmptyState />
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

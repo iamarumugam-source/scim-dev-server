@@ -25,6 +25,7 @@ import {
   useMotionValue,
   useSpring,
   useTransform,
+  type Variants,
 } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -86,26 +87,26 @@ interface Stats {
 
 // ─── Animation variants ───────────────────────────────────────────────────────
 
-const fadeUp = {
+const fadeUp: Variants = {
   hidden: { opacity: 0, y: 14 },
   show: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] },
+    transition: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] },
   },
 };
 
-const staggerGrid = {
+const staggerGrid: Variants = {
   hidden: {},
   show: { transition: { staggerChildren: 0.07 } },
 };
 
-const staggerList = {
+const staggerList: Variants = {
   hidden: {},
   show: { transition: { staggerChildren: 0.05 } },
 };
 
-const slideInRow = {
+const slideInRow: Variants = {
   hidden: { opacity: 0, x: -8 },
   show: { opacity: 1, x: 0, transition: { duration: 0.22, ease: "easeOut" } },
 };

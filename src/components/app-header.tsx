@@ -33,35 +33,38 @@ import { SunMediumIcon } from "@/components/animated-icons/sun-medium";
 type Crumb = { label: string; href?: string };
 
 const TOOLS: Crumb = { label: "Tools", href: "/" };
-const SCIM:  Crumb = { label: "SCIM",  href: "/scim" };
+const SCIM: Crumb = { label: "SCIM", href: "/scim" };
 
 const BREADCRUMBS: Record<string, Crumb[]> = {
-  "/":                  [{ label: "Tools" }],
-  "/scim":              [TOOLS, SCIM, { label: "Dashboard" }],
-  "/scim/keys":         [TOOLS, SCIM, { label: "API" }],
-  "/scim/users":        [TOOLS, SCIM, { label: "Users" }],
-  "/scim/groups":       [TOOLS, SCIM, { label: "Groups" }],
-  "/scim/logs":         [TOOLS, SCIM, { label: "Logs" }],
-  "/scim/extensions":   [TOOLS, SCIM, { label: "Extensions" }],
+  "/": [{ label: "Tools" }],
+  "/scim": [TOOLS, SCIM, { label: "Dashboard" }],
+  "/scim/keys": [TOOLS, SCIM, { label: "API" }],
+  "/scim/users": [TOOLS, SCIM, { label: "Users" }],
+  "/scim/groups": [TOOLS, SCIM, { label: "Groups" }],
+  "/scim/logs": [TOOLS, SCIM, { label: "Logs" }],
+  "/scim/extensions": [TOOLS, SCIM, { label: "Extensions" }],
   "/scim/entitlements": [TOOLS, SCIM, { label: "Entitlements" }],
-  "/scim/roles":        [TOOLS, SCIM, { label: "Roles" }],
-  "/har-analyser":      [TOOLS, { label: "HAR Analyser" }],
-  "/jwe":               [TOOLS, { label: "JWE Decoder" }],
-  "/changelog":         [TOOLS, { label: "Changelog" }],
+  "/scim/roles": [TOOLS, SCIM, { label: "Roles" }],
+  "/har-analyser": [TOOLS, { label: "HAR Analyser" }],
+  "/jwe": [TOOLS, { label: "JWE Decoder" }],
+  "/changelog": [TOOLS, { label: "Changelog" }],
+  "/time-converter": [TOOLS, { label: "Time Buddy" }],
 };
 
 // ─── Theme toggle ─────────────────────────────────────────────────────────────
 
 function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
-  const { setMetaColor }            = useMetaColor();
-  const playClick                   = useSound(SOUNDS.click);
+  const { setMetaColor } = useMetaColor();
+  const playClick = useSound(SOUNDS.click);
 
   const switchTheme = (sound = true) => {
     if (sound) playClick(0.2);
     setTheme(resolvedTheme === "dark" ? "light" : "dark");
     setMetaColor(
-      resolvedTheme === "dark" ? META_THEME_COLORS.light : META_THEME_COLORS.dark,
+      resolvedTheme === "dark"
+        ? META_THEME_COLORS.light
+        : META_THEME_COLORS.dark,
     );
   };
 
@@ -87,9 +90,7 @@ function ThemeToggle() {
           <span className="sr-only">Toggle theme</span>
         </Button>
       </TooltipTrigger>
-      <TooltipContent side="bottom">
-        Toggle theme
-      </TooltipContent>
+      <TooltipContent side="bottom">Toggle theme</TooltipContent>
     </Tooltip>
   );
 }
@@ -98,13 +99,18 @@ function ThemeToggle() {
 
 export function SiteHeader() {
   const pathname = usePathname();
-  const crumbs   = BREADCRUMBS[pathname] ?? [{ label: pathname.split("/").filter(Boolean).pop() ?? "" }];
+  const crumbs = BREADCRUMBS[pathname] ?? [
+    { label: pathname.split("/").filter(Boolean).pop() ?? "" },
+  ];
 
   return (
     <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
         <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
+        <Separator
+          orientation="vertical"
+          className="mx-2 data-[orientation=vertical]:h-4"
+        />
 
         <Breadcrumb>
           <BreadcrumbList>
@@ -115,7 +121,9 @@ export function SiteHeader() {
                   {i === crumbs.length - 1 ? (
                     <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
                   ) : crumb.href ? (
-                    <BreadcrumbLink href={crumb.href}>{crumb.label}</BreadcrumbLink>
+                    <BreadcrumbLink href={crumb.href}>
+                      {crumb.label}
+                    </BreadcrumbLink>
                   ) : (
                     <span className="text-muted-foreground">{crumb.label}</span>
                   )}
