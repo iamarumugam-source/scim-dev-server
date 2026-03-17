@@ -5,6 +5,27 @@ import { v4 as uuidv4 } from "uuid";
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 const TABLE_NAME = "scim_groups";
 
+/** Replace the origin of a stored URL with the current public BASE_URL. */
+function rewriteOrigin(url: string): string {
+  if (!url) return url;
+  try {
+    const u = new URL(url);
+    const b = new URL(BASE_URL);
+    u.protocol = b.protocol;
+    u.hostname = b.hostname;
+    u.port     = b.port;
+    return u.toString();
+  } catch { return url; }
+}
+
+function normalizeGroup(group: ScimGroup): ScimGroup {
+  return {
+    ...group,
+    meta:    group.meta    ? { ...group.meta, location: rewriteOrigin(group.meta.location ?? "") } : group.meta,
+    members: group.members?.map((m: any) => ({ ...m, $ref: m.$ref ? rewriteOrigin(m.$ref) : m.$ref })),
+  };
+}
+
 interface PatchOperation {
   op: "add" | "replace" | "remove";
   path: string;
@@ -49,7 +70,7 @@ export class GroupService {
         resourceType: "Group",
         created: now,
         lastModified: now,
-        location: `${BASE_URL}/api/scim/v2/Groups/${id}`,
+        location: `${BASE_URL}/api/${userId}/scim/v2/Groups/${id}`,
         version: `W/"${Date.now()}"`,
       },
     };
@@ -87,7 +108,7 @@ export class GroupService {
       throw new Error(`Supabase error getting groups: ${error.message}`);
     }
 
-    const groups = data.map((item) => item.resource as ScimGroup);
+    const groups = data.map((item) => normalizeGroup(item.resource as ScimGroup));
     return { groups, total: total || 0 };
   }
 
@@ -103,7 +124,7 @@ export class GroupService {
       throw new Error(`Supabase error getting group: ${error.message}`);
     }
 
-    return data ? (data.resource as ScimGroup) : undefined;
+    return data ? normalizeGroup(data.resource as ScimGroup) : undefined;
   }
 
   public async updateGroup(
@@ -186,7 +207,7 @@ export class GroupService {
     const groupEntry = {
       value: group.id,
       display: group.displayName,
-      $ref: group.meta?.location || `${BASE_URL}/api/scim/v2/Groups/${group.id}`,
+      $ref: rewriteOrigin(group.meta?.location || `${BASE_URL}/api/scim/v2/Groups/${group.id}`),
     };
 
     if (addedUserIds.length > 0) {

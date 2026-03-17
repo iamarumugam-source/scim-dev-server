@@ -16,6 +16,27 @@ interface ScimPatchOp {
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 const TABLE_NAME = "scim_users";
 
+/** Replace the origin of a stored URL with the current public BASE_URL. */
+function rewriteOrigin(url: string): string {
+  if (!url) return url;
+  try {
+    const u = new URL(url);
+    const b = new URL(BASE_URL);
+    u.protocol = b.protocol;
+    u.hostname = b.hostname;
+    u.port     = b.port;
+    return u.toString();
+  } catch { return url; }
+}
+
+function normalizeUser(user: ScimUser): ScimUser {
+  return {
+    ...user,
+    meta:   user.meta   ? { ...user.meta, location: rewriteOrigin(user.meta.location ?? "") } : user.meta,
+    groups: user.groups?.map((g: any) => ({ ...g, $ref: rewriteOrigin(g.$ref) })),
+  };
+}
+
 export class UserService {
   public async createUser(
     userData: Partial<ScimUser>,
@@ -52,7 +73,7 @@ export class UserService {
         resourceType: "User",
         created: now,
         lastModified: now,
-        location: `${BASE_URL}/api/scim/v2/Users/${id}`,
+        location: `${BASE_URL}/api/${userId}/scim/v2/Users/${id}`,
         version: `W/"${Date.now()}"`,
       },
     };
@@ -115,7 +136,7 @@ export class UserService {
       throw new Error(`Supabase error fetching users: ${error.message}`);
     }
 
-    const users = data.map((row: any) => row.resource as ScimUser);
+    const users = data.map((row: any) => normalizeUser(row.resource as ScimUser));
 
     return { users, total: total || 0 };
   }
@@ -134,7 +155,7 @@ export class UserService {
       throw new Error(`Supabase error getting user: ${error.message}`);
     }
 
-    return data ? (data.resource as ScimUser) : null;
+    return data ? normalizeUser(data.resource as ScimUser) : null;
   }
 
   public async updateUser(
