@@ -3,7 +3,6 @@
 import { useState, useCallback } from "react";
 import { Copy, Check, SquarePlus, SquareMinus } from "lucide-react";
 import { cn } from "@/lib/utils";
-
 import { toast } from "sonner";
 
 type JsonPrimitive = string | number | boolean | null;
@@ -34,11 +33,9 @@ function CopyButton({ text, className }: { text: string; className?: string }) {
       )}
       aria-label="Copy"
     >
-      {copied ? (
-        <Check className="h-3 w-3 text-emerald-500" />
-      ) : (
-        <Copy className="h-3 w-3" />
-      )}
+      {copied
+        ? <Check className="h-3 w-3 text-primary" />
+        : <Copy className="h-3 w-3" />}
     </button>
   );
 }
@@ -59,11 +56,9 @@ function CopyAllButton({ data }: { data: unknown }) {
       className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-muted"
       aria-label="Copy all JSON"
     >
-      {copied ? (
-        <Check className="h-3 w-3 text-emerald-500" />
-      ) : (
-        <Copy className="h-3 w-3" />
-      )}
+      {copied
+        ? <Check className="h-3 w-3 text-primary" />
+        : <Copy className="h-3 w-3" />}
       {copied ? "Copied" : "Copy JSON"}
     </button>
   );
@@ -79,14 +74,12 @@ function ToggleButton({
   return (
     <button
       onClick={onClick}
-      className="flex-shrink-0 text-blue-500/60 hover:text-blue-500 dark:text-blue-400/60 dark:hover:text-blue-400 transition-colors"
+      className="flex-shrink-0 text-primary/50 hover:text-primary transition-colors"
       aria-label={expanded ? "Collapse" : "Expand"}
     >
-      {expanded ? (
-        <SquareMinus className="h-3.5 w-3.5" />
-      ) : (
-        <SquarePlus className="h-3.5 w-3.5" />
-      )}
+      {expanded
+        ? <SquareMinus className="h-3.5 w-3.5" />
+        : <SquarePlus  className="h-3.5 w-3.5" />}
     </button>
   );
 }
@@ -94,21 +87,21 @@ function ToggleButton({
 function PrimitiveValue({ value }: { value: JsonPrimitive }) {
   if (value === null) {
     return (
-      <span className="text-rose-500 dark:text-rose-400 italic">null</span>
+      <span className="text-[#0000ff] dark:text-[#569cd6] italic">null</span>
     );
   }
   if (typeof value === "boolean") {
     return (
-      <span className="text-amber-600 dark:text-amber-400">
-        {value.toString()}
-      </span>
+      <span className="text-[#0000ff] dark:text-[#569cd6]">{value.toString()}</span>
     );
   }
   if (typeof value === "number") {
-    return <span className="text-sky-600 dark:text-sky-400">{value}</span>;
+    return (
+      <span className="text-[#098658] dark:text-[#b5cea8]">{value}</span>
+    );
   }
   return (
-    <span className="text-emerald-600 dark:text-emerald-400 break-all">
+    <span className="text-[#a31515] dark:text-[#ce9178] break-all">
       &quot;{value}&quot;
     </span>
   );
@@ -129,7 +122,7 @@ function KeyLabel({
     );
   }
   return (
-    <span className="text-violet-600 dark:text-violet-400 font-medium flex-shrink-0">
+    <span className="text-[#0451a5] dark:text-[#9cdcfe] font-medium flex-shrink-0">
       &quot;{name}&quot;
     </span>
   );
@@ -152,9 +145,9 @@ function JsonNode({
   isArrayItem,
   forceExpand,
 }: JsonNodeProps) {
-  const isArray = Array.isArray(value);
-  const isObject = value !== null && typeof value === "object" && !isArray;
-  const isComplex = isArray || isObject;
+  const isArray    = Array.isArray(value);
+  const isObject   = value !== null && typeof value === "object" && !isArray;
+  const isComplex  = isArray || isObject;
 
   const [expanded, setExpanded] = useState(forceExpand || depth < 2);
 
@@ -165,8 +158,8 @@ function JsonNode({
       : [];
 
   const [open, close] = isArray ? ["[", "]"] : ["{", "}"];
-  const hasChildren = entries.length > 0;
-  const count = entries.length;
+  const hasChildren   = entries.length > 0;
+  const count         = entries.length;
 
   if (isComplex) {
     return (
@@ -206,11 +199,9 @@ function JsonNode({
           {hasChildren && !expanded && (
             <>
               <span className="text-xs text-muted-foreground/60 select-none tabular-nums flex-shrink-0">
-                {count} properties
+                {count} {isArray ? "items" : "properties"}
               </span>
-              <span className="text-muted-foreground flex-shrink-0">
-                {close}
-              </span>
+              <span className="text-muted-foreground flex-shrink-0">{close}</span>
             </>
           )}
         </div>
@@ -234,8 +225,7 @@ function JsonNode({
         {expanded && (
           <div className="pl-4">
             <span className="text-muted-foreground">
-              {close}
-              {!isLast && ","}
+              {close}{!isLast && ","}
             </span>
           </div>
         )}
@@ -278,17 +268,10 @@ interface JsonViewerProps {
 
 export function JsonViewer({ data, className }: JsonViewerProps) {
   const [allExpanded, setAllExpanded] = useState(false);
-  const [treeKey, setTreeKey] = useState(0);
+  const [treeKey,     setTreeKey]     = useState(0);
 
-  const handleExpandAll = () => {
-    setAllExpanded(true);
-    setTreeKey((k) => k + 1);
-  };
-
-  const handleCollapseAll = () => {
-    setAllExpanded(false);
-    setTreeKey((k) => k + 1);
-  };
+  const handleExpandAll  = () => { setAllExpanded(true);  setTreeKey((k) => k + 1); };
+  const handleCollapseAll = () => { setAllExpanded(false); setTreeKey((k) => k + 1); };
 
   return (
     <div

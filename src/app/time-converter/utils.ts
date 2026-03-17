@@ -1,0 +1,87 @@
+
+// ─── Grid constants ────────────────────────────────────────────────────────────
+
+export const CELL_W = 48;
+export const GRID_W = CELL_W * 24;
+export const ROW_H  = 44;
+export const HEAD_H = 68;
+
+// ─── Avatar colours ────────────────────────────────────────────────────────────
+
+const AVATAR_COLORS = [
+  "bg-primary/10 text-primary",
+  "bg-muted text-foreground/70",
+  "bg-primary/15 text-primary/80",
+  "bg-muted/80 text-foreground/60",
+  "bg-secondary text-secondary-foreground",
+  "bg-primary/20 text-primary/90",
+];
+
+export function avatarColor(str: string): string {
+  const hash = Array.from(str).reduce((a, c) => a + c.charCodeAt(0), 0);
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+}
+
+// ─── Formatting ────────────────────────────────────────────────────────────────
+
+export function fmt(date: Date, tz: string, opts: Intl.DateTimeFormatOptions): string {
+  return new Intl.DateTimeFormat("en-US", { timeZone: tz, ...opts }).format(date);
+}
+
+export function getLocalHour(date: Date, tz: string): number {
+  return parseInt(fmt(date, tz, { hour: "numeric", hour12: false })) % 24;
+}
+
+export function blockStyle(): string {
+  return "bg-card text-foreground/80";
+}
+
+export function initials(city: string): string {
+  return city.split(/[\s-]/).map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+}
+
+export function toLocalISODate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+export function parseDateStr(dateStr: string): Date {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+export function formatDisplayDate(dateStr: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short", month: "short", day: "numeric", year: "numeric",
+  }).format(parseDateStr(dateStr));
+}
+
+export function buildRefDate(dateStr: string, utcHour: number, utcMinute: number): Date {
+  const d = new Date(dateStr + "T00:00:00Z");
+  d.setUTCHours(utcHour, utcMinute, 0, 0);
+  return d;
+}
+
+export function formatHour(h: number, use24h: boolean): string {
+  if (use24h) return String(h).padStart(2, "0");
+  if (h === 0)  return "12a";
+  if (h < 12)   return `${h}a`;
+  if (h === 12) return "12p";
+  return `${h - 12}p`;
+}
+
+export function addDays(dateStr: string, n: number): string {
+  const d = parseDateStr(dateStr);
+  d.setDate(d.getDate() + n);
+  return toLocalISODate(d);
+}
+
+export function durationLabel(startMins: number, endMins: number): string {
+  const diff = Math.abs(endMins - startMins);
+  const h    = Math.floor(diff / 60);
+  const m    = diff % 60;
+  if (h === 0) return `${m}m`;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}

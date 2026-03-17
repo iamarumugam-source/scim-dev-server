@@ -48,7 +48,7 @@ const BREADCRUMBS: Record<string, Crumb[]> = {
   "/har-analyser": [TOOLS, { label: "HAR Analyser" }],
   "/jwe": [TOOLS, { label: "JWE Decoder" }],
   "/changelog": [TOOLS, { label: "Changelog" }],
-  "/time-converter": [TOOLS, { label: "Time Buddy" }],
+  "/time-converter": [TOOLS, { label: "Meeting Planner" }],
 };
 
 // ─── Theme toggle ─────────────────────────────────────────────────────────────

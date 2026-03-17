@@ -308,20 +308,21 @@ export default function NavUser() {
                 )}
                 <DropdownMenuItem className="pointer-events-none cursor-default">
                   {isLocal
-                    ? <Server className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                    : <Globe  className="h-4 w-4 text-green-600 dark:text-green-400" />}
+                    ? <Server className="h-4 w-4 text-muted-foreground" />
+                    : <Globe  className="h-4 w-4 text-primary" />}
                   Environment
                   <Badge
                     variant="outline"
-                    className={`ml-auto text-xs font-normal gap-1 ${
+                    className={cn(
+                      "ml-auto text-xs font-normal gap-1",
                       isLocal
-                        ? "text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40"
-                        : "text-green-700 dark:text-green-400 border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/40"
-                    }`}
+                        ? "bg-muted text-muted-foreground border-border"
+                        : "bg-primary/10 text-primary border-primary/30",
+                    )}
                   >
                     {isLocal
-                      ? <Monitor className="h-3 w-3 text-amber-700 dark:text-amber-400" />
-                      : <Globe   className="h-3 w-3 text-green-600 dark:text-green-400" />}
+                      ? <Monitor className="h-3 w-3" />
+                      : <Globe   className="h-3 w-3" />}
                     {env}
                   </Badge>
                 </DropdownMenuItem>
