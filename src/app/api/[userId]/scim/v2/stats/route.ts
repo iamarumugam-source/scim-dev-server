@@ -158,6 +158,20 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const activeUsers   = users.filter((u) => (u as any).active === true).length;
     const inactiveUsers = users.length - activeUsers;
 
+    // ── Rate limit window stats ─────────────────────────────────────────────
+
+    const RATE_LIMIT   = 60;
+    const oneMinuteAgo = Date.now() - 60_000;
+    const windowCalls  = logs.filter((l) => {
+      const t = l.created_at ? new Date(l.created_at).getTime() : 0;
+      return t >= oneMinuteAgo;
+    }).length;
+
+    const rateLimitedCalls = logs.filter((l) => {
+      const status = (l.response as any)?.status?.status ?? 0;
+      return status === 429;
+    }).length;
+
     // ── Page views ──────────────────────────────────────────────────────────
 
     const viewsByPage: Record<string, number> = {};
@@ -171,6 +185,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     return NextResponse.json({
+      rateLimit: {
+        windowCalls,
+        limit:             RATE_LIMIT,
+        rateLimitedCalls,
+      },
       calls: {
         total:       totalCalls,
         recentSample: logs.length,

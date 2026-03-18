@@ -16,6 +16,7 @@ import {
   RefreshCw,
   SlidersHorizontal,
   Gauge,
+  Timer,
 } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -83,6 +84,7 @@ interface Stats {
   roles: { total: number };
   apiKeys: { total: number };
   pageViews: { total: number; byPage: Record<string, number> };
+  rateLimit: { windowCalls: number; limit: number; rateLimitedCalls: number };
 }
 
 // ─── Animation variants ───────────────────────────────────────────────────────
@@ -317,7 +319,7 @@ export default function ScimDashboard() {
         transition={{ delay: 0.3 }}
       >
         {/* <SectionLabel>API Health</SectionLabel> */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
           {/* Success Rate */}
           <Card>
             <CardHeader>
@@ -449,6 +451,102 @@ export default function ScimDashboard() {
                 totalCalls={totalCalls}
                 isLoading={isLoading}
               />
+            </CardContent>
+          </Card>
+
+          {/* Rate Limit */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">Rate Limit</CardTitle>
+              <CardAction>
+                <Timer className="h-4 w-4 text-foreground/60" />
+              </CardAction>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <AnimatePresence mode="wait" initial={false}>
+                {isLoading ? (
+                  <motion.div
+                    key="sk-rl"
+                    className="space-y-2.5"
+                    exit={{ opacity: 0, transition: { duration: 0.15 } }}
+                  >
+                    <Skeleton className="h-2 w-full" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-16" />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="rl"
+                    className="space-y-3"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1, transition: { duration: 0.3 } }}
+                  >
+                    {/* Progress bar */}
+                    {(() => {
+                      const rl = stats?.rateLimit;
+                      const used  = rl?.windowCalls     ?? 0;
+                      const limit = rl?.limit           ?? 60;
+                      const blocked = rl?.rateLimitedCalls ?? 0;
+                      const pct   = Math.min((used / limit) * 100, 100);
+                      const nearLimit = used >= limit * 0.7;
+                      const atLimit   = used >= limit;
+                      return (
+                        <>
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">Last 60 s</span>
+                              <span className="font-medium tabular-nums">
+                                {used} / {limit}
+                              </span>
+                            </div>
+                            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                              <motion.div
+                                className={cn(
+                                  "h-full rounded-full",
+                                  atLimit
+                                    ? "bg-destructive"
+                                    : nearLimit
+                                      ? "bg-amber-500"
+                                      : "bg-primary",
+                                )}
+                                initial={{ width: 0 }}
+                                animate={{ width: `${pct}%` }}
+                                transition={{ duration: 0.6, ease: "easeOut" }}
+                              />
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">429 responses</span>
+                            <span className={cn(
+                              "font-medium tabular-nums",
+                              blocked > 0 ? "text-destructive" : "text-foreground/70",
+                            )}>
+                              {blocked}
+                            </span>
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-center text-xs font-medium py-1.5",
+                              atLimit || blocked > 0
+                                ? "bg-destructive/10 text-destructive border-destructive/30"
+                                : nearLimit
+                                  ? "bg-amber-500/10 text-amber-600 border-amber-500/30"
+                                  : "bg-muted text-foreground/70 border-border",
+                            )}
+                          >
+                            {atLimit || blocked > 0
+                              ? "Rate limited"
+                              : nearLimit
+                                ? "Near limit"
+                                : "Healthy"}
+                          </Badge>
+                        </>
+                      );
+                    })()}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </CardContent>
           </Card>
 

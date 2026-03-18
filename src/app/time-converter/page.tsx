@@ -18,6 +18,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useUserTimezone } from "@/hooks/useUserTimezone";
+import { usePageTracking } from "@/hooks/usePageTracking";
 import { TzInfo, findTimezone, getUtcOffset, getOffsetMinutes } from "@/lib/timezones";
 
 import {
@@ -32,6 +33,7 @@ import { AddTimezonePopover } from "./add-timezone-popover";
 import { ScheduledCallCard } from "./scheduled-call-card";
 
 export default function TimeConverterPage() {
+  usePageTracking();
   const { timezone: userTz, isReady } = useUserTimezone();
   const userTzInfo = findTimezone(userTz);
 
