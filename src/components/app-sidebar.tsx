@@ -10,6 +10,7 @@ import {
   FlaskConical,
   Fingerprint,
   LayoutDashboard,
+  ChartNoAxesCombined,
   Webhook,
   ScrollText,
   Puzzle,
@@ -104,7 +105,7 @@ const FormSchema = z.object({
 
 // Menu items.
 const items = [
-  { title: "Dashboard", url: "/scim", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/scim", icon: ChartNoAxesCombined },
   { title: "API", url: "/scim/keys", icon: Webhook },
   { title: "Users", url: "/scim/users", icon: UsersRound },
   { title: "Groups", url: "/scim/groups", icon: Boxes },
@@ -117,7 +118,7 @@ const items = [
 const otherTools = [
   { title: "HAR Analyser",     url: "/har-analyser",    icon: ScanSearch  },
   { title: "JWE Decoder",      url: "/jwe",             icon: LockKeyhole },
-  { title: "Meeting Planner",  url: "/time-converter",  icon: CalendarCheck },
+  { title: "Meeting Planner",  url: "/meeting-planner",  icon: CalendarCheck },
 ];
 
 type FormValues = z.infer<typeof FormSchema>;
@@ -647,7 +648,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   tooltip="SCIM Tool"
                 >
                   <a href="/scim">
-                    <ShieldCheck />
+                    <LayoutDashboard />
                     <span>SCIM Tool</span>
                   </a>
                 </SidebarMenuButton>

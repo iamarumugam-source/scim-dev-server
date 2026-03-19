@@ -17,6 +17,7 @@ import {
   SlidersHorizontal,
   Gauge,
   Timer,
+  TicketCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -42,6 +43,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { MetricRow } from "@/components/scim/dashboard/metric-row";
+import { LoginActivityGrid } from "@/components/scim/dashboard/login-activity-grid";
 import { ActivityChart } from "@/components/scim/dashboard/activity-chart";
 import { MethodChart } from "@/components/scim/dashboard/method-chart";
 import { cn } from "@/lib/utils";
@@ -57,6 +59,11 @@ interface TopEndpoint {
   path: string;
   count: number;
 }
+interface LoginActivity {
+  timestamps: string[];
+  total:      number;
+}
+
 interface RecentError {
   url: string;
   method: string;
@@ -150,6 +157,7 @@ export default function ScimDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loginActivity, setLoginActivity] = useState<LoginActivity | null>(null);
 
   const fetchStats = useCallback(async () => {
     if (!userId) {
@@ -175,11 +183,30 @@ export default function ScimDashboard() {
 
   useEffect(() => {
     if (!userId) return;
+
+    // Page-view analytics (fire-and-forget)
     fetch(`/api/${userId}/analytics`, {
-      method: "POST",
+      method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: "/scim" }),
+      body:    JSON.stringify({ path: "/scim" }),
     }).catch(() => {});
+
+    // Login activity: record the event first (once per browser session), then
+    // fetch so the grid always includes the just-recorded login.
+    const SESSION_KEY = "login_tracked";
+    const fetchActivity = () =>
+      fetch(`/api/${userId}/login-activity`)
+        .then((r) => r.json())
+        .then(setLoginActivity)
+        .catch(() => {});
+
+    if (!sessionStorage.getItem(SESSION_KEY)) {
+      sessionStorage.setItem(SESSION_KEY, "1");
+      fetch(`/api/${userId}/login-activity`, { method: "POST" })
+        .finally(fetchActivity);
+    } else {
+      fetchActivity();
+    }
   }, [userId]);
 
   const calls = stats?.calls;
@@ -859,6 +886,33 @@ export default function ScimDashboard() {
                       </div>
                     ))}
                 </div>
+              </CardContent>
+            </Card>
+          </motion.section>
+        )}
+      </AnimatePresence>
+
+      {/* ── Login Activity ──────────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {loginActivity && (
+          <motion.section
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0, transition: { duration: 0.35 } }}
+            exit={{ opacity: 0 }}
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Login Activity</CardTitle>
+                <CardDescription>Sign-in history over the past year</CardDescription>
+                <CardAction>
+                  <TicketCheck className="h-4 w-4 text-foreground/60" />
+                </CardAction>
+              </CardHeader>
+              <CardContent>
+                <LoginActivityGrid
+                  timestamps={loginActivity.timestamps}
+                  total={loginActivity.total}
+                />
               </CardContent>
             </Card>
           </motion.section>

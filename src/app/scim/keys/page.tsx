@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { motion } from "motion/react";
 import ApiKeyManager from "@/components/ApiKeyManager";
 import { usePageTracking } from "@/hooks/usePageTracking";
-import { Unlock, Zap, KeyRound, Server, ListOrdered } from "lucide-react";
+import { Unlock, Zap, KeyRound, Server, ListOrdered, Gauge } from "lucide-react";
 import {
   Card,
   CardAction,
@@ -16,14 +16,14 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { EndpointField } from "@/components/scim/keys/endpoint-field";
 import { CopyButton } from "@/components/scim/keys/copy-button";
+import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "";
 
@@ -43,10 +43,67 @@ export default function ApiPage() {
 
   const [clientSecret, setClientSecret] = useState<string>("");
 
+  // ── Rate-limit settings ──────────────────────────────────────────────────
+  const [rlEnabled,      setRlEnabled]      = useState<boolean | null>(null);
+  const [rlMax,          setRlMax]          = useState<number>(60);
+  const [rlInputValue,   setRlInputValue]   = useState<string>("60");
+  const [rlSaving, setRlSaving] = useState(false);
+  const [rlLoaded, setRlLoaded] = useState(false);
+
   useEffect(() => {
     if (!userId) return;
     deriveClientSecret(userId).then(setClientSecret);
+
+    fetch(`/api/${userId}/settings`)
+      .then((r) => r.json())
+      .then((data) => {
+        setRlEnabled(Boolean(data.rateLimitEnabled));
+        setRlMax(Number(data.rateLimitMax) || 60);
+        setRlInputValue(String(data.rateLimitMax ?? 60));
+        setRlLoaded(true);
+      })
+      .catch(() => setRlLoaded(true));
   }, [userId]);
+
+  async function saveRlSettings(enabled: boolean, max: number) {
+    setRlSaving(true);
+    try {
+      const res = await fetch(`/api/${userId}/settings`, {
+        method:  "PUT",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ rateLimitEnabled: enabled, rateLimitMax: max }),
+      });
+      if (!res.ok) throw new Error("Save failed");
+      const data = await res.json();
+      setRlEnabled(data.rateLimitEnabled);
+      setRlMax(data.rateLimitMax);
+      setRlInputValue(String(data.rateLimitMax));
+      toast.success(
+        data.rateLimitEnabled
+          ? `Rate limit enabled — ${data.rateLimitMax} req/min`
+          : "Rate limit disabled",
+      );
+    } catch {
+      toast.error("Failed to save rate limit settings");
+    } finally {
+      setRlSaving(false);
+    }
+  }
+
+  function handleRlToggle(checked: boolean) {
+    setRlEnabled(checked);
+    saveRlSettings(checked, rlMax);
+  }
+
+  function handleRlSave() {
+    const parsed = parseInt(rlInputValue, 10);
+    if (isNaN(parsed) || parsed < 1) {
+      toast.error("Enter a valid number (≥ 1)");
+      return;
+    }
+    setRlMax(parsed);
+    saveRlSettings(rlEnabled ?? true, parsed);
+  }
 
   const scimEndpoint = `${BASE_URL}/api/${userId}/scim/v2`;
   const authorizeUrl = `${BASE_URL}/api/oauth2/authorize`;
@@ -192,6 +249,98 @@ export default function ApiPage() {
           </CardContent>
         </Card>
       </section>
+
+      {/* ── Rate Limiting ────────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">Rate Limiting</CardTitle>
+          <CardDescription>
+            Control how many SCIM API requests your tenant can make per minute. When disabled, all requests pass through without restriction.
+          </CardDescription>
+          <CardAction>
+            <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
+              <Gauge className="h-4 w-4 text-foreground/60" />
+            </div>
+          </CardAction>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Enable / disable toggle */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <Label htmlFor="rl-toggle" className="text-sm font-medium">
+                Enable rate limiting
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                When on, requests exceeding the limit receive a 429 response.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {!rlLoaded ? (
+                <Skeleton className="h-5 w-9 rounded-full" />
+              ) : (
+                <>
+                  <Switch
+                    id="rl-toggle"
+                    checked={rlEnabled ?? true}
+                    onCheckedChange={handleRlToggle}
+                    disabled={rlSaving}
+                  />
+                  <Badge
+                    variant={rlEnabled ? "default" : "secondary"}
+                    className="text-[10px] min-w-[52px] justify-center"
+                  >
+                    {rlEnabled ? "Enabled" : "Disabled"}
+                  </Badge>
+                </>
+              )}
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Requests per minute */}
+          <div className="space-y-2">
+            <Label htmlFor="rl-max" className="text-sm font-medium">
+              Requests per minute
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Maximum number of SCIM API calls allowed in a 60-second window.
+            </p>
+            <div className="flex items-center gap-2">
+              {!rlLoaded ? (
+                <Skeleton className="h-9 w-32" />
+              ) : (
+                <>
+                  <Input
+                    id="rl-max"
+                    type="number"
+                    min={1}
+                    max={10000}
+                    value={rlInputValue}
+                    onChange={(e) => setRlInputValue(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleRlSave()}
+                    disabled={rlSaving || !(rlEnabled ?? true)}
+                    className="w-32 text-sm"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleRlSave}
+                    disabled={rlSaving || !(rlEnabled ?? true) || rlInputValue === String(rlMax)}
+                  >
+                    {rlSaving ? "Saving…" : "Save"}
+                  </Button>
+                  {rlLoaded && (
+                    <span className="text-xs text-muted-foreground">
+                      Current: <span className="font-medium text-foreground">{rlMax} req/min</span>
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* ── Divider ──────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3">

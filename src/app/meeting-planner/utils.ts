@@ -32,7 +32,25 @@ export function getLocalHour(date: Date, tz: string): number {
   return parseInt(fmt(date, tz, { hour: "numeric", hour12: false })) % 24;
 }
 
-export function blockStyle(): string {
+/**
+ * Returns the background Tailwind class for a given local hour.
+ * Used by both header cells (user's local time) and grid cells (row timezone's local hour).
+ */
+export function timeCellBg(h: number): string {
+  if (h <= 5 || h >= 22)              return "bg-muted/50";   // deep night
+  if (h === 6  || h === 21)           return "bg-primary/5";  // dawn / dusk
+  if ((h >= 7 && h <= 8) || (h >= 19 && h <= 20)) return "bg-primary/10"; // morning / evening
+  return "";                                                   // day — inherit container
+}
+
+/**
+ * Returns background + text Tailwind classes for a grid data cell based on the
+ * timezone-local hour, giving the grid a subtle time-of-day gradient feel.
+ */
+export function blockStyle(h: number): string {
+  if (h <= 5 || h >= 22)              return "bg-muted/50 text-muted-foreground/60";
+  if (h === 6  || h === 21)           return "bg-primary/5  text-foreground/60";
+  if ((h >= 7 && h <= 8) || (h >= 19 && h <= 20)) return "bg-primary/10 text-foreground/70";
   return "bg-card text-foreground/80";
 }
 

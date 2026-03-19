@@ -1,13 +1,28 @@
 import { withAuth, NextRequestWithAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { getCachedSettings, setCachedSettings } from "@/lib/tenant-settings";
 
 // Routes whose API calls are excluded from rate limiting
 const RATE_LIMIT_EXCLUDED = ["/stats", "/analytics", "/logs"];
 
+/** Fetch fresh settings from the API and populate the Edge-runtime cache. */
+function refreshSettingsCache(userId: string, baseUrl: string): void {
+  fetch(`${baseUrl}/api/${userId}/settings`)
+    .then((r) => r.json())
+    .then((data) => {
+      setCachedSettings(userId, {
+        enabled:      Boolean(data.rateLimitEnabled),
+        maxPerMinute: Number(data.rateLimitMax) || 60,
+      });
+    })
+    .catch(() => { /* silently ignore — stale/default values will be used */ });
+}
+
 export default withAuth(
   function middleware(req: NextRequestWithAuth) {
     const { pathname } = req.nextUrl;
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "";
 
     // ── Rate limit SCIM API routes (except dashboard stats) ──────────────────
     const scimApiMatch = pathname.match(/^\/api\/([^/]+)\/scim\/v2\/(.+)$/);
@@ -18,11 +33,20 @@ export default withAuth(
       );
 
       if (!isExcluded) {
-        const result = checkRateLimit(`rate:${userId}`, 60, 60_000);
+        // Load cached rate-limit settings (stale-while-revalidate, 30 s TTL)
+        const { config, fresh } = getCachedSettings(userId);
+        if (!fresh) refreshSettingsCache(userId, baseUrl);
+
+        // If rate limiting is disabled for this tenant, pass through immediately
+        if (!config.enabled) {
+          return NextResponse.next();
+        }
+
+        const limit  = config.maxPerMinute;
+        const result = checkRateLimit(`rate:${userId}`, limit, 60_000);
 
         if (!result.allowed) {
           // Log the rate-limited request to scim_logs (fire-and-forget)
-          const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "";
           fetch(`${baseUrl}/api/${userId}/scim/v2/logs`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -39,7 +63,7 @@ export default withAuth(
               responseStatus: { status: 429, statusText: "Too Many Requests" },
               responseData: {
                 schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"],
-                detail:  "Too Many Requests — 60 requests/minute per tenant.",
+                detail:  `Too Many Requests — ${limit} requests/minute per tenant.`,
               },
             }),
           }).catch(() => {});
@@ -47,17 +71,17 @@ export default withAuth(
           return new NextResponse(
             JSON.stringify({
               schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"],
-              detail:  "Too Many Requests — 60 requests/minute per tenant.",
+              detail:  `Too Many Requests — ${limit} requests/minute per tenant.`,
               status:  "429",
             }),
             {
               status: 429,
               headers: {
-                "Content-Type":       "application/scim+json",
-                "X-RateLimit-Limit":  "60",
+                "Content-Type":          "application/scim+json",
+                "X-RateLimit-Limit":     String(limit),
                 "X-RateLimit-Remaining": "0",
-                "X-RateLimit-Reset":  String(Math.floor(result.resetAt / 1000)),
-                "Retry-After":        String(Math.ceil((result.resetAt - Date.now()) / 1000)),
+                "X-RateLimit-Reset":     String(Math.floor(result.resetAt / 1000)),
+                "Retry-After":           String(Math.ceil((result.resetAt - Date.now()) / 1000)),
               },
             },
           );
@@ -65,7 +89,7 @@ export default withAuth(
 
         // Attach rate-limit headers to allowed responses
         const response = NextResponse.next();
-        response.headers.set("X-RateLimit-Limit",     "60");
+        response.headers.set("X-RateLimit-Limit",     String(limit));
         response.headers.set("X-RateLimit-Remaining", String(result.remaining));
         response.headers.set("X-RateLimit-Reset",     String(Math.floor(result.resetAt / 1000)));
         return response;
@@ -90,7 +114,7 @@ export const config = {
   matcher: [
     // Protected pages (auth required)
     "/scim/:path*",
-    "/time-converter/:path*",
+    "/meeting-planner/:path*",
     // SCIM API routes (for rate limiting only — no token check)
     "/api/:userId/scim/:path*",
   ],

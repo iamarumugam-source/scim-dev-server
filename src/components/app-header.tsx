@@ -48,7 +48,7 @@ const BREADCRUMBS: Record<string, Crumb[]> = {
   "/har-analyser": [TOOLS, { label: "HAR Analyser" }],
   "/jwe": [TOOLS, { label: "JWE Decoder" }],
   "/changelog": [TOOLS, { label: "Changelog" }],
-  "/time-converter": [TOOLS, { label: "Meeting Planner" }],
+  "/meeting-planner": [TOOLS, { label: "Meeting Planner" }],
 };
 
 // ─── Theme toggle ─────────────────────────────────────────────────────────────
@@ -99,9 +99,7 @@ function ThemeToggle() {
 
 export function SiteHeader() {
   const pathname = usePathname();
-  const crumbs = BREADCRUMBS[pathname] ?? [
-    { label: pathname.split("/").filter(Boolean).pop() ?? "" },
-  ];
+  const crumbs = BREADCRUMBS[pathname] ?? [{ label: "404 Not Found" }];
 
   return (
     <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
