@@ -110,7 +110,11 @@ function computeStreak(counts: Record<string, number>): number {
 }
 
 function cellColor(count: number): string {
-  return count > 0 ? "bg-primary" : "bg-muted/50 dark:bg-muted/30";
+  if (count === 0) return "bg-muted/50 dark:bg-muted/30";
+  if (count === 1) return "bg-primary/30";
+  if (count === 2) return "bg-primary/50";
+  if (count === 3) return "bg-primary/70";
+  return "bg-primary";
 }
 
 function formatTooltip(dateStr: string, count: number): string {
@@ -120,7 +124,9 @@ function formatTooltip(dateStr: string, count: number): string {
     day:     "numeric",
     year:    "numeric",
   });
-  return count > 0 ? `Logged in — ${label}` : `No activity — ${label}`;
+  return count === 0
+    ? `No logins — ${label}`
+    : `${count} login${count > 1 ? "s" : ""} — ${label}`;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -201,6 +207,18 @@ export function LoginActivityGrid({ timestamps, total }: LoginActivityGridProps)
               })}
             </div>
           ))}
+        </div>
+
+        {/* Legend */}
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <span>Less</span>
+          {[0, 1, 2, 3, 4].map((level) => (
+            <div
+              key={level}
+              className={cn("size-[11px] rounded-[2px]", cellColor(level))}
+            />
+          ))}
+          <span>More</span>
         </div>
 
       </div>

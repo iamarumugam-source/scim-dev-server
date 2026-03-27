@@ -91,7 +91,7 @@ interface Stats {
   roles: { total: number };
   apiKeys: { total: number };
   pageViews: { total: number; byPage: Record<string, number> };
-  rateLimit: { windowCalls: number; limit: number; rateLimitedCalls: number };
+  rateLimit: { enabled: boolean; windowCalls: number; limit: number; rateLimitedCalls: number };
 }
 
 // ─── Animation variants ───────────────────────────────────────────────────────
@@ -486,7 +486,12 @@ export default function ScimDashboard() {
             <CardHeader>
               <CardTitle className="text-sm font-medium">Rate Limit</CardTitle>
               <CardAction>
-                <Timer className="h-4 w-4 text-foreground/60" />
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
+                    <Link href="/scim/keys">Manage</Link>
+                  </Button>
+                  <Timer className="h-4 w-4 text-foreground/60" />
+                </div>
               </CardAction>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -497,9 +502,9 @@ export default function ScimDashboard() {
                     className="space-y-2.5"
                     exit={{ opacity: 0, transition: { duration: 0.15 } }}
                   >
+                    <Skeleton className="h-4 w-16" />
                     <Skeleton className="h-2 w-full" />
                     <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-4 w-16" />
                   </motion.div>
                 ) : (
                   <motion.div
@@ -508,17 +513,40 @@ export default function ScimDashboard() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1, transition: { duration: 0.3 } }}
                   >
-                    {/* Progress bar */}
                     {(() => {
-                      const rl = stats?.rateLimit;
-                      const used  = rl?.windowCalls     ?? 0;
-                      const limit = rl?.limit           ?? 60;
+                      const rl      = stats?.rateLimit;
+                      const enabled = rl?.enabled         ?? true;
+                      const used    = rl?.windowCalls     ?? 0;
+                      const limit   = rl?.limit           ?? 60;
                       const blocked = rl?.rateLimitedCalls ?? 0;
-                      const pct   = Math.min((used / limit) * 100, 100);
+
+                      if (!enabled) {
+                        return (
+                          <>
+                            <Badge
+                              variant="outline"
+                              className="bg-muted text-muted-foreground border-border"
+                            >
+                              Disabled
+                            </Badge>
+                            <p className="text-xs text-muted-foreground">
+                              Rate limiting is off. All requests pass through without restriction.
+                            </p>
+                          </>
+                        );
+                      }
+
+                      const pct       = Math.min((used / limit) * 100, 100);
                       const nearLimit = used >= limit * 0.7;
                       const atLimit   = used >= limit;
                       return (
                         <>
+                          <Badge
+                            variant="outline"
+                            className="bg-primary/10 text-primary border-primary/30"
+                          >
+                            {limit} req / min
+                          </Badge>
                           <div className="space-y-1.5">
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-muted-foreground">Last 60 s</span>
@@ -530,11 +558,9 @@ export default function ScimDashboard() {
                               <motion.div
                                 className={cn(
                                   "h-full rounded-full",
-                                  atLimit
-                                    ? "bg-destructive"
-                                    : nearLimit
-                                      ? "bg-amber-500"
-                                      : "bg-primary",
+                                  atLimit   ? "bg-destructive"
+                                  : nearLimit ? "bg-amber-500"
+                                  : "bg-primary",
                                 )}
                                 initial={{ width: 0 }}
                                 animate={{ width: `${pct}%` }}
@@ -562,11 +588,9 @@ export default function ScimDashboard() {
                                   : "bg-muted text-foreground/70 border-border",
                             )}
                           >
-                            {atLimit || blocked > 0
-                              ? "Rate limited"
-                              : nearLimit
-                                ? "Near limit"
-                                : "Healthy"}
+                            {atLimit || blocked > 0 ? "Rate limited"
+                              : nearLimit ? "Near limit"
+                              : "Healthy"}
                           </Badge>
                         </>
                       );

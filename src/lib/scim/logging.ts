@@ -7,7 +7,6 @@ function getLogApiUrl(userId: string) {
 }
 
 function isExternalRequest(request: NextRequest): boolean {
-  console.log(request);
   const origin = request.headers?.get("origin") || "";
   const referer = request.headers?.get("referer") || "";
 

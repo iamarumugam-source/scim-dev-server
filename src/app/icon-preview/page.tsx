@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 import {
   // Sidebar navigation
   LayoutDashboard,
@@ -91,6 +95,10 @@ import {
   Shuffle,
   Sun,
   Moon,
+  // Notification tester
+  Bell,
+  BellRing,
+  BellOff,
 } from "lucide-react";
 
 import { IconBrandGithub, IconDashboard, IconLogs } from "@tabler/icons-react";
@@ -262,6 +270,65 @@ const SECTIONS: Section[] = [
   },
 ];
 
+function NotificationTester() {
+  const [permission, setPermission] = useState<NotificationPermission>(
+    typeof Notification !== "undefined" ? Notification.permission : "default",
+  );
+  const [lastSent, setLastSent] = useState<string | null>(null);
+
+  const handleTest = async () => {
+    if (!("Notification" in window)) return;
+
+    let perm = permission;
+    if (perm === "default") {
+      perm = await Notification.requestPermission();
+      setPermission(perm);
+    }
+
+    if (perm === "granted") {
+      new Notification("Test Notification 🔔", {
+        body: "Browser notifications are working correctly.",
+        icon: "/okta.svg",
+      });
+      setLastSent(new Date().toLocaleTimeString());
+    }
+  };
+
+  const Icon   = permission === "granted" ? BellRing : permission === "denied" ? BellOff : Bell;
+  const label  = permission === "granted" ? "Send test notification"
+               : permission === "denied"  ? "Notifications blocked"
+               :                           "Enable & test notification";
+  const status = permission === "granted" ? "text-green-600 dark:text-green-400"
+               : permission === "denied"  ? "text-red-500 dark:text-red-400"
+               :                           "text-muted-foreground";
+
+  return (
+    <div className="rounded-lg border p-4 bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800 space-y-3">
+      <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+        Browser Notification Test
+      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          onClick={handleTest}
+          disabled={permission === "denied"}
+          className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Icon className="h-3.5 w-3.5" />
+          {label}
+        </button>
+        <span className={cn("text-xs font-mono", status)}>
+          permission: {permission}
+        </span>
+      </div>
+      {lastSent && (
+        <p className="text-xs text-muted-foreground">
+          Last sent at <span className="font-medium">{lastSent}</span>
+        </p>
+      )}
+    </div>
+  );
+}
+
 function IconRow({ name, icon: Icon, note }: IconEntry) {
   return (
     <div className="flex items-center gap-4 rounded-md px-3 py-2 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
@@ -285,6 +352,8 @@ export default function IconPreviewPage() {
           All icons in active use across the project. Three sizes shown: muted (14 px) · foreground (16 px) · primary (20 px).
         </p>
       </div>
+
+      <NotificationTester />
 
       {SECTIONS.map((section) => (
         <div

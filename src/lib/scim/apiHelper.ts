@@ -13,7 +13,9 @@ const apiKeyService = new ApiKeyService();
 // level so jose can cache the key set across requests — no redundant network
 // calls after the first fetch.
 
-const OKTA_ISSUER = process.env.OKTA_ISSUER ?? "";
+const BASE_URL        = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET      ?? "";
+const OKTA_ISSUER     = process.env.OKTA_ISSUER          ?? "";
 
 let jwksFetcher: ReturnType<typeof createRemoteJWKSet> | null = null;
 
@@ -49,12 +51,33 @@ async function validateOktaJwt(token: string): Promise<boolean> {
   }
 }
 
+// ─── Local JWT validation ─────────────────────────────────────────────────────
+//
+// Validates a Bearer token issued by our own /api/oauth2/token endpoint via the
+// client_credentials grant.  Uses the NEXTAUTH_SECRET as the HS256 signing key —
+// no network calls required.
+
+async function validateLocalJwt(token: string): Promise<boolean> {
+  if (!NEXTAUTH_SECRET) return false;
+  try {
+    const key = new TextEncoder().encode(NEXTAUTH_SECRET);
+    await jwtVerify(token, key, { issuer: BASE_URL });
+    return true;
+  } catch (err) {
+    if (err instanceof joseErrors.JWTExpired) {
+      console.warn("[apiHelper] Local JWT rejected: token expired.");
+    }
+    return false;
+  }
+}
+
 // ─── Guard ────────────────────────────────────────────────────────────────────
 //
 // Returns null (allow) when ANY of these conditions is true:
 //   1. A valid NextAuth session exists (admin UI login)
 //   2. The Bearer token matches a stored API key
-//   3. The Bearer token is a valid Okta JWT (OAuth flow via /oauth2/authorize)
+//   3. The Bearer token is a locally-issued client_credentials JWT
+//   4. The Bearer token is a valid Okta JWT (OAuth flow via /oauth2/authorize)
 //
 // Returns a 401 response otherwise.
 
@@ -73,9 +96,14 @@ export async function protectWithApiKey(
     const isApiKey = await apiKeyService.validateKey(token);
     if (isApiKey) return null;
 
-    // 3. Okta JWT — only attempt if the token looks like a JWT to avoid
-    //    unnecessary JWKS fetches for opaque keys.
+    // 3 & 4. JWT path — only attempt if the token looks like a JWT to avoid
+    //        unnecessary crypto work for opaque API keys.
     if (token.startsWith("eyJ")) {
+      // 3. Local client-credentials JWT (no network call)
+      const isLocal = await validateLocalJwt(token);
+      if (isLocal) return null;
+
+      // 4. Okta JWT (fetches JWKS on first call, cached thereafter)
       const isOktaJwt = await validateOktaJwt(token);
       if (isOktaJwt) return null;
     }
@@ -84,7 +112,7 @@ export async function protectWithApiKey(
   return NextResponse.json(
     {
       schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"],
-      detail:  "Unauthorized. Provide a valid session, API key, or Okta OAuth token.",
+      detail:  "Unauthorized. Provide a valid session, API key, client_credentials JWT, or Okta OAuth token.",
       status:  "401",
     },
     { status: 401 }

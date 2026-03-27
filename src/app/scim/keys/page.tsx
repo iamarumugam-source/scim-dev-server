@@ -187,7 +187,7 @@ export default function ApiPage() {
           <CardHeader>
             <CardTitle className="text-sm font-medium">Client Credentials</CardTitle>
             <CardDescription>
-              These credentials are not validated — authentication is handled entirely by the OAuth flow with your Okta org. Use these values when configuring your Okta SCIM app.
+              Use these credentials with the <code className="text-[11px] font-mono bg-muted px-1 rounded">client_credentials</code> grant type to obtain a Bearer token directly from the token endpoint — no Okta redirect required. They also work with the Authorization Code flow when configuring your Okta SCIM app.
             </CardDescription>
             <CardAction>
               <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
@@ -232,7 +232,7 @@ export default function ApiPage() {
             <ol className="space-y-3">
               {[
                 "In Okta Admin Console, go to Applications → your SCIM app → Provisioning → API Integration.",
-                "Enable OAuth 2.0 authentication and select Authorization Code flow.",
+                "Enable OAuth 2.0 authentication. Choose Authorization Code flow for Okta-managed auth, or POST to the Token Endpoint with grant_type=client_credentials for direct token exchange.",
                 "Paste the Authorization Endpoint and Token Endpoint URLs above.",
                 "Copy the Client ID and Client Secret from the credentials card above.",
                 "Set the SCIM Base URL to the SCIM endpoint shown at the top of this page.",

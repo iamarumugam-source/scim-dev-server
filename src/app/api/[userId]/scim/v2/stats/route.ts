@@ -22,6 +22,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       analyticsResult,
       entitlementsResult,
       rolesResult,
+      settingsResult,
     ] = await Promise.all([
       // Recent 1 000 logs for computing detailed stats
       supabase
@@ -72,6 +73,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         .from("scim_roles")
         .select("id", { count: "exact", head: true })
         .eq("tenantId", userId),
+
+      // Tenant rate-limit settings
+      supabase
+        .from("tenant_settings")
+        .select("rate_limit_enabled, rate_limit_max")
+        .eq("tenantId", userId)
+        .maybeSingle(),
     ]);
 
     const logs              = logsRecent.data          ?? [];
@@ -160,9 +168,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // ── Rate limit window stats ─────────────────────────────────────────────
 
-    const RATE_LIMIT   = 60;
-    const oneMinuteAgo = Date.now() - 60_000;
-    const windowCalls  = logs.filter((l) => {
+    const rlSettings       = settingsResult.data;
+    const RATE_LIMIT_ON    = rlSettings?.rate_limit_enabled ?? true;
+    const RATE_LIMIT       = rlSettings?.rate_limit_max     ?? 60;
+    const oneMinuteAgo     = Date.now() - 60_000;
+    const windowCalls      = logs.filter((l) => {
       const t = l.created_at ? new Date(l.created_at).getTime() : 0;
       return t >= oneMinuteAgo;
     }).length;
@@ -186,8 +196,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({
       rateLimit: {
+        enabled:         RATE_LIMIT_ON,
         windowCalls,
-        limit:             RATE_LIMIT,
+        limit:           RATE_LIMIT,
         rateLimitedCalls,
       },
       calls: {

@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         model:      LLM_MODEL,
         stream:     true,
-        max_tokens: 1200,
+        max_tokens: 2500,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user",   content: userPrompt },
@@ -155,6 +155,18 @@ export async function POST(req: NextRequest) {
           if (!line.startsWith("data: ")) continue;
           const data = line.slice(6).trim();
           if (data === "[DONE]") { controller.close(); return; }
+          try {
+            const chunk   = JSON.parse(data);
+            const content = chunk.choices?.[0]?.delta?.content;
+            if (content) controller.enqueue(encoder.encode(content));
+          } catch {}
+        }
+      }
+
+      // Flush any remaining buffered line after the stream ends
+      if (buffer.startsWith("data: ")) {
+        const data = buffer.slice(6).trim();
+        if (data && data !== "[DONE]") {
           try {
             const chunk   = JSON.parse(data);
             const content = chunk.choices?.[0]?.delta?.content;
