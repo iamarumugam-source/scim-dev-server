@@ -15,7 +15,10 @@ function oauthError(
 ): NextResponse {
   const data     = { error, error_description: description };
   const response = NextResponse.json(data, { status });
-  if (userId) logExternalRequest(request, response, data, userId);
+  // Always log to Vercel function logs regardless of whether clientId is known
+  console.error(`[oauth/token] ${status} ${error}: ${description} (clientId="${userId}")`);
+  // Log to scim_logs using clientId or a sentinel so it's visible in the UI
+  logExternalRequest(request, response, data, userId || "_token_endpoint");
   return response;
 }
 
@@ -58,6 +61,10 @@ async function handleClientCredentials(
     expected.length === provided.length &&
     crypto.timingSafeEqual(expected, provided);
 
+  console.log(
+    `[oauth/token] client_credentials validation: clientId="${clientId}"  expectedLen=${expected.length}  providedLen=${provided.length}  valid=${valid}`,
+  );
+
   if (!valid) {
     return oauthError(request, clientId, "invalid_client", "client_id or client_secret is invalid.", 401);
   }
@@ -73,7 +80,7 @@ async function handleClientCredentials(
     .setExpirationTime(now + 3600)
     .sign(signingKey);
 
-  const safeData = { token_type: "Bearer", expires_in: 3600 };
+  const safeData = { token_type: "Bearer", expires_in: 3600, scope: "scim" };
   const response = NextResponse.json({ access_token: accessToken, ...safeData });
   logExternalRequest(request, response, safeData, clientId);
   return response;
@@ -86,14 +93,19 @@ async function handleClientCredentials(
 //   • authorization_code — proxied to Okta (existing behaviour)
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  // ── Log inbound request shape for debugging ───────────────────────────────
+  const contentType = (request.headers.get("content-type") ?? "").toLowerCase();
+  const hasBasicAuth = (request.headers.get("authorization") ?? "").startsWith("Basic ");
+  console.log(
+    `[oauth/token] POST  content-type="${contentType}"  hasBasicAuth=${hasBasicAuth}  ip=${(request.headers.get("x-forwarded-for") ?? "").split(",")[0].trim()}`,
+  );
+
   // ── Parse request body ────────────────────────────────────────────────────
 
   let grantType    = "";
   let code         = "";
   let bodyClientId = "";
   let bodySecret   = "";
-
-  const contentType = (request.headers.get("content-type") ?? "").toLowerCase();
 
   if (contentType.includes("application/x-www-form-urlencoded")) {
     const body   = new URLSearchParams(await request.clone().text());
@@ -124,6 +136,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       clientSecret = decoded.slice(colonIdx + 1);
     }
   }
+
+  console.log(
+    `[oauth/token] grant_type="${grantType}"  clientId="${clientId}"  hasSecret=${Boolean(clientSecret)}  secretLen=${clientSecret.length}  credSource=${bodyClientId ? "body" : hasBasicAuth ? "basic-auth" : "none"}`,
+  );
 
   // ── client_credentials grant (local, no Okta required) ───────────────────
 

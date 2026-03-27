@@ -50,6 +50,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   // ── Validate ──────────────────────────────────────────────────────────────
 
+  if (grantType === "client_credentials") {
+    return oauthError(request, userId,
+      "unsupported_grant_type",
+      `client_credentials is not supported on the per-tenant token endpoint. Use ${BASE_URL}/api/oauth2/token instead.`,
+    );
+  }
+
   if (grantType !== "authorization_code") {
     return oauthError(request, userId,
       "unsupported_grant_type",

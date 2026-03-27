@@ -4,7 +4,7 @@ import { useEffect, useState, FC, useCallback, Fragment } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
-import { ChevronDown, ChevronRight, RefreshCw, Loader2, ArrowUpRight, ArrowDownLeft } from "lucide-react";
+import { ChevronDown, ChevronRight, RefreshCw, Loader2, ArrowUpRight, ArrowDownLeft, Trash2, Radio } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { JsonViewer } from "@/components/json-viewer";
@@ -18,6 +18,7 @@ import {
 } from "./ui/table";
 
 interface LogEntry {
+  id:         string;
   log_data:   any;
   response:   any;
   created_at: string;
@@ -86,6 +87,8 @@ const LogViewer: FC = () => {
   const [isLoading,      setIsLoading]      = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [isRefreshing,   setIsRefreshing]   = useState(false);
+  const [isClearing,     setIsClearing]     = useState(false);
+  const [autoRefresh,    setAutoRefresh]    = useState(false);
   const [expandedIndex,  setExpandedIndex]  = useState<number | null>(null);
 
   const { data: session } = useSession();
@@ -131,6 +134,32 @@ const LogViewer: FC = () => {
     setIsFetchingMore(false);
   };
 
+  const handleClear = async () => {
+    if (!userId) return;
+    setIsClearing(true);
+    try {
+      const res = await fetch(`/api/${userId}/scim/v2/logs`, { method: "DELETE" });
+      if (!res.ok) { toast.error("Failed to clear logs."); return; }
+      setLogs([]);
+      setTotal(0);
+      setHasMore(false);
+      setOffset(0);
+      setExpandedIndex(null);
+      toast.success("Logs cleared.");
+    } catch {
+      toast.error("Error clearing logs.");
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
+  // Auto-refresh: poll every 5 s for new logs at the top
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const id = setInterval(() => fetchLogs(0, true), 5_000);
+    return () => clearInterval(id);
+  }, [autoRefresh, fetchLogs]);
+
   return (
     <motion.div
       className="space-y-4"
@@ -139,7 +168,7 @@ const LogViewer: FC = () => {
       transition={{ duration: 0.3 }}
     >
       {/* Toolbar */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
           {isLoading
             ? "Loading…"
@@ -147,16 +176,40 @@ const LogViewer: FC = () => {
               ? "No logs recorded yet"
               : `Showing ${logs.length} of ${total} request${total !== 1 ? "s" : ""}`}
         </p>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleRefresh}
-          disabled={isRefreshing || isLoading}
-          className="gap-1.5"
-        >
-          <RefreshCw className={cn("h-3.5 w-3.5", (isRefreshing || isLoading) && "animate-spin")} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={autoRefresh ? "default" : "outline"}
+            size="sm"
+            onClick={() => setAutoRefresh((v) => !v)}
+            className="gap-1.5"
+            title={autoRefresh ? "Stop auto-refresh (5 s)" : "Start auto-refresh (5 s)"}
+          >
+            <Radio className={cn("h-3.5 w-3.5", autoRefresh && "animate-pulse")} />
+            {autoRefresh ? "Live" : "Live"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing || isLoading}
+            className="gap-1.5"
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5", (isRefreshing || isLoading) && "animate-spin")} />
+            Refresh
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleClear}
+            disabled={isClearing || total === 0}
+            className="gap-1.5 text-destructive hover:text-destructive"
+          >
+            {isClearing
+              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              : <Trash2 className="h-3.5 w-3.5" />}
+            Clear
+          </Button>
+        </div>
       </div>
 
       {/* Table */}

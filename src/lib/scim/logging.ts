@@ -70,12 +70,26 @@ export async function logExternalRequest(
   }
 }
 
+// Headers to include from Vercel infrastructure (useful for debugging)
+const VERCEL_HEADERS_TO_KEEP = new Set([
+  "x-vercel-id",
+  "x-vercel-deployment-url",
+  "x-vercel-forwarded-for",
+]);
+
 export function serializeRequest(request: NextRequest, body: any) {
   const headers: { [key: string]: string } = {};
   request.headers.forEach((value, key) => {
-    // Remove all headers related to Vercel
-    if (!key.includes("vercel") && !key.includes("authorization"))
+    if (key === "authorization") {
+      // Keep the auth scheme so the auth method is visible; redact the credential
+      const spaceIdx = value.indexOf(" ");
+      headers[key] =
+        spaceIdx !== -1
+          ? `${value.slice(0, spaceIdx)} [REDACTED]`
+          : "[REDACTED]";
+    } else if (!key.startsWith("vercel") || VERCEL_HEADERS_TO_KEEP.has(key)) {
       headers[key] = value;
+    }
   });
 
   return {
