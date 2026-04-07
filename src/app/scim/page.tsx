@@ -97,17 +97,18 @@ interface Stats {
 // ─── Animation variants ───────────────────────────────────────────────────────
 
 const fadeUp: Variants = {
-  hidden: { opacity: 0, y: 14 },
+  hidden: { opacity: 0, y: 18, scale: 0.97 },
   show: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] },
+    scale: 1,
+    transition: { type: "spring", stiffness: 350, damping: 16, mass: 0.8 },
   },
 };
 
 const staggerGrid: Variants = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.07 } },
+  show: { transition: { staggerChildren: 0.06, delayChildren: 0.03 } },
 };
 
 const staggerList: Variants = {
@@ -116,15 +117,20 @@ const staggerList: Variants = {
 };
 
 const slideInRow: Variants = {
-  hidden: { opacity: 0, x: -8 },
-  show: { opacity: 1, x: 0, transition: { duration: 0.22, ease: "easeOut" } },
+  hidden: { opacity: 0, x: -10, scale: 0.97 },
+  show: {
+    opacity: 1,
+    x: 0,
+    scale: 1,
+    transition: { type: "spring", stiffness: 380, damping: 18 },
+  },
 };
 
 // ─── Count-up number ──────────────────────────────────────────────────────────
 
 function CountUp({ value }: { value: number }) {
   const motionVal = useMotionValue(0);
-  const spring = useSpring(motionVal, { stiffness: 60, damping: 14 });
+  const spring  = useSpring(motionVal, { stiffness: 130, damping: 12, mass: 0.7 });
   const display = useTransform(spring, (v) => Math.round(v).toLocaleString());
   const hasFired = useRef(false);
 
@@ -292,9 +298,16 @@ export default function ScimDashboard() {
               value: stats?.calls.total ?? null,
             },
           ].map(({ label, href, icon: Icon, value }) => (
-            <motion.div key={label} variants={fadeUp}>
+            <motion.div
+              key={label}
+              variants={fadeUp}
+              whileHover={{ y: -4, scale: 1.015 }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ type: "spring", stiffness: 400, damping: 13, mass: 0.7 }}
+              className="will-change-transform"
+            >
               <Link href={href} className="group block h-full">
-                <Card className="hover:border-primary/40 hover:shadow-sm transition-all cursor-pointer h-full">
+                <Card className="hover:border-primary/40 hover:shadow-md transition-colors cursor-pointer h-full">
                   <CardHeader>
                     <CardDescription className="group-hover:text-primary transition-colors">
                       {label}

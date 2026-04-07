@@ -5,6 +5,8 @@ import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import { Plus, Loader2, FlaskConical } from "lucide-react";
+import { FloatIcon } from "@/components/motion/float-icon";
+import { StaggerList, StaggerItem } from "@/components/motion/stagger-list";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -69,9 +71,9 @@ export default function ExtensionsPage() {
   return (
     <motion.div
       className="container mx-auto py-6 space-y-6"
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+      initial={{ opacity: 0, y: 20, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ type: "spring", stiffness: 300, damping: 18, mass: 0.8 }}
     >
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-4">
@@ -146,10 +148,17 @@ export default function ExtensionsPage() {
             <Skeleton className="h-16 w-full rounded-lg" />
           </motion.div>
         ) : extensions.length === 0 ? (
-          <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <motion.div
+            key="empty"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 18 }}
+          >
             <Card className="border-dashed">
-              <CardContent className="p-12 text-center space-y-2">
-                <FlaskConical className="h-8 w-8 mx-auto text-muted-foreground/40" />
+              <CardContent className="p-12 text-center space-y-3">
+                <FloatIcon amplitude={8} speed={3} className="inline-block">
+                  <FlaskConical className="h-9 w-9 text-muted-foreground/40" />
+                </FloatIcon>
                 <p className="text-sm font-medium text-muted-foreground">No schema extensions yet</p>
                 <p className="text-xs text-muted-foreground/60">
                   Create an extension to start adding custom attributes to SCIM user responses.
@@ -158,24 +167,13 @@ export default function ExtensionsPage() {
             </Card>
           </motion.div>
         ) : (
-          <motion.div
-            key="list"
-            className="space-y-3"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, staggerChildren: 0.06 }}
-          >
-            {extensions.map((ext, i) => (
-              <motion.div
-                key={ext.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, delay: i * 0.06 }}
-              >
+          <StaggerList key="list" className="space-y-3">
+            {extensions.map((ext) => (
+              <StaggerItem key={ext.id}>
                 <ExtensionCard ext={ext} userId={userId!} onRefresh={fetchExtensions} />
-              </motion.div>
+              </StaggerItem>
             ))}
-          </motion.div>
+          </StaggerList>
         )}
       </AnimatePresence>
 
