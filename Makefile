@@ -72,7 +72,11 @@ image-build:
 .PHONY: deploy
 deploy: secrets configmap-check
 	$(KUBECTL) apply -k $(K8S)/
-	$(KUBECTL) rollout status deployment/scim-dev -n $(NAMESPACE) --timeout=120s
+	# Force a rollout restart so the pod always picks up the newly imported image.
+	# Without this, Kubernetes sees imagePullPolicy:Never + unchanged image tag
+	# and leaves the running pod untouched even after `make image-build`.
+	$(KUBECTL) rollout restart deployment/scim-dev -n $(NAMESPACE)
+	$(KUBECTL) rollout status  deployment/scim-dev -n $(NAMESPACE) --timeout=120s
 
 # ─────────────────────────────────────────────────────────────────────────────
 # redeploy — rebuild image and restart the deployment
