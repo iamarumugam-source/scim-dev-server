@@ -83,9 +83,7 @@ export default function JwePage() {
             <CardTitle className="text-sm font-medium">Private / Symmetric Key</CardTitle>
             <CardDescription>JWK or JWKS · optional for plain JWT</CardDescription>
             <CardAction>
-              <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
-                <KeyRound className="h-4 w-4 text-foreground/60" />
-              </div>
+              <KeyRound className="h-4 w-4 text-foreground/60" />
             </CardAction>
           </CardHeader>
           <CardContent className="flex-1 min-h-0 p-0 overflow-hidden">
@@ -104,9 +102,7 @@ export default function JwePage() {
             <CardTitle className="text-sm font-medium">Token</CardTitle>
             <CardDescription>JWE (5 parts) or JWT (3 parts)</CardDescription>
             <CardAction>
-              <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
-                <FileJson className="h-4 w-4 text-foreground/60" />
-              </div>
+              <FileJson className="h-4 w-4 text-foreground/60" />
             </CardAction>
           </CardHeader>
           <CardContent className="flex-1 min-h-0 p-0 overflow-hidden">
@@ -130,9 +126,7 @@ export default function JwePage() {
         <CardHeader className="flex-shrink-0">
           <CardTitle className="text-sm font-medium">Decoded Output</CardTitle>
           <CardAction>
-            <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
-              <Lock className="h-4 w-4 text-foreground/60" />
-            </div>
+            <Lock className="h-4 w-4 text-foreground/60" />
           </CardAction>
         </CardHeader>
 

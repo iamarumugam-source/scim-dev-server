@@ -5,7 +5,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableRow,
+} from "@/components/ui/table";
 
 const KEY_HINTS = [
   { label: "RSA Private (JWK)",  desc: 'kty: "RSA" with d, p, q — for RSA-OAEP, RSA-OAEP-256' },
@@ -20,9 +25,7 @@ export function JweEmptyState() {
     <div className="flex flex-col items-center justify-center h-full gap-5 text-center px-6">
 
       {/* Icon */}
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-        <Lock className="h-5 w-5 text-muted-foreground" />
-      </div>
+      <Lock className="h-8 w-8 text-muted-foreground/40" />
 
       {/* Description */}
       <div>
@@ -33,25 +36,30 @@ export function JweEmptyState() {
       </div>
 
       {/* Key hints card */}
-      <Card className="w-full max-w-sm text-left">
+      <Card className="w-full max-w-sm text-left overflow-hidden">
         <CardHeader className="pb-2">
           <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
             Supported key types
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-0 pt-0">
-          {KEY_HINTS.map((h, i) => (
-            <div key={h.label}>
-              <div className="flex items-start gap-2.5 py-2">
-                <KeyRound className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
-                <div className="min-w-0">
-                  <span className="text-sm font-medium text-foreground">{h.label}</span>
-                  <span className="text-sm text-muted-foreground"> — {h.desc}</span>
-                </div>
-              </div>
-              {i < KEY_HINTS.length - 1 && <Separator />}
-            </div>
-          ))}
+        <CardContent className="p-0 pt-0">
+          <Table>
+            <TableBody>
+              {KEY_HINTS.map((h) => (
+                <TableRow key={h.label} className="hover:bg-muted/40">
+                  <TableCell className="py-2 px-4">
+                    <div className="flex items-start gap-2.5">
+                      <KeyRound className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <span className="text-xs font-medium text-foreground">{h.label}</span>
+                        <span className="text-xs text-muted-foreground"> — {h.desc}</span>
+                      </div>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 

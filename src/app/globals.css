@@ -73,7 +73,7 @@
   --chart-3: oklch(0.546 0.245 262.881);
   --chart-4: oklch(0.488 0.243 264.376);
   --chart-5: oklch(0.424 0.199 265.638);
-  --sidebar: oklch(0.985 0 0);
+  --sidebar: oklch(0.985 0 0 / 0.88);
   --sidebar-foreground: oklch(0.141 0.005 285.823);
   --sidebar-primary: oklch(0.546 0.245 262.881);
   --sidebar-primary-foreground: oklch(0.97 0.014 254.604);
@@ -109,7 +109,7 @@
   --chart-3: oklch(0.546 0.245 262.881);
   --chart-4: oklch(0.488 0.243 264.376);
   --chart-5: oklch(0.424 0.199 265.638);
-  --sidebar: oklch(0.21 0.006 285.885);
+  --sidebar: oklch(0.21 0.006 285.885 / 0.78);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.623 0.214 259.815);
   --sidebar-primary-foreground: oklch(0.97 0.014 254.604);
@@ -118,6 +118,57 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.552 0.016 285.938);
   --code-number: oklch(0.72 0 0);
+}
+
+/* ── Background texture ──────────────────────────────────────────────────────
+   A subtle diagonal gradient on the body gives backdrop-filter something
+   visually distinct to blur. Without this the sidebar blurs the same solid
+   background colour it sits in front of, making the effect invisible.
+────────────────────────────────────────────────────────────────────────────── */
+body {
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--background) 93%, white) 0%,
+    var(--background)                                 50%,
+    color-mix(in oklab, var(--background) 96%, black) 100%
+  );
+  min-height: 100svh;
+}
+
+/* ── Glass sidebar ───────────────────────────────────────────────────────────
+   Target [data-slot="sidebar-container"] — the fixed outer wrapper that sits
+   directly in front of the body gradient.  The inner bg-sidebar (now
+   semi-transparent) lets the blurred gradient show through.
+────────────────────────────────────────────────────────────────────────────── */
+[data-slot="sidebar-container"] {
+  backdrop-filter:         blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Specular highlight layer — simulates light hitting the top of the glass */
+[data-sidebar="sidebar"] {
+  background-image: linear-gradient(
+    160deg,
+    rgb(255 255 255 / 0.07) 0%,
+    transparent             40%,
+    rgb(0   0   0   / 0.04) 100%
+  );
+}
+
+/* ── Glass header ────────────────────────────────────────────────────────────
+   sticky top-0 (set in app-header.tsx) means page content scrolls under it.
+   As text and cards slide behind the header they become frosted — visible
+   once you scroll down a full screenful.
+────────────────────────────────────────────────────────────────────────────── */
+[data-slot="site-header"] {
+  backdrop-filter:         blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background-image: linear-gradient(
+    90deg,
+    rgb(255 255 255 / 0.04) 0%,
+    transparent             50%,
+    rgb(255 255 255 / 0.02) 100%
+  );
 }
 
 @layer base {

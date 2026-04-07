@@ -19,11 +19,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}   # pin to the exact commit that triggered this run
+          clean: true              # wipe any leftover files from previous runs
 
-      # Copy the secrets file from its stable location outside the repo.
-      # This file is never committed — it lives only on this machine.
-      - name: Restore secrets
-        run: cp ~/.scim-dev/.env.k8s.local .env.k8s.local
+      # Copy local config files from their stable location outside the repo.
+      # Neither file is committed — they live only on this machine.
+      - name: Restore secrets and configmap
+        run: |
+          cp ~/.scim-dev/.env.k8s.local .env.k8s.local
+          cp ~/.scim-dev/configmap.yaml  k8s/configmap.yaml
 
       # Build the Docker image and import it into microk8s containerd.
       - name: Build image
