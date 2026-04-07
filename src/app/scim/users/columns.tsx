@@ -19,12 +19,12 @@ import { toast } from "sonner";
 // ─── Avatar helpers ────────────────────────────────────────────────────────────
 
 const AVATAR_COLORS = [
-  "bg-muted text-foreground/70",
-  "bg-primary/10 text-primary",
-  "bg-muted/80 text-foreground/60",
-  "bg-primary/15 text-primary/80",
-  "bg-secondary text-secondary-foreground",
-  "bg-primary/20 text-primary/90",
+  "bg-violet-100 text-violet-700 dark:bg-violet-900/60 dark:text-violet-300",
+  "bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300",
+  "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300",
+  "bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300",
+  "bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300",
+  "bg-sky-100 text-sky-700 dark:bg-sky-900/60 dark:text-sky-300",
 ];
 
 export function avatarColor(str: string) {
@@ -143,15 +143,15 @@ export const getColumns = ({ handleDeleteUser }: GetColumnsProps): ColumnDef<Sci
     cell: ({ row }) => {
       const active = row.getValue<boolean>("active");
       return active ? (
-        <div className="flex items-center gap-1.5">
-          <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
-          <span className="text-sm text-primary font-medium">Active</span>
-        </div>
+        <Badge variant="outline" className="gap-1 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-300 dark:border-emerald-700/50">
+          <CheckCircle2 className="h-3 w-3" />
+          Active
+        </Badge>
       ) : (
-        <div className="flex items-center gap-1.5">
-          <XCircle className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Inactive</span>
-        </div>
+        <Badge variant="outline" className="gap-1 text-xs font-normal text-muted-foreground dark:border-white/15">
+          <XCircle className="h-3 w-3" />
+          Inactive
+        </Badge>
       );
     },
   },

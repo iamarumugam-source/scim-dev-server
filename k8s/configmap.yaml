@@ -1,0 +1,29 @@
+# ── scim-dev-server non-sensitive config ─────────────────────────────────────
+# Replace every YOUR_* placeholder with real values.
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scim-dev-config
+  namespace: scim-dev
+data:
+  # ── DB provider ─────────────────────────────────────────────────────────────
+  DB_PROVIDER: "postgres"
+
+  # ── Public base URL = your Cloudflare Tunnel hostname ───────────────────────
+  # This must match what you configured in the tunnel's public hostname rule.
+  # Used by NextAuth for redirect URLs AND by SCIM services to build resource URIs.
+  NEXT_PUBLIC_BASE_URL: "https://YOUR_TUNNEL_HOSTNAME"
+  NEXTAUTH_URL: "https://YOUR_TUNNEL_HOSTNAME"
+
+  # ── Okta OAuth (non-secret) ─────────────────────────────────────────────────
+  OKTA_CLIENT_ID: "YOUR_OKTA_CLIENT_ID"
+  OKTA_ISSUER: "https://YOUR_OKTA_DOMAIN/oauth2/default"
+
+  # ── LLM (non-secret) ────────────────────────────────────────────────────────
+  LLM_BASE_URL: "https://llm.atko.ai"
+  LLM_MODEL: "gemini-3.1-pro-preview"
+
+  # ── Runtime ─────────────────────────────────────────────────────────────────
+  NODE_ENV: "production"
+  NEXT_TELEMETRY_DISABLED: "1"

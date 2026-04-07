@@ -148,7 +148,7 @@ export default function RolesPage() {
         {isLoading ? (
           <motion.div key="loading" className="overflow-hidden rounded-lg border" exit={{ opacity: 0, transition: { duration: 0.15 } }}>
             <Table>
-              <TableHeader className="bg-muted">
+              <TableHeader className="bg-muted dark:bg-white/[0.04]">
                 <TableRow>
                   <TableHead className="w-9" />
                   <TableHead className="text-xs font-semibold uppercase tracking-wide">Display Name</TableHead>
@@ -180,7 +180,7 @@ export default function RolesPage() {
           >
             <div className="overflow-hidden rounded-lg border">
               <Table>
-                <TableHeader className="bg-muted">
+                <TableHeader className="bg-muted dark:bg-white/[0.04]">
                   <TableRow>
                     <TableHead className="w-9" />
                     <TableHead className="text-xs font-semibold uppercase tracking-wide">Display Name</TableHead>

@@ -1,0 +1,26 @@
+# Build artefacts
+.next/
+node_modules/
+
+# Local secrets — never bake into the image
+.env
+.env.local
+.env.*.local
+
+# Version control
+.git/
+.gitignore
+
+# Editor / OS
+.DS_Store
+*.swp
+.vscode/
+.idea/
+
+# k8s manifests and scripts don't belong in the image
+k8s/
+scripts/
+
+# Dev tooling
+*.test.ts
+*.spec.ts

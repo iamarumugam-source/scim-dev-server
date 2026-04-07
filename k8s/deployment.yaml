@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scim-dev
+  namespace: scim-dev
+  labels:
+    app: scim-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scim-dev
+  template:
+    metadata:
+      labels:
+        app: scim-dev
+    spec:
+      # ── init: wait for postgres ───────────────────────────────────────────────
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for postgres:5432..."
+              until nc -z postgres 5432; do
+                sleep 2
+              done
+              echo "postgres is up."
+
+      containers:
+        # ── app ────────────────────────────────────────────────────────────────
+        - name: app
+          image: scim-dev-server:latest
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 3000
+
+          # HOSTNAME must be pinned to 0.0.0.0 explicitly.
+          # Kubernetes injects HOSTNAME=<pod-name> automatically, which would
+          # cause Next.js to bind to the pod IP instead of all interfaces,
+          # making localhost:3000 unreachable from the cloudflared sidecar.
+          env:
+            - name: HOSTNAME
+              value: "0.0.0.0"
+            - name: PORT
+              value: "3000"
+
+          envFrom:
+            - configMapRef:
+                name: scim-dev-config
+            - secretRef:
+                name: scim-dev-secrets
+
+          readinessProbe:
+            tcpSocket:
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            failureThreshold: 3
+
+          livenessProbe:
+            tcpSocket:
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+
+        # ── cloudflared sidecar ─────────────────────────────────────────────────
+        # Shares the pod network namespace — reaches the app at localhost:3000.
+        # Routing (public hostname → localhost:3000) is configured in the
+        # Cloudflare Zero Trust dashboard under the tunnel's Public Hostname tab.
+        # The TUNNEL_TOKEN secret is the only thing needed here.
+        - name: cloudflared
+          image: cloudflare/cloudflared:latest
+          args:
+            - tunnel
+            - --no-autoupdate
+            - run
+            - --token
+            - $(TUNNEL_TOKEN)
+          env:
+            - name: TUNNEL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: scim-dev-secrets
+                  key: CF_TUNNEL_TOKEN
+
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"

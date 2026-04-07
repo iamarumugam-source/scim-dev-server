@@ -125,9 +125,7 @@ export default function ApiPage() {
             Use this as the SCIM base URL in your identity provider, regardless of which authentication method you choose.
           </CardDescription>
           <CardAction>
-            <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
-              <Server className="h-4 w-4 text-foreground/60" />
-            </div>
+            <Server className="h-4 w-4 text-foreground/60" />
           </CardAction>
         </CardHeader>
         <CardContent className="space-y-1.5">
@@ -153,9 +151,7 @@ export default function ApiPage() {
                 Set this as your app&apos;s <strong className="text-foreground">Authorization endpoint</strong> in the SCIM provisioning settings.
               </CardDescription>
               <CardAction>
-                <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
-                  <Zap className="h-4 w-4 text-foreground/60" />
-                </div>
+                <Zap className="h-4 w-4 text-foreground/60" />
               </CardAction>
             </CardHeader>
             <CardContent>
@@ -171,9 +167,7 @@ export default function ApiPage() {
                 Set this as your app&apos;s <strong className="text-foreground">Token endpoint</strong>.
               </CardDescription>
               <CardAction>
-                <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
-                  <KeyRound className="h-4 w-4 text-foreground/60" />
-                </div>
+                <KeyRound className="h-4 w-4 text-foreground/60" />
               </CardAction>
             </CardHeader>
             <CardContent>
@@ -190,9 +184,7 @@ export default function ApiPage() {
               Use these credentials with the <code className="text-[11px] font-mono bg-muted px-1 rounded">client_credentials</code> grant type to obtain a Bearer token directly from the token endpoint — no Okta redirect required. They also work with the Authorization Code flow when configuring your Okta SCIM app.
             </CardDescription>
             <CardAction>
-              <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
-                <Unlock className="h-4 w-4 text-foreground/60" />
-              </div>
+              <Unlock className="h-4 w-4 text-foreground/60" />
             </CardAction>
           </CardHeader>
           <CardContent>
@@ -223,9 +215,7 @@ export default function ApiPage() {
               Follow these steps to connect your Okta SCIM app using OAuth 2.0.
             </CardDescription>
             <CardAction>
-              <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
-                <ListOrdered className="h-4 w-4 text-foreground/60" />
-              </div>
+              <ListOrdered className="h-4 w-4 text-foreground/60" />
             </CardAction>
           </CardHeader>
           <CardContent>
@@ -239,7 +229,7 @@ export default function ApiPage() {
                 "Click Test API Credentials — Okta will run the full OAuth flow automatically.",
               ].map((step, i) => (
                 <li key={i} className="flex items-start gap-3 text-sm text-muted-foreground">
-                  <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary mt-0.5">
+                  <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary mt-0.5 dark:bg-blue-900/50 dark:text-blue-300">
                     {i + 1}
                   </span>
                   {step}
@@ -258,9 +248,7 @@ export default function ApiPage() {
             Control how many SCIM API requests your tenant can make per minute. When disabled, all requests pass through without restriction.
           </CardDescription>
           <CardAction>
-            <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
-              <Gauge className="h-4 w-4 text-foreground/60" />
-            </div>
+            <Gauge className="h-4 w-4 text-foreground/60" />
           </CardAction>
         </CardHeader>
         <CardContent className="space-y-4">

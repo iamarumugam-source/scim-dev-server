@@ -158,12 +158,12 @@ export function ExtensionCard({ ext, userId, onRefresh }: Props) {
               className={cn(
                 "text-[10px] font-medium h-4 px-1.5 py-0 gap-1",
                 ext.enabled
-                  ? "text-primary border-primary/30 bg-primary/10"
-                  : "text-muted-foreground",
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-300 dark:border-emerald-700/50"
+                  : "text-muted-foreground dark:border-white/15",
               )}
             >
               {ext.enabled
-                ? <CheckCircle2 className="h-2.5 w-2.5 text-primary" />
+                ? <CheckCircle2 className="h-2.5 w-2.5" />
                 : <CircleOff className="h-2.5 w-2.5" />}
               {ext.enabled ? "Active" : "Disabled"}
             </Badge>
