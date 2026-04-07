@@ -100,9 +100,9 @@ export default function EntitlementsPage() {
   return (
     <motion.div
       className="container mx-auto py-6 space-y-4"
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+      initial={{ opacity: 0, y: 20, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ type: "spring", stiffness: 300, damping: 18, mass: 0.8 }}
     >
       {error && <ErrorDisplay message={error} />}
 
