@@ -3,7 +3,6 @@ name: Deploy to local microk8s
 on:
   push:
     branches:
-      - feat/postgres-provider
       - master
 
 # Only one deploy at a time. If a new push arrives while a deploy is running,
