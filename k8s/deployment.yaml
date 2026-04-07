@@ -44,6 +44,17 @@ spec:
             - name: http
               containerPort: 3000
 
+          # Explicit env entries override Kubernetes' automatic HOSTNAME injection
+          # (which is set to the pod name, e.g. scim-dev-7d458668f8).
+          # Next.js standalone server reads HOSTNAME to decide what address to bind
+          # to — if it binds to the pod IP instead of 0.0.0.0, the cloudflared
+          # sidecar cannot reach it via localhost:3000.
+          env:
+            - name: HOSTNAME
+              value: "0.0.0.0"
+            - name: PORT
+              value: "3000"
+
           # All ConfigMap keys + all Secret keys injected as env vars.
           # Secret values shadow any same-named ConfigMap key.
           envFrom:
