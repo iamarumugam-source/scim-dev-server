@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/scim/db";
 import { protectWithApiKey } from "@/lib/scim/apiHelper";
+import { StatsService } from "@/lib/scim/services/statsService";
 
 interface RouteParams {
   params: { userId: string };
@@ -13,83 +13,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   if (unauthorized) return unauthorized;
 
   try {
-    const [
-      logsRecent,
-      logsTotalResult,
-      usersResult,
-      groupsResult,
-      keysResult,
-      analyticsResult,
-      entitlementsResult,
-      rolesResult,
-      settingsResult,
-    ] = await Promise.all([
-      // Recent 1 000 logs for computing detailed stats
-      supabase
-        .from("scim_logs")
-        .select("log_data, response, created_at")
-        .eq("tenantId", userId)
-        .order("created_at", { ascending: false })
-        .limit(1000),
-
-      // All-time total call count (cheap head query)
-      supabase
-        .from("scim_logs")
-        .select("id", { count: "exact", head: true })
-        .eq("tenantId", userId),
-
-      // Users — total + active/inactive split
-      supabase
-        .from("scim_users")
-        .select("active")
-        .eq("tenantId", userId),
-
-      // Groups — total count
-      supabase
-        .from("scim_groups")
-        .select("id", { count: "exact", head: true })
-        .eq("tenantId", userId),
-
-      // API keys — total count
-      supabase
-        .from("api_keys")
-        .select("id", { count: "exact", head: true })
-        .eq("tenantId", userId),
-
-      // Page view counters — one row per (tenant, path)
-      supabase
-        .from("scim_page_views")
-        .select("path, count")
-        .eq("tenantId", userId),
-
-      // Entitlements — total count
-      supabase
-        .from("scim_entitlements")
-        .select("id", { count: "exact", head: true })
-        .eq("tenantId", userId),
-
-      // Roles — total count
-      supabase
-        .from("scim_roles")
-        .select("id", { count: "exact", head: true })
-        .eq("tenantId", userId),
-
-      // Tenant rate-limit settings
-      supabase
-        .from("tenant_settings")
-        .select("rate_limit_enabled, rate_limit_max")
-        .eq("tenantId", userId)
-        .maybeSingle(),
-    ]);
-
-    const logs              = logsRecent.data          ?? [];
-    const totalCalls        = logsTotalResult.count    ?? 0;
-    const users             = usersResult.data         ?? [];
-    const totalGroups       = groupsResult.count       ?? 0;
-    const totalKeys         = keysResult.count         ?? 0;
-    const analytics         = analyticsResult.data     ?? [];
-    const totalEntitlements = entitlementsResult.count ?? 0;
-    const totalRoles        = rolesResult.count        ?? 0;
+    const statsService = new StatsService();
+    const {
+      logs,
+      totalCalls,
+      users,
+      totalGroups,
+      totalKeys,
+      analytics,
+      totalEntitlements,
+      totalRoles,
+      settings,
+    } = await statsService.getStatsData(userId);
 
     // ── Call stats ──────────────────────────────────────────────────────────
 
@@ -168,11 +103,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // ── Rate limit window stats ─────────────────────────────────────────────
 
-    const rlSettings       = settingsResult.data;
-    const RATE_LIMIT_ON    = rlSettings?.rate_limit_enabled ?? true;
-    const RATE_LIMIT       = rlSettings?.rate_limit_max     ?? 60;
-    const oneMinuteAgo     = Date.now() - 60_000;
-    const windowCalls      = logs.filter((l) => {
+    const RATE_LIMIT_ON = settings?.rate_limit_enabled ?? true;
+    const RATE_LIMIT    = settings?.rate_limit_max     ?? 60;
+    const oneMinuteAgo  = Date.now() - 60_000;
+    const windowCalls   = logs.filter((l) => {
       const t = l.created_at ? new Date(l.created_at).getTime() : 0;
       return t >= oneMinuteAgo;
     }).length;
@@ -202,9 +136,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         rateLimitedCalls,
       },
       calls: {
-        total:       totalCalls,
+        total:        totalCalls,
         recentSample: logs.length,
-        last7days:   last7daysCalls,
+        last7days:    last7daysCalls,
         success,
         clientErrors,
         serverErrors,

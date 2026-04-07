@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/scim/db";
+import { LogService } from "@/lib/scim/services/logService";
 
-const LOG_TABLE = "scim_logs";
 interface RouteParams {
   params: { userId: string };
 }
@@ -15,15 +14,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const responseData = logPayload["responseData"];
     responseData["status"] = logPayload["responseStatus"] || {};
 
-    const { error } = await supabase.from(LOG_TABLE).insert({
-      log_data: requestData,
-      tenantId: userId,
-      response: responseData,
-    });
-
-    if (error) {
-      throw new Error(`Supabase error saving log: ${error.message}`);
-    }
+    const logService = new LogService();
+    await logService.insertLog(userId, requestData, responseData);
 
     return NextResponse.json({ success: true }, { status: 202 });
   } catch (error: any) {
@@ -39,14 +31,8 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   try {
     const { userId } = await params;
 
-    const { error } = await supabase
-      .from(LOG_TABLE)
-      .delete()
-      .eq("tenantId", userId);
-
-    if (error) {
-      throw new Error(`Supabase error clearing logs: ${error.message}`);
-    }
+    const logService = new LogService();
+    await logService.deleteLogs(userId);
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error: any) {
@@ -62,28 +48,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { userId } = await params;
     const { searchParams } = new URL(request.url);
-    const limit = Math.min(parseInt(searchParams.get("limit") || "20", 10), 100);
+    const limit  = Math.min(parseInt(searchParams.get("limit")  || "20", 10), 100);
     const offset = parseInt(searchParams.get("offset") || "0", 10);
 
-    const { data, error, count } = await supabase
-      .from(LOG_TABLE)
-      .select("id, log_data, response, created_at", { count: "exact" })
-      .eq("tenantId", userId)
-      .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    if (error) {
-      throw new Error(`Supabase error fetching logs: ${error.message}`);
-    }
-
-    const logs = data.map((item) => ({
-      id:         item.id,
-      log_data:   item.log_data,
-      response:   item.response,
-      created_at: item.created_at,
-    }));
-
-    const total = count ?? 0;
+    const logService = new LogService();
+    const { logs, total } = await logService.getLogs(userId, limit, offset);
 
     return NextResponse.json({
       logs,
