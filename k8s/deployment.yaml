@@ -15,10 +15,7 @@ spec:
       labels:
         app: scim-dev
     spec:
-      # ── init: wait for postgres before starting the app ───────────────────────
-      # Loops until the postgres Service's port 5432 is accepting connections.
-      # Prevents the app from crashing on startup if postgres hasn't finished
-      # initialising its data directory yet.
+      # ── init: wait for postgres ───────────────────────────────────────────────
       initContainers:
         - name: wait-for-postgres
           image: busybox:1.36
@@ -32,38 +29,31 @@ spec:
               done
               echo "postgres is up."
 
-      # ── app container ────────────────────────────────────────────────────────
       containers:
+        # ── app ────────────────────────────────────────────────────────────────
         - name: app
-          # Imported into microk8s containerd with `make image-build`
-          # (docker build → docker save → microk8s ctr images import).
-          # Never pull from a registry — image lives only in local containerd.
           image: scim-dev-server:latest
           imagePullPolicy: Never
           ports:
             - name: http
               containerPort: 3000
 
-          # Explicit env entries override Kubernetes' automatic HOSTNAME injection
-          # (which is set to the pod name, e.g. scim-dev-7d458668f8).
-          # Next.js standalone server reads HOSTNAME to decide what address to bind
-          # to — if it binds to the pod IP instead of 0.0.0.0, the cloudflared
-          # sidecar cannot reach it via localhost:3000.
+          # HOSTNAME must be pinned to 0.0.0.0 explicitly.
+          # Kubernetes injects HOSTNAME=<pod-name> automatically, which would
+          # cause Next.js to bind to the pod IP instead of all interfaces,
+          # making localhost:3000 unreachable from the cloudflared sidecar.
           env:
             - name: HOSTNAME
               value: "0.0.0.0"
             - name: PORT
               value: "3000"
 
-          # All ConfigMap keys + all Secret keys injected as env vars.
-          # Secret values shadow any same-named ConfigMap key.
           envFrom:
             - configMapRef:
                 name: scim-dev-config
             - secretRef:
                 name: scim-dev-secrets
 
-          # TCP probe: port open → app is ready. No health endpoint required.
           readinessProbe:
             tcpSocket:
               port: 3000
@@ -86,56 +76,25 @@ spec:
               memory: "512Mi"
               cpu: "500m"
 
-      # ── cloudflared sidecar ──────────────────────────────────────────────────
-      # Both containers share the same network namespace, so cloudflared reaches
-      # the Next.js app at http://localhost:3000.
-      #
-      # Routing is declared in the cloudflared-config ConfigMap (ingress rule
-      # pointing at localhost:3000).  The TUNNEL_TOKEN Secret supplies the tunnel
-      # credentials — no dashboard public-hostname rule is required.
+        # ── cloudflared sidecar ─────────────────────────────────────────────────
+        # Shares the pod network namespace — reaches the app at localhost:3000.
+        # Routing (public hostname → localhost:3000) is configured in the
+        # Cloudflare Zero Trust dashboard under the tunnel's Public Hostname tab.
+        # The TUNNEL_TOKEN secret is the only thing needed here.
         - name: cloudflared
-          image: cloudflare/cloudflared:2025.4.0
+          image: cloudflare/cloudflared:latest
           args:
             - tunnel
-            - --config
-            - /etc/cloudflared/config.yaml
             - --no-autoupdate
-            # metrics server: /ready (tunnel connected) + /metrics (Prometheus)
-            - --metrics
-            - 0.0.0.0:2000
             - run
+            - --token
+            - $(TUNNEL_TOKEN)
           env:
             - name: TUNNEL_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: scim-dev-secrets
                   key: CF_TUNNEL_TOKEN
-
-          ports:
-            - name: metrics
-              containerPort: 2000
-
-          volumeMounts:
-            - name: cloudflared-config
-              mountPath: /etc/cloudflared
-              readOnly: true
-
-          # /ready returns 200 once cloudflared has an active tunnel connection.
-          readinessProbe:
-            httpGet:
-              path: /ready
-              port: 2000
-            initialDelaySeconds: 10
-            periodSeconds: 5
-            failureThreshold: 3
-
-          livenessProbe:
-            httpGet:
-              path: /ready
-              port: 2000
-            initialDelaySeconds: 15
-            periodSeconds: 10
-            failureThreshold: 5
 
           resources:
             requests:
@@ -144,9 +103,3 @@ spec:
             limits:
               memory: "128Mi"
               cpu: "100m"
-
-      # ── volumes ──────────────────────────────────────────────────────────────
-      volumes:
-        - name: cloudflared-config
-          configMap:
-            name: cloudflared-config
