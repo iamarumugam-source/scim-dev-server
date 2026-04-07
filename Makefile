@@ -121,7 +121,7 @@ status:
 # ─────────────────────────────────────────────────────────────────────────────
 .PHONY: configmap-check
 configmap-check:
-	@if grep -q 'YOUR_' $(K8S)/configmap.yaml; then \
+	@if grep -v '^\s*#' $(K8S)/configmap.yaml | grep -q 'YOUR_'; then \
 		echo ""; \
 		echo "ERROR: k8s/configmap.yaml still has YOUR_* placeholders."; \
 		echo "  Fill in NEXT_PUBLIC_BASE_URL, NEXTAUTH_URL, OKTA_CLIENT_ID, OKTA_ISSUER."; \
