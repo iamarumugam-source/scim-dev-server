@@ -59,15 +59,33 @@ secrets:
 # ─────────────────────────────────────────────────────────────────────────────
 .PHONY: image-build
 image-build:
-	# Both docker and microk8s ctr need their respective group memberships.
-	# sg <group> -c "cmd" forces the group to be active even when the runner
-	# service was started before the user was added to that group.
-	# A temp file is used so the two sg contexts stay independent
-	# (piping between two sg invocations is unreliable).
-	sg docker    -c "docker build -t $(IMAGE):$(TAG) ."
-	sg docker    -c "docker save  -o /tmp/.scim-build.tar $(IMAGE):$(TAG)"
-	sg microk8s  -c "microk8s ctr images import /tmp/.scim-build.tar"
+	# docker commands run via `sg docker` so the docker group is active even
+	# if the runner service was started before the user was added to the group.
+	# microk8s ctr uses `sudo -n` (non-interactive sudo) so it never prompts for
+	# a password — this requires a NOPASSWD sudoers entry which `make setup-permissions`
+	# creates automatically.  Run that once on the machine before the first deploy.
+	sg docker -c "docker build -t $(IMAGE):$(TAG) ."
+	sg docker -c "docker save  -o /tmp/.scim-build.tar $(IMAGE):$(TAG)"
+	sudo -n microk8s ctr images import /tmp/.scim-build.tar
 	rm -f /tmp/.scim-build.tar
+
+# ─────────────────────────────────────────────────────────────────────────────
+# setup-permissions  (run ONCE on the machine before the first deploy)
+#   • Adds the current user to the docker and microk8s groups so interactive
+#     docker/microk8s commands work without sudo.
+#   • Writes a NOPASSWD sudoers entry so `sudo -n microk8s` works inside the
+#     runner service without a terminal or password prompt.
+# ─────────────────────────────────────────────────────────────────────────────
+.PHONY: setup-permissions
+setup-permissions:
+	sudo usermod -aG docker   $(shell whoami)
+	sudo usermod -aG microk8s $(shell whoami)
+	@echo "$(shell whoami) ALL=(ALL) NOPASSWD: /snap/bin/microk8s" \
+	  | sudo tee /etc/sudoers.d/$(shell whoami)-microk8s > /dev/null
+	sudo chmod 0440 /etc/sudoers.d/$(shell whoami)-microk8s
+	@echo ""
+	@echo "Done. Restart the runner service for group changes to take effect:"
+	@echo "  systemctl --user restart github-runner"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # deploy
