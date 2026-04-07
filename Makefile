@@ -59,8 +59,12 @@ secrets:
 # ─────────────────────────────────────────────────────────────────────────────
 .PHONY: image-build
 image-build:
-	docker build -t $(IMAGE):$(TAG) .
-	docker save $(IMAGE):$(TAG) | microk8s ctr images import -
+	# `sg docker -c "..."` runs the command with the docker supplementary group
+	# active even if the runner service was started before the user was added to
+	# the group (which is the typical cause of "permission denied on docker socket"
+	# errors in self-hosted runners).
+	sg docker -c "docker build -t $(IMAGE):$(TAG) ."
+	sg docker -c "docker save $(IMAGE):$(TAG)" | microk8s ctr images import -
 
 # ─────────────────────────────────────────────────────────────────────────────
 # deploy
