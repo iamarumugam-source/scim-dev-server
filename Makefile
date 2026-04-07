@@ -9,16 +9,53 @@ K8S       := k8s
 KUBECTL   := microk8s kubectl
 
 # ─────────────────────────────────────────────────────────────────────────────
+# secrets
+#   Reads .env.k8s.local and creates (or updates) the scim-dev-secrets Secret
+#   in the cluster.  Fully idempotent — safe to run after any value changes.
+#
+#   First-time setup:
+#     cp k8s/env.template .env.k8s.local
+#     <fill in every value>
+#     make secrets
+#
+#   How it works:
+#     kubectl create secret --from-env-file   reads KEY=VALUE lines from the file
+#     --dry-run=client -o yaml | kubectl apply  makes the operation idempotent
+#     (create on first run, patch on subsequent runs)
+# ─────────────────────────────────────────────────────────────────────────────
+.PHONY: secrets
+secrets:
+	@test -f .env.k8s.local || { \
+		echo ""; \
+		echo "ERROR: .env.k8s.local not found."; \
+		echo "  1.  cp k8s/env.template .env.k8s.local"; \
+		echo "  2.  Fill in every value in .env.k8s.local"; \
+		echo "  3.  make secrets"; \
+		echo ""; \
+		exit 1; \
+	}
+	@if grep -qE '=$$|=YOURPASSWORD' .env.k8s.local; then \
+		echo ""; \
+		echo "ERROR: .env.k8s.local still has empty or unfilled values."; \
+		echo "  Fill in every KEY=value line, then run 'make secrets' again."; \
+		echo ""; \
+		exit 1; \
+	fi
+	@echo "Ensuring namespace $(NAMESPACE) exists..."
+	@$(KUBECTL) create namespace $(NAMESPACE) --dry-run=client -o yaml | \
+		$(KUBECTL) apply -f - > /dev/null
+	@echo "Applying secret scim-dev-secrets from .env.k8s.local ..."
+	@$(KUBECTL) create secret generic scim-dev-secrets \
+		--namespace $(NAMESPACE) \
+		--from-env-file=.env.k8s.local \
+		--dry-run=client -o yaml | $(KUBECTL) apply -f -
+	@echo "Done. Secret 'scim-dev-secrets' is live in namespace '$(NAMESPACE)'."
+
+# ─────────────────────────────────────────────────────────────────────────────
 # image-build
 #   Builds the Docker image with the local Docker daemon, then imports it
 #   directly into microk8s's containerd so Kubernetes can use it without
 #   a registry (imagePullPolicy: Never still applies).
-#
-#   How it works:
-#     docker build    — standard build on the host
-#     docker save     — serialise the image to a tar stream on stdout
-#     microk8s ctr images import -
-#                     — pipe the stream into microk8s's containerd (k8s.io namespace)
 # ─────────────────────────────────────────────────────────────────────────────
 .PHONY: image-build
 image-build:
@@ -27,17 +64,18 @@ image-build:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # deploy
-#   Applies every manifest in k8s/ (via kustomize) and waits for the rollout.
-#   Run `make secrets-check` first to catch unfilled placeholders.
+#   1. Ensures the Secret is up-to-date (runs `secrets`)
+#   2. Checks the ConfigMap has no unfilled placeholders
+#   3. Applies all remaining manifests via kustomize
+#   4. Waits for the rollout to complete
 # ─────────────────────────────────────────────────────────────────────────────
 .PHONY: deploy
-deploy: secrets-check
+deploy: secrets configmap-check
 	$(KUBECTL) apply -k $(K8S)/
 	$(KUBECTL) rollout status deployment/scim-dev -n $(NAMESPACE) --timeout=120s
 
 # ─────────────────────────────────────────────────────────────────────────────
-# redeploy
-#   Rebuilds the image and force-restarts the deployment in one step.
+# redeploy — rebuild image and restart the deployment
 # ─────────────────────────────────────────────────────────────────────────────
 .PHONY: redeploy
 redeploy: image-build
@@ -50,6 +88,7 @@ redeploy: image-build
 .PHONY: undeploy
 undeploy:
 	$(KUBECTL) delete -k $(K8S)/ --ignore-not-found
+	$(KUBECTL) delete secret scim-dev-secrets -n $(NAMESPACE) --ignore-not-found
 
 # ─────────────────────────────────────────────────────────────────────────────
 # logs — tail both app and cloudflared containers simultaneously
@@ -59,8 +98,7 @@ logs:
 	$(KUBECTL) logs -f -n $(NAMESPACE) deployment/scim-dev --all-containers=true --prefix=true
 
 # ─────────────────────────────────────────────────────────────────────────────
-# port-forward — direct access to the app on localhost:3000, bypassing the
-#               Cloudflare tunnel (useful for debugging auth redirects).
+# port-forward — direct access to the app on localhost:3000
 # ─────────────────────────────────────────────────────────────────────────────
 .PHONY: port-forward
 port-forward:
@@ -79,28 +117,20 @@ status:
 	$(KUBECTL) get events -n $(NAMESPACE) --sort-by='.lastTimestamp' | tail -15
 
 # ─────────────────────────────────────────────────────────────────────────────
-# secrets-check — abort if any secret value is still REPLACE_ME
+# configmap-check — abort if k8s/configmap.yaml still has YOUR_* placeholders
 # ─────────────────────────────────────────────────────────────────────────────
-.PHONY: secrets-check
-secrets-check:
-	@if grep -q 'REPLACE_ME' $(K8S)/secret.yaml; then \
-		echo ""; \
-		echo "ERROR: $(K8S)/secret.yaml still contains REPLACE_ME placeholders."; \
-		echo "       Fill in every secret value before deploying."; \
-		echo ""; \
-		exit 1; \
-	fi
+.PHONY: configmap-check
+configmap-check:
 	@if grep -q 'YOUR_' $(K8S)/configmap.yaml; then \
 		echo ""; \
-		echo "ERROR: $(K8S)/configmap.yaml still contains YOUR_* placeholders."; \
-		echo "       Fill in your tunnel hostname and Okta config before deploying."; \
+		echo "ERROR: k8s/configmap.yaml still has YOUR_* placeholders."; \
+		echo "  Fill in NEXT_PUBLIC_BASE_URL, NEXTAUTH_URL, OKTA_CLIENT_ID, OKTA_ISSUER."; \
 		echo ""; \
 		exit 1; \
 	fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-# db-init — apply scripts/init-postgres.sql against the in-cluster postgres pod.
-#            Waits until the pod is Ready, then pipes the SQL via kubectl exec.
+# db-init — apply scripts/init-postgres.sql inside the postgres pod
 # ─────────────────────────────────────────────────────────────────────────────
 .PHONY: db-init
 db-init:
@@ -118,8 +148,7 @@ db-psql:
 	$(KUBECTL) exec -it -n $(NAMESPACE) pod/postgres-0 -- psql -U postgres -d scim_dev
 
 # ─────────────────────────────────────────────────────────────────────────────
-# postgres-forward — forward postgres to localhost:5432 for local tools
-#                    (TablePlus, DBeaver, psql, etc.)
+# postgres-forward — expose postgres on localhost:5432 for local GUI tools
 # ─────────────────────────────────────────────────────────────────────────────
 .PHONY: postgres-forward
 postgres-forward:
