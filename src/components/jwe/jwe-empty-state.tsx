@@ -20,9 +20,7 @@ export function JweEmptyState() {
     <div className="flex flex-col items-center justify-center h-full gap-5 text-center px-6">
 
       {/* Icon */}
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-        <Lock className="h-5 w-5 text-muted-foreground" />
-      </div>
+      <Lock className="h-8 w-8 text-muted-foreground/40" />
 
       {/* Description */}
       <div>
