@@ -3,19 +3,15 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { JweEmptyState } from "@/components/jwe/jwe-empty-state";
 import { JweResultView } from "@/components/jwe/jwe-result-view";
 import { toast } from "sonner";
-import { Lock, KeyRound, FileJson, AlertCircle, Loader2 } from "lucide-react";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { AlertCircle, Loader2, X, Unlock } from "lucide-react";
 
 interface DecryptResult {
   type:        "JWE" | "JWT";
@@ -32,6 +28,13 @@ export default function JwePage() {
   const [isDecoding,  setIsDecoding]  = useState(false);
   const [result,      setResult]      = useState<DecryptResult | null>(null);
   const [decodeError, setDecodeError] = useState<string | null>(null);
+
+  const handleClear = () => {
+    setTokenInput("");
+    setKeyInput("");
+    setResult(null);
+    setDecodeError(null);
+  };
 
   const handleDecode = async () => {
     setIsDecoding(true);
@@ -60,7 +63,7 @@ export default function JwePage() {
       if (!res.ok) throw new Error(data.detail || "Decoding failed.");
 
       setResult(data as DecryptResult);
-      toast.success(data.type === "JWE" ? "JWE decrypted successfully" : "JWT decoded successfully");
+      toast.success(data.type === "JWE" ? "JWE decrypted" : "JWT decoded");
     } catch (e: any) {
       setDecodeError(e.message);
       toast.error(e.message);
@@ -69,82 +72,118 @@ export default function JwePage() {
     }
   };
 
+  const hasInput = tokenInput.trim().length > 0 || keyInput.trim().length > 0;
+
   return (
     <div
-      className="flex gap-4 p-4"
-      style={{ height: "calc(100dvh - var(--header-height) - 2rem)" }}
+      className="flex overflow-hidden"
+      style={{ height: "calc(100dvh - var(--header-height))" }}
     >
-      {/* ── Input panel ───────────────────────────────────────────────────── */}
-      <div className="flex flex-col w-1/2 gap-4 min-h-0">
+      {/* ── Left: input panel ─────────────────────────────────────────────── */}
+      <div className="flex flex-col w-[400px] flex-shrink-0 border-r min-h-0">
 
-        {/* Key input */}
-        <Card className="flex flex-col flex-1 min-h-0 overflow-hidden">
-          <CardHeader className="flex-shrink-0">
-            <CardTitle className="text-sm font-medium">Private / Symmetric Key</CardTitle>
-            <CardDescription>JWK or JWKS · optional for plain JWT</CardDescription>
-            <CardAction>
-              <KeyRound className="h-4 w-4 text-foreground/60" />
-            </CardAction>
-          </CardHeader>
-          <CardContent className="flex-1 min-h-0 p-0 overflow-hidden">
+        {/* Panel header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0">
+          <p className="text-sm font-medium">Input</p>
+          {hasInput && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-muted-foreground hover:text-foreground"
+              onClick={handleClear}
+            >
+              <X className="h-3.5 w-3.5" />
+              Clear
+            </Button>
+          )}
+        </div>
+
+        {/* Token + Key tabs */}
+        <Tabs defaultValue="token" className="flex flex-col flex-1 min-h-0">
+          <div className="px-4 pt-3 flex-shrink-0">
+            <TabsList className="w-full">
+              <TabsTrigger value="token" className="flex-1 gap-1.5">
+                Token
+                {tokenInput && (
+                  <Badge variant="secondary" className="h-4 px-1 text-[10px] font-normal">
+                    set
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="key" className="flex-1 gap-1.5">
+                Key
+                {keyInput && (
+                  <Badge variant="secondary" className="h-4 px-1 text-[10px] font-normal">
+                    set
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value="token" className="flex-1 min-h-0 mt-0 px-4 pb-0 pt-3 flex flex-col gap-2">
+            <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex-shrink-0">
+              JWE (5 parts) or plain JWT (3 parts)
+            </Label>
             <Textarea
-              placeholder={'Paste a JWK, JWKS, or leave empty for plain JWT\n\n{"kty":"RSA","d":"...","n":"...",...}\n{"keys":[{...},{...}]}'}
-              className="h-full rounded-none border-0 resize-none font-mono text-xs focus-visible:ring-0"
+              placeholder={"eyJhbGciOiJSU0EtT0FFUC0yNTYiLCJlbmMiOiJBMjU2R0NNIn0..."}
+              className="flex-1 resize-none font-mono text-xs min-h-0"
+              value={tokenInput}
+              onChange={(e) => setTokenInput(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") handleDecode();
+              }}
+            />
+          </TabsContent>
+
+          <TabsContent value="key" className="flex-1 min-h-0 mt-0 px-4 pb-0 pt-3 flex flex-col gap-2">
+            <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex-shrink-0">
+              JWK or JWKS — leave empty for plain JWT
+            </Label>
+            <Textarea
+              placeholder={'{\n  "kty": "RSA",\n  "d": "...",\n  "n": "..."\n}'}
+              className="flex-1 resize-none font-mono text-xs min-h-0"
               value={keyInput}
               onChange={(e) => setKeyInput(e.target.value)}
             />
-          </CardContent>
-        </Card>
+          </TabsContent>
+        </Tabs>
 
-        {/* Token input */}
-        <Card className="flex flex-col flex-1 min-h-0 overflow-hidden">
-          <CardHeader className="flex-shrink-0">
-            <CardTitle className="text-sm font-medium">Token</CardTitle>
-            <CardDescription>JWE (5 parts) or JWT (3 parts)</CardDescription>
-            <CardAction>
-              <FileJson className="h-4 w-4 text-foreground/60" />
-            </CardAction>
-          </CardHeader>
-          <CardContent className="flex-1 min-h-0 p-0 overflow-hidden">
-            <Textarea
-              placeholder="eyJhbGciOiJSU0EtT0FFUC0yNTYiLCJlbmMiOiJBMjU2R0NNIn0..."
-              className="h-full rounded-none border-0 resize-none font-mono text-xs focus-visible:ring-0"
-              value={tokenInput}
-              onChange={(e) => setTokenInput(e.target.value)}
-            />
-          </CardContent>
-        </Card>
+        <Separator className="flex-shrink-0" />
 
-        <Button onClick={handleDecode} disabled={isDecoding} className="ml-auto gap-1.5">
-          {isDecoding && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-          {isDecoding ? "Decoding…" : "Decode"}
-        </Button>
+        {/* Decode button */}
+        <div className="px-4 py-3 flex-shrink-0 space-y-2">
+          <Button
+            onClick={handleDecode}
+            disabled={isDecoding || !tokenInput.trim()}
+            className="w-full gap-2"
+          >
+            {isDecoding
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <Unlock className="h-4 w-4" />}
+            {isDecoding ? "Decoding…" : "Decode"}
+          </Button>
+          <p className="text-[10px] text-muted-foreground text-center">
+            or press <kbd className="font-mono">⌘ Enter</kbd> in the token field
+          </p>
+        </div>
       </div>
 
-      {/* ── Output panel ──────────────────────────────────────────────────── */}
-      <Card className="flex flex-col w-1/2 min-h-0 overflow-hidden">
-        <CardHeader className="flex-shrink-0">
-          <CardTitle className="text-sm font-medium">Decoded Output</CardTitle>
-          <CardAction>
-            <Lock className="h-4 w-4 text-foreground/60" />
-          </CardAction>
-        </CardHeader>
-
-        <CardContent className="flex-1 min-h-0 p-0 overflow-hidden">
-          {decodeError ? (
-            <div className="p-4">
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{decodeError}</AlertDescription>
-              </Alert>
-            </div>
-          ) : result ? (
-            <JweResultView result={result} />
-          ) : (
-            <JweEmptyState />
-          )}
-        </CardContent>
-      </Card>
+      {/* ── Right: output panel ────────────────────────────────────────────── */}
+      <div className="flex flex-col flex-1 min-h-0 min-w-0">
+        {decodeError ? (
+          <div className="p-6">
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{decodeError}</AlertDescription>
+            </Alert>
+          </div>
+        ) : result ? (
+          <JweResultView result={result} />
+        ) : (
+          <JweEmptyState />
+        )}
+      </div>
     </div>
   );
 }

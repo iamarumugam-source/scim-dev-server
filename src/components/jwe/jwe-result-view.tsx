@@ -1,6 +1,6 @@
 import { ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { CardContent, CardHeader } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { JsonViewer } from "@/components/json-viewer";
 
@@ -18,55 +18,61 @@ export function JweResultView({ result }: { result: DecryptResult }) {
   const hasJwsInner = isJwe && result.innerIsJwt;
   const defaultTab  = isJwe ? "jwe-header" : "header";
 
-  return (
-    <div className="flex flex-col h-full overflow-hidden">
+  const alg = isJwe
+    ? [
+        String((result.jweHeader as any)?.alg ?? ""),
+        (result.jweHeader as any)?.enc ? String((result.jweHeader as any).enc) : "",
+      ].filter(Boolean).join(" / ")
+    : String((result.header as any)?.alg ?? "");
 
-      {/* Meta row — type badge + algorithm info */}
-      <CardHeader className="flex-row items-center gap-2.5 px-4 py-2.5 space-y-0 border-b flex-shrink-0 bg-muted/30 dark:bg-white/[0.04]">
-        <Badge variant="secondary" className="text-xs font-semibold px-2">
+  return (
+    <div className="flex flex-col h-full min-h-0 overflow-hidden">
+
+      {/* ── Meta bar ────────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-2.5 px-4 py-2.5 flex-shrink-0 bg-muted/30 dark:bg-white/[0.04]">
+        <Badge variant={isJwe ? "default" : "secondary"} className="text-xs font-semibold">
           {isJwe ? "JWE" : "JWT"}
         </Badge>
-        {result.jweHeader && (
-          <span className="text-xs text-muted-foreground font-mono">
-            {String((result.jweHeader as any).alg ?? "")}
-            {(result.jweHeader as any).enc ? ` / ${(result.jweHeader as any).enc}` : ""}
-          </span>
+        {alg && (
+          <span className="text-xs text-muted-foreground font-mono">{alg}</span>
         )}
-        {!isJwe && result.header && (
-          <span className="text-xs text-muted-foreground font-mono">
-            {String((result.header as any).alg ?? "")}
-          </span>
-        )}
-        {isJwe && hasJwsInner && (
-          <span className="text-xs text-muted-foreground">contains JWT</span>
+        {hasJwsInner && (
+          <Badge variant="outline" className="text-[10px] font-normal">
+            contains JWT
+          </Badge>
         )}
         <ShieldCheck className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400 ml-auto" />
-      </CardHeader>
+      </div>
 
-      {/* Tabs */}
+      <Separator className="flex-shrink-0" />
+
+      {/* ── Tabs ────────────────────────────────────────────────────────── */}
       <Tabs defaultValue={defaultTab} className="flex flex-col flex-1 min-h-0">
-        <CardHeader className="flex-shrink-0 px-4 pt-3 pb-2 space-y-0 border-b">
-          <TabsList className="h-8">
+        <div className="px-4 pt-3 pb-2 flex-shrink-0">
+          <TabsList>
             {isJwe && (
-              <TabsTrigger value="jwe-header" className="text-xs px-3">JWE Header</TabsTrigger>
+              <TabsTrigger value="jwe-header" className="text-xs">JWE Header</TabsTrigger>
             )}
             {result.header && (
-              <TabsTrigger value="header" className="text-xs px-3">
+              <TabsTrigger value="header" className="text-xs">
                 {hasJwsInner ? "JWT Header" : "Header"}
               </TabsTrigger>
             )}
             {result.payload !== undefined && (
-              <TabsTrigger value="payload" className="text-xs px-3">
+              <TabsTrigger value="payload" className="text-xs">
                 {hasJwsInner ? "Claims" : "Payload"}
               </TabsTrigger>
             )}
             {result.raw && (
-              <TabsTrigger value="raw" className="text-xs px-3">Raw</TabsTrigger>
+              <TabsTrigger value="raw" className="text-xs">Raw</TabsTrigger>
             )}
           </TabsList>
-        </CardHeader>
+        </div>
 
-        <CardContent className="flex-1 overflow-auto min-h-0 p-4">
+        <Separator className="flex-shrink-0" />
+
+        {/* Tab content — scrollable */}
+        <div className="flex-1 overflow-auto min-h-0 p-4">
           {isJwe && result.jweHeader && (
             <TabsContent value="jwe-header" className="mt-0 h-full">
               <JsonViewer data={result.jweHeader} />
@@ -79,7 +85,13 @@ export function JweResultView({ result }: { result: DecryptResult }) {
           )}
           {result.payload !== undefined && (
             <TabsContent value="payload" className="mt-0 h-full">
-              <JsonViewer data={typeof result.payload === "object" ? result.payload : { value: result.payload }} />
+              <JsonViewer
+                data={
+                  typeof result.payload === "object"
+                    ? result.payload
+                    : { value: result.payload }
+                }
+              />
             </TabsContent>
           )}
           {result.raw && (
@@ -89,7 +101,7 @@ export function JweResultView({ result }: { result: DecryptResult }) {
               </pre>
             </TabsContent>
           )}
-        </CardContent>
+        </div>
       </Tabs>
     </div>
   );
