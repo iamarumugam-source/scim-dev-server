@@ -59,12 +59,15 @@ secrets:
 # ─────────────────────────────────────────────────────────────────────────────
 .PHONY: image-build
 image-build:
-	# `sg docker -c "..."` runs the command with the docker supplementary group
-	# active even if the runner service was started before the user was added to
-	# the group (which is the typical cause of "permission denied on docker socket"
-	# errors in self-hosted runners).
-	sg docker -c "docker build -t $(IMAGE):$(TAG) ."
-	sg docker -c "docker save $(IMAGE):$(TAG)" | microk8s ctr images import -
+	# Both docker and microk8s ctr need their respective group memberships.
+	# sg <group> -c "cmd" forces the group to be active even when the runner
+	# service was started before the user was added to that group.
+	# A temp file is used so the two sg contexts stay independent
+	# (piping between two sg invocations is unreliable).
+	sg docker    -c "docker build -t $(IMAGE):$(TAG) ."
+	sg docker    -c "docker save  -o /tmp/.scim-build.tar $(IMAGE):$(TAG)"
+	sg microk8s  -c "microk8s ctr images import /tmp/.scim-build.tar"
+	rm -f /tmp/.scim-build.tar
 
 # ─────────────────────────────────────────────────────────────────────────────
 # deploy
