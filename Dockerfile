@@ -15,6 +15,11 @@ ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# This image is always deployed in postgres mode — Supabase is only used on
+# Vercel.  Setting DB_PROVIDER=postgres here prevents db.ts from requiring
+# Supabase env vars at build time.
+ENV DB_PROVIDER=postgres
+
 # Bake a placeholder URL for NEXT_PUBLIC_* client-side substitution.
 # All server-side uses of NEXT_PUBLIC_BASE_URL read from the runtime env
 # (injected by the k8s ConfigMap), so this only matters for browser bundles.
