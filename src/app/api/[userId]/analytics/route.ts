@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/scim/db";
+import { AnalyticsService } from "@/lib/scim/services/analyticsService";
 
 interface RouteParams {
   params: { userId: string };
@@ -11,15 +11,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const body        = await request.json().catch(() => ({}));
     const path        = typeof body.path === "string" ? body.path : "/";
 
-    const { error } = await supabase.rpc("increment_page_view", {
-      p_tenant_id: userId,
-      p_path:      path,
-    });
-
-    if (error) {
-      // Fail silently — analytics should never break the app.
-      console.warn("[analytics] Could not record page view:", error.message);
-    }
+    const analyticsService = new AnalyticsService();
+    await analyticsService.recordPageView(userId, path);
 
     return NextResponse.json({ ok: true }, { status: 202 });
   } catch {

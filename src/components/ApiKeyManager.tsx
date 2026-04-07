@@ -198,7 +198,7 @@ export default function ApiKeyManager() {
         <div className="overflow-hidden rounded-lg border">
           <div className="overflow-x-auto">
             <Table className="min-w-[480px]">
-              <TableHeader className="bg-muted">
+              <TableHeader className="bg-muted dark:bg-white/[0.04]">
                 <TableRow>
                   <TableHead className="text-xs font-semibold uppercase tracking-wide">Name</TableHead>
                   <TableHead className="text-xs font-semibold uppercase tracking-wide">Prefix</TableHead>
@@ -229,7 +229,7 @@ export default function ApiKeyManager() {
                     <TableRow key={key.id} className="hover:bg-muted/40 transition-colors">
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                          <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground dark:bg-white/[0.08] dark:text-foreground/60">
                             <KeyRound className="h-3.5 w-3.5" />
                           </div>
                           <div className="min-w-0">

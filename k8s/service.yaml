@@ -1,0 +1,17 @@
+# ClusterIP service — used for kubectl port-forward and intra-cluster access.
+# External traffic reaches the app exclusively via the cloudflared sidecar tunnel.
+apiVersion: v1
+kind: Service
+metadata:
+  name: scim-dev
+  namespace: scim-dev
+  labels:
+    app: scim-dev
+spec:
+  selector:
+    app: scim-dev
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+  type: ClusterIP

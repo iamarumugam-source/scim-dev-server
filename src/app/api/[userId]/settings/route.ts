@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { supabase } from "@/lib/scim/db";
+import { SettingsService } from "@/lib/scim/services/settingsService";
 import { setCachedSettings } from "@/lib/tenant-settings";
 
 interface RouteParams {
@@ -12,16 +12,10 @@ interface RouteParams {
 export async function GET(_req: NextRequest, { params }: RouteParams) {
   const { userId } = await params;
 
-  const { data } = await supabase
-    .from("tenant_settings")
-    .select("rate_limit_enabled, rate_limit_max")
-    .eq("tenantId", userId)
-    .maybeSingle();
+  const settingsService = new SettingsService();
+  const { rateLimitEnabled, rateLimitMax } = await settingsService.getSettings(userId);
 
-  return NextResponse.json({
-    rateLimitEnabled: data?.rate_limit_enabled ?? true,
-    rateLimitMax:     data?.rate_limit_max     ?? 60,
-  });
+  return NextResponse.json({ rateLimitEnabled, rateLimitMax });
 }
 
 /** PUT /api/[userId]/settings — updates rate limit config (session required). */
@@ -33,19 +27,15 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await req.json();
+  const body         = await req.json();
   const enabled      = Boolean(body.rateLimitEnabled);
   const maxPerMinute = Math.max(1, Math.min(10_000, Number(body.rateLimitMax) || 60));
 
-  const { error } = await supabase
-    .from("tenant_settings")
-    .upsert(
-      { tenantId: userId, rate_limit_enabled: enabled, rate_limit_max: maxPerMinute },
-      { onConflict: "tenantId" },
-    );
-
-  if (error) {
-    return NextResponse.json({ detail: error.message }, { status: 500 });
+  const settingsService = new SettingsService();
+  try {
+    await settingsService.updateSettings(userId, enabled, maxPerMinute);
+  } catch (err: any) {
+    return NextResponse.json({ detail: err.message }, { status: 500 });
   }
 
   // Update Node.js runtime cache immediately so the dashboard reflects the change

@@ -3,8 +3,8 @@
 import { CopyButton } from "./copy-button";
 
 const METHOD_STYLE: Record<"GET" | "POST", string> = {
-  GET:  "bg-muted text-muted-foreground border-r-border",
-  POST: "bg-muted text-muted-foreground border-r-border",
+  GET:  "bg-muted text-muted-foreground border-r-border dark:bg-white/[0.08] dark:text-foreground/70",
+  POST: "bg-muted text-muted-foreground border-r-border dark:bg-white/[0.08] dark:text-foreground/70",
 };
 
 interface EndpointFieldProps {

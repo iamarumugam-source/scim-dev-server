@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { supabase } from "@/lib/scim/db";
 import { faker } from "@faker-js/faker";
 import { ScimUser, ScimGroup, ScimEntitlement, ScimRole } from "@/lib/scim/models/scimSchemas";
+import { GenerateService } from "@/lib/scim/services/generateService";
 
 interface RouteParams {
   params: { userId: string };
@@ -72,31 +72,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     let body: any = {};
     try { body = await request.json(); } catch {}
 
-    const deleteExisting      = body.deleteExisting      === true;
-    const generateUsers       = body.generateUsers       !== false; // default true
-    const generateGroups      = body.generateGroups      !== false;
+    const deleteExisting       = body.deleteExisting       === true;
+    const generateUsers        = body.generateUsers        !== false;
+    const generateGroups       = body.generateGroups       !== false;
     const generateEntitlements = body.generateEntitlements !== false;
-    const generateRoles       = body.generateRoles       !== false;
-    const userCount           = typeof body.userCount  === "number" ? Math.min(body.userCount, 1000) : 20;
-    const groupCount          = typeof body.groupCount === "number" ? Math.min(body.groupCount, 100) : 5;
+    const generateRoles        = body.generateRoles        !== false;
+    const userCount            = typeof body.userCount  === "number" ? Math.min(body.userCount, 1000) : 20;
+    const groupCount           = typeof body.groupCount === "number" ? Math.min(body.groupCount, 100) : 5;
+
+    const generateService = new GenerateService();
 
     if (deleteExisting) {
-      const { error: er } = await supabase.from("scim_roles").delete().eq("tenantId", userId);
-      if (er) throw new Error(`Failed to delete roles: ${er.message}`);
-      const { error: ee } = await supabase.from("scim_entitlements").delete().eq("tenantId", userId);
-      if (ee) throw new Error(`Failed to delete entitlements: ${ee.message}`);
-      const { error: eg } = await supabase.from("scim_groups").delete().eq("tenantId", userId);
-      if (eg) throw new Error(`Failed to delete groups: ${eg.message}`);
-      const { error: eu } = await supabase.from("scim_users").delete().eq("tenantId", userId);
-      if (eu) throw new Error(`Failed to delete users: ${eu.message}`);
+      await generateService.deleteExistingData(userId);
     }
 
     let existingUsers: ScimUser[] = [];
     if (!deleteExisting) {
-      const { data, error } = await supabase.from("scim_users").select("resource").eq("tenantId", userId);
-      if (error) throw new Error(`Failed to fetch existing users: ${error.message}`);
-      existingUsers = (data?.map((u) => u.resource) || []) as ScimUser[];
-      existingUsers.forEach((u) => { if (!u.groups) u.groups = []; });
+      existingUsers = await generateService.getExistingUsers(userId);
     }
 
     const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
@@ -143,26 +135,20 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Pre-populate usedNames with existing group names for this tenant
-    // so the generation loop never picks a name that would violate the unique constraint.
-    const { data: existingGroupRows } = await supabase
-      .from("scim_groups")
-      .select("display_name")
-      .eq("tenantId", userId);
-    const usedNames = new Set<string>(
-      (existingGroupRows ?? []).map((r: any) => r.display_name as string),
-    );
+    const existingGroupNames = await generateService.getExistingGroupNames(userId);
+    const usedNames = new Set<string>(existingGroupNames);
 
     const groups: ScimGroup[] = [];
     for (let i = 0; i < actualGroupCount; i++) {
       let name: string;
       let attempts = 0;
       do {
-        const dept = faker.helpers.arrayElement(DEPARTMENTS);
+        const dept   = faker.helpers.arrayElement(DEPARTMENTS);
         const suffix = faker.helpers.arrayElement(["Team", "Group", "Squad", "Chapter"]);
         name = `${dept} ${suffix}`;
         attempts++;
       } while (usedNames.has(name) && attempts < 50);
-      if (usedNames.has(name)) continue; // all combinations exhausted — skip
+      if (usedNames.has(name)) continue;
       usedNames.add(name);
 
       const id  = faker.string.uuid();
@@ -249,7 +235,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Generate roles from catalog
-    const roleCount    = generateRoles ? faker.number.int({ min: 3, max: ROLES_CATALOG.length }) : 0;
+    const roleCount     = generateRoles ? faker.number.int({ min: 3, max: ROLES_CATALOG.length }) : 0;
     const selectedRoles = faker.helpers.shuffle([...ROLES_CATALOG]).slice(0, roleCount);
     const roles: ScimRole[] = selectedRoles.map((r) => {
       const id  = faker.string.uuid();
@@ -281,41 +267,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       });
     }
 
-    if (users.length > 0) {
-      const { error } = await supabase.from("scim_users").insert(
-        users.map((u) => ({ id: u.id, username: u.userName, active: u.active, resource: u, tenantId: userId }))
-      );
-      if (error) throw new Error(`User insertion failed: ${error.message}`);
-    }
-
-    if (existingUsers.length > 0) {
-      const { error } = await supabase.from("scim_users").upsert(
-        existingUsers.map((u) => ({ id: u.id, username: u.userName, active: u.active, resource: u, tenantId: userId })),
-        { onConflict: "id" }
-      );
-      if (error) throw new Error(`Existing user update failed: ${error.message}`);
-    }
-
-    if (groups.length > 0) {
-      const { error } = await supabase.from("scim_groups").insert(
-        groups.map((g) => ({ id: g.id, display_name: g.displayName, resource: g, tenantId: userId }))
-      );
-      if (error) throw new Error(`Group insertion failed: ${error.message}`);
-    }
-
-    if (entitlements.length > 0) {
-      const { error } = await supabase.from("scim_entitlements").insert(
-        entitlements.map((e) => ({ id: e.id, display_name: e.displayName, resource: e, tenantId: userId }))
-      );
-      if (error) throw new Error(`Entitlement insertion failed: ${error.message}`);
-    }
-
-    if (roles.length > 0) {
-      const { error } = await supabase.from("scim_roles").insert(
-        roles.map((r) => ({ id: r.id, display_name: r.displayName, resource: r, tenantId: userId }))
-      );
-      if (error) throw new Error(`Role insertion failed: ${error.message}`);
-    }
+    await generateService.persistGenerated(userId, users, existingUsers, groups, entitlements, roles);
 
     return NextResponse.json({
       message: `Generated ${users.length} users, ${groups.length} groups, ${entitlements.length} entitlements, and ${roles.length} roles. Updated ${existingUsers.length} existing users.`,

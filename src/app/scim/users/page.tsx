@@ -191,7 +191,7 @@ export default function UsersPage() {
           <motion.div key="loading" className="space-y-3" exit={{ opacity: 0, transition: { duration: 0.15 } }}>
             <div className="overflow-hidden rounded-lg border">
               <Table>
-                <TableHeader className="bg-muted">
+                <TableHeader className="bg-muted dark:bg-white/[0.04]">
                   <TableRow>
                     <TableHead className="w-9" />
                     <TableHead className="text-xs font-semibold uppercase tracking-wide">User</TableHead>

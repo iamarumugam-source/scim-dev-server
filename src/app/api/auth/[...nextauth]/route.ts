@@ -2,22 +2,16 @@ import NextAuth from "next-auth";
 import OktaProvider from "next-auth/providers/okta";
 import { AuthOptions } from "next-auth";
 
-if (
-  !process.env.OKTA_CLIENT_ID ||
-  !process.env.OKTA_CLIENT_SECRET ||
-  !process.env.OKTA_ISSUER
-) {
-  throw new Error(
-    "Okta environment variables are not set. Please check your .env.local file."
-  );
-}
-
+// Okta vars are injected at runtime (k8s ConfigMap + Secret in k8s deployments,
+// .env.local on Vercel).  Removing the module-level throw lets Next.js build
+// the bundle without any env vars present — the handler will fail gracefully at
+// request time if the values are genuinely missing.
 export const authOptions: AuthOptions = {
   providers: [
     OktaProvider({
-      clientId: process.env.OKTA_CLIENT_ID,
-      clientSecret: process.env.OKTA_CLIENT_SECRET,
-      issuer: process.env.OKTA_ISSUER,
+      clientId:     process.env.OKTA_CLIENT_ID     ?? "",
+      clientSecret: process.env.OKTA_CLIENT_SECRET ?? "",
+      issuer:       process.env.OKTA_ISSUER        ?? "",
       authorization: {
         params: {
           scope: "openid profile email",

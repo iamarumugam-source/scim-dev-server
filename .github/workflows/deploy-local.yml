@@ -1,0 +1,39 @@
+name: Deploy to local microk8s
+
+on:
+  push:
+    branches:
+      - feat/postgres-provider
+      - master
+
+# Only one deploy at a time. If a new push arrives while a deploy is running,
+# cancel the in-progress run and start fresh with the latest code.
+concurrency:
+  group: deploy-local
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Copy the secrets file from its stable location outside the repo.
+      # This file is never committed — it lives only on this machine.
+      - name: Restore secrets
+        run: cp ~/.scim-dev/.env.k8s.local .env.k8s.local
+
+      # Build the Docker image and import it into microk8s containerd.
+      - name: Build image
+        run: make image-build
+
+      # Apply secrets + configmap check + kubectl apply + rollout wait.
+      - name: Deploy
+        run: make deploy
+
+      # CREATE TABLE IF NOT EXISTS is idempotent — safe to run every time.
+      # Picks up any new tables added by migrations automatically.
+      - name: Apply DB schema
+        run: make db-init
