@@ -15,11 +15,29 @@ spec:
       labels:
         app: scim-dev
     spec:
+      # ── init: wait for postgres before starting the app ───────────────────────
+      # Loops until the postgres Service's port 5432 is accepting connections.
+      # Prevents the app from crashing on startup if postgres hasn't finished
+      # initialising its data directory yet.
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for postgres:5432..."
+              until nc -z postgres 5432; do
+                sleep 2
+              done
+              echo "postgres is up."
+
       # ── app container ────────────────────────────────────────────────────────
       containers:
         - name: app
-          # Built directly into minikube's Docker daemon with `make image-build`.
-          # Never pull from a registry — image exists only in minikube's daemon.
+          # Imported into microk8s containerd with `make image-build`
+          # (docker build → docker save → microk8s ctr images import).
+          # Never pull from a registry — image lives only in local containerd.
           image: scim-dev-server:latest
           imagePullPolicy: Never
           ports:

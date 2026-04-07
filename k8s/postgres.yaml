@@ -1,0 +1,100 @@
+# ── In-cluster PostgreSQL ─────────────────────────────────────────────────────
+# Single-replica StatefulSet with a PVC for data persistence.
+# The app connects via the ClusterIP Service:
+#   postgresql://postgres:<pw>@postgres:5432/scim_dev
+# ─────────────────────────────────────────────────────────────────────────────
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: scim-dev
+  labels:
+    app: postgres
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+  type: ClusterIP
+
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: scim-dev
+  labels:
+    app: postgres
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+
+          env:
+            - name: POSTGRES_DB
+              value: scim_dev
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: scim-dev-secrets
+                  key: POSTGRES_PASSWORD
+            # PGDATA must be a sub-directory of the mount — postgres refuses to
+            # initialise if the target directory is a raw volume root.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres", "-d", "scim_dev"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 5
+
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres", "-d", "scim_dev"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+
+  # volumeClaimTemplates lets the StatefulSet manage the PVC lifecycle.
+  # The resulting PVC is named: postgres-data-postgres-0
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 2Gi
+        # Uses microk8s's default storage class.
+        # Run `microk8s enable hostpath-storage` once if the PVC stays Pending.
