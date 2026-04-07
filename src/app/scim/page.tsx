@@ -525,7 +525,7 @@ export default function ScimDashboard() {
                           <>
                             <Badge
                               variant="outline"
-                              className="bg-muted text-muted-foreground border-border"
+                              className="bg-muted text-muted-foreground border-border dark:bg-white/[0.06] dark:border-white/15"
                             >
                               Disabled
                             </Badge>
@@ -543,7 +543,7 @@ export default function ScimDashboard() {
                         <>
                           <Badge
                             variant="outline"
-                            className="bg-primary/10 text-primary border-primary/30"
+                            className="bg-primary/10 text-primary border-primary/30 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-700/50"
                           >
                             {limit} req / min
                           </Badge>
@@ -582,10 +582,10 @@ export default function ScimDashboard() {
                             className={cn(
                               "w-full justify-center text-xs font-medium py-1.5",
                               atLimit || blocked > 0
-                                ? "bg-destructive/10 text-destructive border-destructive/30"
+                                ? "bg-destructive/10 text-destructive border-destructive/30 dark:bg-destructive/20"
                                 : nearLimit
-                                  ? "bg-amber-500/10 text-amber-600 border-amber-500/30"
-                                  : "bg-muted text-foreground/70 border-border",
+                                  ? "bg-amber-500/10 text-amber-600 border-amber-500/30 dark:text-amber-400 dark:border-amber-500/40"
+                                  : "bg-muted text-foreground/70 border-border dark:bg-white/[0.06] dark:text-foreground/80 dark:border-white/15",
                             )}
                           >
                             {atLimit || blocked > 0 ? "Rate limited"

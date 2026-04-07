@@ -9,6 +9,7 @@ import { useSession } from "next-auth/react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { JsonViewer } from "@/components/json-viewer";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableCell,
@@ -34,23 +35,23 @@ const rowVariants  = {
 
 const PAGE_SIZE = 20;
 
-function getMethodClass(method: string): string {
+function getMethodBadgeClass(method: string): string {
   switch (method?.toUpperCase()) {
-    case "GET":    return "text-primary";
-    case "POST":   return "text-foreground/80";
+    case "GET":    return "bg-blue-50   text-blue-600   border-blue-200   dark:bg-blue-900/30   dark:text-blue-300   dark:border-blue-700/40";
+    case "POST":   return "bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700/40";
     case "PUT":
-    case "PATCH":  return "text-foreground/70";
-    case "DELETE": return "text-destructive";
-    default:       return "text-muted-foreground";
+    case "PATCH":  return "bg-amber-50  text-amber-600  border-amber-200  dark:bg-amber-900/30  dark:text-amber-300  dark:border-amber-700/40";
+    case "DELETE": return "bg-red-50    text-red-600    border-red-200    dark:bg-red-900/30    dark:text-red-300    dark:border-red-700/40";
+    default:       return "text-muted-foreground border-border";
   }
 }
 
-function getStatusClass(status: number): string {
-  if (status >= 500) return "text-destructive font-semibold";
-  if (status >= 400) return "text-destructive/80";
-  if (status >= 300) return "text-muted-foreground";
-  if (status >= 200) return "text-foreground/80";
-  return "text-muted-foreground";
+function getStatusBadgeClass(status: number): string {
+  if (status >= 500) return "bg-red-50    text-red-600    border-red-200    dark:bg-red-900/30    dark:text-red-300    dark:border-red-700/40";
+  if (status >= 400) return "bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-700/40";
+  if (status >= 300) return "bg-amber-50  text-amber-600  border-amber-200  dark:bg-amber-900/30  dark:text-amber-300  dark:border-amber-700/40";
+  if (status >= 200) return "bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700/40";
+  return "text-muted-foreground border-border";
 }
 
 function getRowClass(status: number): string {
@@ -216,7 +217,7 @@ const LogViewer: FC = () => {
       <div className="overflow-hidden rounded-lg border">
         <div className="overflow-x-hidden">
           <Table className="min-w-[600px] table-fixed w-full">
-            <TableHeader className="bg-muted">
+            <TableHeader className="bg-muted dark:bg-white/[0.04]">
               <TableRow>
                 <TableHead className="w-9" />
                 <TableHead className="text-xs font-semibold uppercase tracking-wide w-20">Method</TableHead>
@@ -271,12 +272,16 @@ const LogViewer: FC = () => {
                             : <ChevronRight className="h-4 w-4" />}
                         </TableCell>
 
-                        <TableCell className={cn("font-mono text-xs font-semibold", getMethodClass(log.log_data.method))}>
-                          {safeString(log.log_data.method)}
+                        <TableCell>
+                          <Badge variant="outline" className={cn("font-mono text-[10px] font-bold px-1.5 py-px", getMethodBadgeClass(log.log_data.method))}>
+                            {safeString(log.log_data.method)}
+                          </Badge>
                         </TableCell>
 
-                        <TableCell className={cn("font-mono text-xs font-semibold tabular-nums", getStatusClass(status))}>
-                          {status ?? "—"}
+                        <TableCell>
+                          <Badge variant="outline" className={cn("font-mono text-[10px] font-semibold tabular-nums px-1.5 py-px", getStatusBadgeClass(status))}>
+                            {status ?? "—"}
+                          </Badge>
                         </TableCell>
 
                         <TableCell className="font-mono text-xs text-foreground/80 truncate max-w-[240px]">

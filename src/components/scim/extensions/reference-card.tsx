@@ -26,7 +26,7 @@ const FAKER_BY_CATEGORY = FAKER_GENERATORS.reduce<Record<string, typeof FAKER_GE
 
 function Token({ value }: { value: string }) {
   return (
-    <code className="text-[10px] font-mono px-1 py-0.5 rounded bg-primary/5 text-primary">
+    <code className="text-[10px] font-mono px-1 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700/40">
       {`{{${value}}}`}
     </code>
   );
@@ -58,7 +58,7 @@ export function ReferenceCard() {
             <AccordionContent className="pt-1 pb-5">
               <div className="rounded-md border border-border overflow-hidden">
                 <Table>
-                  <TableHeader className="bg-muted">
+                  <TableHeader className="bg-muted dark:bg-white/[0.04]">
                     <TableRow>
                       <TableHead className="text-[10px] font-semibold uppercase tracking-wide w-1/3">Expression</TableHead>
                       <TableHead className="text-[10px] font-semibold uppercase tracking-wide">Description</TableHead>
@@ -116,7 +116,7 @@ export function ReferenceCard() {
                   href="https://fakerjs.dev/api/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline font-medium"
+                  className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline font-medium dark:text-blue-400"
                 >
                   <ExternalLink className="h-3 w-3" />
                   Full Faker.js API reference
@@ -129,7 +129,7 @@ export function ReferenceCard() {
         </Accordion>
 
         {/* How it works */}
-        <div className="rounded-md bg-muted/30 border border-border/60 p-3 space-y-1.5 text-xs text-muted-foreground">
+        <div className="rounded-md bg-muted/30 border border-border/60 p-3 space-y-1.5 text-xs text-muted-foreground dark:bg-white/[0.04] dark:border-white/10">
           <p className="font-semibold text-foreground text-[11px] uppercase tracking-wide">How it works</p>
           <ul className="space-y-1 ml-3 list-disc">
             <li><strong className="text-foreground">User Property</strong> — reads the value from the SCIM user at request time</li>
