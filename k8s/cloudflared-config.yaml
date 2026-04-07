@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudflared-config
+  namespace: scim-dev
+data:
+  config.yaml: |
+    # The tunnel ID and credentials come from TUNNEL_TOKEN (set in the Secret).
+    # This file only needs to declare where to route inbound traffic.
+    ingress:
+      - service: http://localhost:3000

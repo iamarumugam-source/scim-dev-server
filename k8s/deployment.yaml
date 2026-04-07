@@ -76,17 +76,18 @@ spec:
               cpu: "500m"
 
       # ── cloudflared sidecar ──────────────────────────────────────────────────
-      # Both containers share the same network namespace. cloudflared reaches
-      # the Next.js app at http://localhost:3000 — no intra-cluster Service
-      # needed for the tunnel itself.
+      # Both containers share the same network namespace, so cloudflared reaches
+      # the Next.js app at http://localhost:3000.
       #
-      # Pre-requisite: in the Cloudflare Zero Trust dashboard the tunnel's
-      # public hostname rule must point to:
-      #   Service type: HTTP   URL: localhost:3000
+      # Routing is declared in the cloudflared-config ConfigMap (ingress rule
+      # pointing at localhost:3000).  The TUNNEL_TOKEN Secret supplies the tunnel
+      # credentials — no dashboard public-hostname rule is required.
         - name: cloudflared
           image: cloudflare/cloudflared:2025.4.0
           args:
             - tunnel
+            - --config
+            - /etc/cloudflared/config.yaml
             - --no-autoupdate
             # metrics server: /ready (tunnel connected) + /metrics (Prometheus)
             - --metrics
@@ -103,6 +104,11 @@ spec:
             - name: metrics
               containerPort: 2000
 
+          volumeMounts:
+            - name: cloudflared-config
+              mountPath: /etc/cloudflared
+              readOnly: true
+
           # /ready returns 200 once cloudflared has an active tunnel connection.
           readinessProbe:
             httpGet:
@@ -112,7 +118,6 @@ spec:
             periodSeconds: 5
             failureThreshold: 3
 
-          # /healthz is a basic alive check (process up, not necessarily connected).
           livenessProbe:
             httpGet:
               path: /ready
@@ -128,3 +133,9 @@ spec:
             limits:
               memory: "128Mi"
               cpu: "100m"
+
+      # ── volumes ──────────────────────────────────────────────────────────────
+      volumes:
+        - name: cloudflared-config
+          configMap:
+            name: cloudflared-config

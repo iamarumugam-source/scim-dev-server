@@ -8,6 +8,7 @@ resources:
   # secret.yaml is intentionally absent — the Secret is created by `make secrets`
   # from .env.k8s.local so credentials never touch a committed file.
   - configmap.yaml
+  - cloudflared-config.yaml
   - postgres.yaml
   - deployment.yaml
   - service.yaml
