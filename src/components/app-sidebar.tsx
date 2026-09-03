@@ -1,20 +1,14 @@
 "use client";
 import {
+  UserRound,
   UsersRound,
-  Boxes,
-  BuildingIcon,
   ChevronRight,
-  ShieldCheck,
   ScanSearch,
   KeyRound,
-  FlaskConical,
-  Fingerprint,
   LayoutDashboard,
   ChartNoAxesCombined,
-  Webhook,
   ScrollText,
   Puzzle,
-  Activity,
   LockKeyhole,
   BookOpen,
   WandSparkles,
@@ -30,7 +24,6 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-import { IconDashboard, IconLogs } from "@tabler/icons-react";
 import Image from "next/image";
 import {
   Sidebar,
@@ -98,7 +91,7 @@ const FormSchema = z.object({
   generateGroups: z.boolean(),
   generateEntitlements: z.boolean(),
   generateRoles: z.boolean(),
-  userCount: z.transform(Number).pipe(z.number().min(1).max(1000)),
+  userCount: z.transform(Number).pipe(z.number().min(1).max(5000)),
   groupCount: z.transform(Number).pipe(z.number().min(1).max(50)),
   deleteExisting: z.boolean(),
 });
@@ -106,9 +99,9 @@ const FormSchema = z.object({
 // Menu items.
 const items = [
   { title: "Dashboard", url: "/scim", icon: ChartNoAxesCombined },
-  { title: "API", url: "/scim/keys", icon: Webhook },
-  { title: "Users", url: "/scim/users", icon: UsersRound },
-  { title: "Groups", url: "/scim/groups", icon: Boxes },
+  { title: "API", url: "/scim/keys", icon: KeyRound },
+  { title: "Users", url: "/scim/users", icon: UserRound },
+  { title: "Groups", url: "/scim/groups", icon: UsersRound },
   { title: "Entitlements", url: "/scim/entitlements", icon: BadgeCheck },
   { title: "Roles", url: "/scim/roles", icon: Crown },
   { title: "Logs", url: "/scim/logs", icon: ScrollText },
@@ -317,12 +310,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarGroup>
           <SidebarGroupContent className="flex flex-col gap-2">
             <SidebarMenu>
-              <SidebarMenuItem className="flex items-center gap-2">
+              <SidebarMenuItem className="flex items-center gap-2 min-w-0">
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
                     <SidebarMenuButton
                       tooltip="Generate Mock"
-                      className="cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground dark:text-sidebar-accent-foreground dark:hover:text-sidebar-accent-foreground dark:active:text-sidebar-accent-foreground min-w-8 duration-200 ease-linear"
+                      className="cursor-pointer flex-1 min-w-0 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground dark:text-sidebar-accent-foreground dark:hover:text-sidebar-accent-foreground dark:active:text-sidebar-accent-foreground duration-200 ease-linear"
                     >
                       <WandSparkles />
                       <span>Generate Mock</span>
@@ -378,8 +371,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                                   type="number"
                                                   value={f.value}
                                                   min={1}
-                                                  max={1000}
-                                                  onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) f.onChange(Math.min(1000, Math.max(1, v))); }}
+                                                  max={5000}
+                                                  onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) f.onChange(Math.min(5000, Math.max(1, v))); }}
                                                   className="w-12 text-sm tabular-nums font-medium text-center bg-transparent outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                 />
                                                 <div className="w-px self-stretch bg-border" />
@@ -387,7 +380,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                                   <Minus className="h-3.5 w-3.5" />
                                                 </button>
                                                 <div className="w-px self-stretch bg-border" />
-                                                <button type="button" className="h-full w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => f.onChange(Math.min(1000, Number(f.value) + 1))}>
+                                                <button type="button" className="h-full w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => f.onChange(Math.min(5000, Number(f.value) + 1))}>
                                                   <Plus className="h-3.5 w-3.5" />
                                                 </button>
                                               </div>
@@ -554,7 +547,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <DialogTrigger asChild>
                     <SidebarMenuButton
                       tooltip="Reset Data"
-                      className="cursor-pointer size-8 group-data-[collapsible=icon]:opacity-0 border justify-center text-muted-foreground hover:text-destructive hover:border-destructive/50 hover:bg-destructive/10 transition-colors"
+                      className="cursor-pointer size-8 shrink-0 group-data-[collapsible=icon]:hidden border justify-center text-muted-foreground hover:text-destructive hover:border-destructive/50 hover:bg-destructive/10 transition-colors"
                       variant="outline"
                     >
                       <Eraser />

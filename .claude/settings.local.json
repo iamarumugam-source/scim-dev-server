@@ -1,7 +1,19 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:developer.okta.com)"
+      "WebFetch(domain:developer.okta.com)",
+      "Bash(rtk grep *)",
+      "Bash(rtk git *)",
+      "Bash(npm run *)",
+      "Bash(disown)",
+      "Read(//tmp/**)",
+      "Bash(curl -sk -D - -o /dev/null http://localhost:3000/scim)",
+      "Bash(command -v nvm)",
+      "Bash(command -v fnm)",
+      "Bash(command -v n)",
+      "Bash(rtk ls *)",
+      "Read(//Users/arumugam/development/har-electron-demo/**)",
+      "Bash(rtk read *)"
     ]
   }
 }
