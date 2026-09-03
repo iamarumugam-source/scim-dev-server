@@ -77,7 +77,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const generateGroups       = body.generateGroups       !== false;
     const generateEntitlements = body.generateEntitlements !== false;
     const generateRoles        = body.generateRoles        !== false;
-    const userCount            = typeof body.userCount  === "number" ? Math.min(body.userCount, 1000) : 20;
+    const userCount            = typeof body.userCount  === "number" ? Math.min(body.userCount, 5000) : 20;
     const groupCount           = typeof body.groupCount === "number" ? Math.min(body.groupCount, 100) : 5;
 
     const generateService = new GenerateService();
