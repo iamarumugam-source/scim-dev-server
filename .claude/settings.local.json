@@ -13,7 +13,9 @@
       "Bash(command -v n)",
       "Bash(rtk ls *)",
       "Read(//Users/arumugam/development/har-electron-demo/**)",
-      "Bash(rtk read *)"
+      "Bash(rtk read *)",
+      "Bash(mkdir -p tmp_migrations)",
+      "Bash(cp supabase/migrations/*.sql tmp_migrations/)"
     ]
   }
 }
