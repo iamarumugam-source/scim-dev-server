@@ -36,8 +36,3 @@ jobs:
       # Apply secrets + configmap check + kubectl apply + rollout wait.
       - name: Deploy
         run: make deploy
-
-      # CREATE TABLE IF NOT EXISTS is idempotent — safe to run every time.
-      # Picks up any new tables added by migrations automatically.
-      - name: Apply DB schema
-        run: make db-init
