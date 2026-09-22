@@ -1,5 +1,8 @@
 import { getPool } from "../../db-postgres";
 
+// 7 days to chart plus the 7 before, so the caller can compute a WoW delta.
+export const DAILY_WINDOW = 14;
+
 export interface StatsRawData {
   logs: Array<{ log_data: unknown; response: unknown; created_at: string }>;
   totalCalls: number;
@@ -7,6 +10,11 @@ export interface StatsRawData {
   // keeps this shape identical to the supabase implementation.
   totalUsers: number;
   activeUsers: number;
+  // Exact per-day call counts, oldest → newest, length DAILY_WINDOW.
+  // Must NOT be derived from the `logs` sample above — see the note in the
+  // supabase implementation: sampling by recency makes a time series wrong,
+  // not merely imprecise.
+  dailyCounts: Array<{ date: string; count: number }>;
   totalGroups: number;
   totalKeys: number;
   analytics: Array<{ path: string; count: number }>;
@@ -30,6 +38,7 @@ export class StatsService {
       totalEntitlementsResult,
       totalRolesResult,
       settingsResult,
+      dailyCountsResult,
     ] = await Promise.all([
       pool.query(
         `SELECT log_data, response, created_at
@@ -75,6 +84,25 @@ export class StatsService {
         'SELECT rate_limit_enabled, rate_limit_max FROM tenant_settings WHERE "tenantId" = $1',
         [userId],
       ),
+      // Native SQL can GROUP BY, so one query does what the supabase path needs
+      // 14 parallel counts for. generate_series keeps zero-traffic days present
+      // instead of absent, so the chart has no gaps.
+      pool.query(
+        `SELECT to_char(d.day, 'YYYY-MM-DD') AS date,
+                COUNT(l.id)::int            AS count
+           FROM generate_series(
+                  (CURRENT_DATE - ($2::int - 1)),
+                  CURRENT_DATE,
+                  INTERVAL '1 day'
+                ) AS d(day)
+           LEFT JOIN scim_logs l
+                  ON l."tenantId" = $1
+                 AND l.created_at >= d.day
+                 AND l.created_at <  d.day + INTERVAL '1 day'
+          GROUP BY d.day
+          ORDER BY d.day ASC`,
+        [userId, DAILY_WINDOW],
+      ),
     ]);
 
     return {
@@ -82,6 +110,7 @@ export class StatsService {
       totalCalls:        totalCallsResult.rows[0]?.cnt ?? 0,
       totalUsers:        totalUsersResult.rows[0]?.cnt  ?? 0,
       activeUsers:       activeUsersResult.rows[0]?.cnt ?? 0,
+      dailyCounts:       dailyCountsResult.rows as StatsRawData["dailyCounts"],
       totalGroups:       totalGroupsResult.rows[0]?.cnt ?? 0,
       totalKeys:         totalKeysResult.rows[0]?.cnt ?? 0,
       analytics:         analyticsResult.rows as StatsRawData["analytics"],

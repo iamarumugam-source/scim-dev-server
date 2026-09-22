@@ -19,6 +19,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       totalCalls,
       totalUsers,
       activeUsers,
+      dailyCounts,
       totalGroups,
       totalKeys,
       analytics,
@@ -29,17 +30,35 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // ── Call stats ──────────────────────────────────────────────────────────
 
-    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    // Exact per-day counts straight from the DB. `dailyCounts` covers 14 days
+    // oldest→newest: the trailing 7 are charted, the leading 7 give the
+    // week-over-week comparison. Both are exact, unlike anything derived from
+    // the 1000-row `logs` sample below.
+    const thisWeek = dailyCounts.slice(-7);
+    const prevWeek = dailyCounts.slice(0, dailyCounts.length - 7);
+    const sum = (xs: { count: number }[]) => xs.reduce((a, x) => a + x.count, 0);
+
+    const last7daysCalls = sum(thisWeek);
+    const prev7daysCalls = sum(prevWeek);
+    // null when there is no prior traffic to compare against — rendering "+100%"
+    // off a zero baseline would be noise, not information.
+    const weekOverWeek = prev7daysCalls > 0
+      ? ((last7daysCalls - prev7daysCalls) / prev7daysCalls) * 100
+      : null;
+
+    const dailyVolume = thisWeek.map((d) => ({
+      date:  d.date,
+      label: new Date(`${d.date}T00:00:00`).toLocaleDateString("en", { weekday: "short" }),
+      count: d.count,
+    }));
 
     let success = 0, clientErrors = 0, serverErrors = 0, redirects = 0;
-    let last7daysCalls = 0;
 
     const byMethod: Record<string, number> = {};
     const endpointCounts: Record<string, number> = {};
 
     for (const log of logs) {
       const status   = (log.response as any)?.status?.status ?? 0;
-      const ts       = log.created_at ? new Date(log.created_at).getTime() : 0;
       const method   = (log.log_data as any)?.method ?? "UNKNOWN";
       const rawUrl   = (log.log_data as any)?.url ?? "";
 
@@ -47,8 +66,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       else if (status >= 400)  clientErrors++;
       else if (status >= 300)  redirects++;
       else if (status >= 200)  success++;
-
-      if (ts >= sevenDaysAgo) last7daysCalls++;
 
       byMethod[method] = (byMethod[method] ?? 0) + 1;
 
@@ -62,23 +79,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       ? Math.round(((clientErrors + serverErrors) / logs.length) * 1000) / 10
       : 0;
 
-    // Daily call volume — last 7 days
-    const dailyVolume = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (6 - i));
-      d.setHours(0, 0, 0, 0);
-      const nextD = new Date(d);
-      nextD.setDate(nextD.getDate() + 1);
-      const count = logs.filter((l) => {
-        const t = l.created_at ? new Date(l.created_at).getTime() : 0;
-        return t >= d.getTime() && t < nextD.getTime();
-      }).length;
-      return {
-        date:  d.toISOString().split("T")[0],
-        label: d.toLocaleDateString("en", { weekday: "short" }),
-        count,
-      };
-    });
+    // dailyVolume is built above from exact DB counts. It used to be derived by
+    // filtering the 1000-row `logs` sample, which silently drew a cliff to zero
+    // for any day older than the sample window — on a busy tenant that meant
+    // most of the week reading as no traffic.
 
     // Top 5 endpoints by call count
     const topEndpoints = Object.entries(endpointCounts)
@@ -139,6 +143,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         total:        totalCalls,
         recentSample: logs.length,
         last7days:    last7daysCalls,
+        prev7days:    prev7daysCalls,
+        weekOverWeek,
         success,
         clientErrors,
         serverErrors,
