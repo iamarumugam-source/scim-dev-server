@@ -3,7 +3,10 @@ import { getPool } from "../../db-postgres";
 export interface StatsRawData {
   logs: Array<{ log_data: unknown; response: unknown; created_at: string }>;
   totalCalls: number;
-  users: Array<{ active: boolean }>;
+  // Counted in the DB rather than derived from a fetched array — cheaper, and
+  // keeps this shape identical to the supabase implementation.
+  totalUsers: number;
+  activeUsers: number;
   totalGroups: number;
   totalKeys: number;
   analytics: Array<{ path: string; count: number }>;
@@ -19,7 +22,8 @@ export class StatsService {
     const [
       logsResult,
       totalCallsResult,
-      usersResult,
+      totalUsersResult,
+      activeUsersResult,
       totalGroupsResult,
       totalKeysResult,
       analyticsResult,
@@ -40,7 +44,11 @@ export class StatsService {
         [userId],
       ),
       pool.query(
-        'SELECT active FROM scim_users WHERE "tenantId" = $1',
+        'SELECT COUNT(*)::int AS cnt FROM scim_users WHERE "tenantId" = $1',
+        [userId],
+      ),
+      pool.query(
+        'SELECT COUNT(*)::int AS cnt FROM scim_users WHERE "tenantId" = $1 AND active = true',
         [userId],
       ),
       pool.query(
@@ -72,7 +80,8 @@ export class StatsService {
     return {
       logs:              logsResult.rows as StatsRawData["logs"],
       totalCalls:        totalCallsResult.rows[0]?.cnt ?? 0,
-      users:             usersResult.rows as StatsRawData["users"],
+      totalUsers:        totalUsersResult.rows[0]?.cnt  ?? 0,
+      activeUsers:       activeUsersResult.rows[0]?.cnt ?? 0,
       totalGroups:       totalGroupsResult.rows[0]?.cnt ?? 0,
       totalKeys:         totalKeysResult.rows[0]?.cnt ?? 0,
       analytics:         analyticsResult.rows as StatsRawData["analytics"],

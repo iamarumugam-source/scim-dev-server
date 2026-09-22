@@ -17,7 +17,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const {
       logs,
       totalCalls,
-      users,
+      totalUsers,
+      activeUsers,
       totalGroups,
       totalKeys,
       analytics,
@@ -98,8 +99,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // ── User stats ──────────────────────────────────────────────────────────
 
-    const activeUsers   = users.filter((u) => (u as any).active === true).length;
-    const inactiveUsers = users.length - activeUsers;
+    const inactiveUsers = totalUsers - activeUsers;
 
     // ── Rate limit window stats ─────────────────────────────────────────────
 
@@ -150,7 +150,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         recentErrors,
       },
       users: {
-        total:    users.length,
+        total:    totalUsers,
         active:   activeUsers,
         inactive: inactiveUsers,
       },

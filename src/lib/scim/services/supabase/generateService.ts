@@ -28,13 +28,29 @@ export class GenerateService {
   }
 
   async getExistingUsers(userId: string): Promise<ScimUser[]> {
-    const { data, error } = await supabase
-      .from("scim_users")
-      .select("resource")
-      .eq("tenantId", userId);
+    // PostgREST caps an unbounded select at 1000 rows, which would silently
+    // truncate a tenant holding more than that — leaving the caller's userName
+    // dedup set incomplete and letting collisions slip through. Page through
+    // explicitly instead.
+    const PAGE = 1000;
+    const rows: { resource: unknown }[] = [];
 
-    if (error) throw new Error(`Failed to fetch existing users: ${error.message}`);
-    return ((data ?? []).map((u) => u.resource) as ScimUser[]).map((u) => {
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .from("scim_users")
+        .select("resource")
+        .eq("tenantId", userId)
+        .order("id", { ascending: true })
+        .range(from, from + PAGE - 1);
+
+      if (error) throw new Error(`Failed to fetch existing users: ${error.message}`);
+
+      const page = data ?? [];
+      rows.push(...page);
+      if (page.length < PAGE) break;
+    }
+
+    return (rows.map((u) => u.resource) as ScimUser[]).map((u) => {
       if (!u.groups) u.groups = [];
       return u;
     });

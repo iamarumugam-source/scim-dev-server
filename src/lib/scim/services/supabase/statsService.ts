@@ -3,7 +3,10 @@ import { supabase } from "../../db";
 export interface StatsRawData {
   logs: Array<{ log_data: unknown; response: unknown; created_at: string }>;
   totalCalls: number;
-  users: Array<{ active: boolean }>;
+  // Counted in the DB, not derived from a fetched array: PostgREST caps rows
+  // at 1000, so counting client-side under-reported any tenant above that.
+  totalUsers: number;
+  activeUsers: number;
   totalGroups: number;
   totalKeys: number;
   analytics: Array<{ path: string; count: number }>;
@@ -17,7 +20,8 @@ export class StatsService {
     const [
       logsRecent,
       logsTotalResult,
-      usersResult,
+      usersTotalResult,
+      usersActiveResult,
       groupsResult,
       keysResult,
       analyticsResult,
@@ -39,8 +43,14 @@ export class StatsService {
 
       supabase
         .from("scim_users")
-        .select("active")
+        .select("id", { count: "exact", head: true })
         .eq("tenantId", userId),
+
+      supabase
+        .from("scim_users")
+        .select("id", { count: "exact", head: true })
+        .eq("tenantId", userId)
+        .eq("active", true),
 
       supabase
         .from("scim_groups")
@@ -77,7 +87,8 @@ export class StatsService {
     return {
       logs:             (logsRecent.data          ?? []) as StatsRawData["logs"],
       totalCalls:       logsTotalResult.count      ?? 0,
-      users:            (usersResult.data          ?? []) as StatsRawData["users"],
+      totalUsers:       usersTotalResult.count      ?? 0,
+      activeUsers:      usersActiveResult.count     ?? 0,
       totalGroups:      groupsResult.count         ?? 0,
       totalKeys:        keysResult.count           ?? 0,
       analytics:        (analyticsResult.data      ?? []) as StatsRawData["analytics"],
