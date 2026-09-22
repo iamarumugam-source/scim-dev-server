@@ -25,6 +25,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 import Image from "next/image";
+import { BetaBadge } from "@/components/beta-badge";
 import {
   Sidebar,
   SidebarContent,
@@ -108,10 +109,15 @@ const items = [
   { title: "Extensions", url: "/scim/extensions", icon: Puzzle },
 ];
 
-const otherTools = [
+const otherTools: {
+  title: string;
+  url: string;
+  icon: React.ElementType;
+  beta?: boolean;
+}[] = [
   { title: "HAR Analyser",     url: "/har-analyser",    icon: ScanSearch  },
   { title: "JWE Decoder",      url: "/jwe",             icon: LockKeyhole },
-  { title: "Meeting Planner",  url: "/meeting-planner",  icon: CalendarCheck },
+  { title: "Meeting Planner",  url: "/meeting-planner",  icon: CalendarCheck, beta: true },
 ];
 
 type FormValues = z.infer<typeof FormSchema>;
@@ -685,6 +691,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <a href={item.url}>
                     <item.icon />
                     <span>{item.title}</span>
+                    {item.beta && (
+                      <BetaBadge className="ml-auto group-data-[collapsible=icon]:hidden" />
+                    )}
                   </a>
                 </SidebarMenuButton>
               </SidebarMenuItem>

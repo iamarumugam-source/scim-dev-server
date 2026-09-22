@@ -17,6 +17,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { BetaBadge } from "@/components/beta-badge";
 import {
   Popover,
   PopoverContent,
@@ -242,7 +243,10 @@ export default function TimeConverterPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-lg font-semibold">Meeting Planner</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-semibold">Meeting Planner</h1>
+            <BetaBadge />
+          </div>
           <p className="text-sm text-muted-foreground mt-0.5">
             Drag the <strong>Start</strong> and <strong>End</strong> handles to
             select a time range, then schedule.
