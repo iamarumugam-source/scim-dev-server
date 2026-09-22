@@ -1,12 +1,41 @@
 import { ScrollText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { VersionBlock, type Version } from "@/components/changelog/version-block";
 import { TYPE_CONFIG, type ChangeType } from "@/components/changelog/change-item";
 
 // ─── Changelog data ───────────────────────────────────────────────────────────
 
 const VERSIONS: Version[] = [
+  {
+    version: "1.1.0",
+    date:    "2026-09-22",
+    title:   "Admin UI Redesign",
+    description: "Every SCIM admin page rebuilt on one shared design system, plus several correctness fixes found on the way.",
+    changes: [
+      { type: "new",      text: "Dashboard rebuilt: grouped sections (Overview / Traffic / Resources / Diagnostics / Usage), week-over-week deltas, a rate-limit headroom meter, a first-run getting-started state, clickable tiles, and an opt-in 20s auto-refresh" },
+      { type: "new",      text: "Users list: lazy loading via IntersectionObserver, ⌘K search, sortable columns, row selection with bulk deactivate and bulk delete" },
+      { type: "new",      text: "Groups, Entitlements and Roles lists share that pattern — Entitlements and Roles now run off one CatalogList component, having previously been near-duplicate pages" },
+      { type: "new",      text: "Expanded rows for users, groups, entitlements and roles expose the raw SCIM resource — and in edit mode the pending draft, so the exact body a PUT would send is readable before saving" },
+      { type: "new",      text: "JSON viewer: find-in-JSON with match count, which force-expands so matches are never hidden inside collapsed nodes" },
+      { type: "new",      text: "API page: a Connection section of live tiles (keys present, auth methods, requests seen, rate-limit headroom) built from the dashboard's own primitives" },
+      { type: "new",      text: "Previous Dashboard and Users pages archived, unlinked and login-protected, at /scim/legacy/dashboard and /scim/legacy/users" },
+      { type: "fixed",    text: "Daily call volume was derived by filtering the most recent 1000 log entries, so on a busy tenant every day older than that sample rendered as zero — a cliff that looked like traffic had stopped. Now exact per-day database counts" },
+      { type: "fixed",    text: "Dashboard user count was computed from a fetched array rather than a COUNT, and PostgREST caps an unbounded select at 1000 rows — so any tenant above 1000 users reported exactly 1000" },
+      { type: "fixed",    text: "Generating more than ~1000 mock users failed on scim_users_username_key: faker draws from a finite name pool and usernames had no uniqueness check, unlike group names. Collisions are now suffixed" },
+      { type: "fixed",    text: "getExistingUsers hit the same 1000-row cap, so the username dedup set was incomplete on large tenants. It now pages through" },
+      { type: "fixed",    text: "Mock user and group inserts are issued in 500-row chunks — a single 5000-row insert sent several MB to PostgREST and pushed the postgres path toward the 65535 bind-parameter limit" },
+      { type: "fixed",    text: "User avatars rendered unstyled: Tailwind class strings were passed to style={{ backgroundColor }}, which is invalid CSS and silently ignored" },
+      { type: "fixed",    text: "Empty states now distinguish \"nothing exists\" from \"a filter excluded everything\" — both previously rendered \"No results found\", so a too-narrow filter looked like data loss" },
+      { type: "fixed",    text: "Authorization endpoint and Token endpoint rendered identical grey method labels, so GET and POST were never actually distinguishable" },
+      { type: "improved", text: "Extensions: readable names derived from the schema URN, attribute chips in the collapsed row, an output preview of the JSON shape injected into user responses, and a fields table with actual column headers" },
+      { type: "improved", text: "Expanded rows use full-width bands instead of a multi-column grid, whose differing section heights read as ragged columns. Tabs were tried and reverted — an expanded row exists to take in a whole resource at a glance" },
+      { type: "improved", text: "Chart and JSON syntax palettes validated against the real card surfaces for WCAG AA contrast and colour-vision-deficiency separation. The JSON viewer's old light-mode string colour was red, i.e. \"error\", on every string value" },
+      { type: "improved", text: "Changelog rebuilt on shadcn's Item / ItemGroup primitives" },
+      { type: "improved", text: "Meeting Planner marked Beta via a shared BetaBadge component" },
+      { type: "security", text: "Destructive actions gained confirmations: catalogue delete was a single unconfirmed click, and extension delete used a toast action that vanished if you hesitated" },
+      { type: "security", text: "Clearing request logs now confirms, and states that dashboard traffic breakdowns read from those entries and will reset" },
+    ],
+  },
   {
     version: "1.0.0",
     date:    "2026-03-13",

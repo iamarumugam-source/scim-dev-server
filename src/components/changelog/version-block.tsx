@@ -1,15 +1,16 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { ItemGroup } from "@/components/ui/item";
 import { cn } from "@/lib/utils";
 import { ChangeItem, Change } from "./change-item";
 
 export interface Version {
-  version:     string;
-  date:        string;
-  title:       string;
+  version:      string;
+  date:         string;
+  title:        string;
   description?: string;
-  changes:     Change[];
+  changes:      Change[];
 }
 
 export function VersionBlock({ v, isLatest }: { v: Version; isLatest: boolean }) {
@@ -21,40 +22,45 @@ export function VersionBlock({ v, isLatest }: { v: Version; isLatest: boolean })
         isLatest ? "bg-primary ring-primary/30" : "bg-muted-foreground/40 ring-muted-foreground/10",
       )} />
       {/* Timeline line */}
-      <div className="absolute left-[5px] top-[30px] bottom-0 w-px bg-border/60" />
+      <div className="absolute bottom-0 left-[5px] top-[30px] w-px bg-border/60" />
 
-      <Card className="overflow-hidden mb-6">
-        <div className="flex items-start justify-between gap-4 px-5 py-4 bg-muted/20">
-          <div className="flex items-center gap-3 flex-wrap">
+      <Card className="mb-6 gap-0 overflow-hidden py-0">
+        <div className="flex items-start justify-between gap-4 bg-muted/20 px-5 py-4">
+          <div className="flex flex-wrap items-center gap-3">
             <Badge
               variant="outline"
               className={cn(
-                "text-sm font-bold font-mono",
-                isLatest ? "bg-primary/10 text-primary border-primary/30" : "bg-muted text-muted-foreground",
+                "font-mono text-sm font-bold",
+                isLatest ? "border-primary/30 bg-primary/10 text-primary" : "bg-muted text-muted-foreground",
               )}
             >
               v{v.version}
             </Badge>
             <h2 className="text-base font-semibold">{v.title}</h2>
             {isLatest && (
-              <Badge className="text-[10px] font-semibold bg-primary/10 text-primary hover:bg-primary/10">
+              <Badge className="bg-primary/10 text-[10px] font-semibold text-primary hover:bg-primary/10">
                 Latest
               </Badge>
             )}
+            <Badge variant="secondary" className="text-[10px] font-normal tabular-nums">
+              {v.changes.length} change{v.changes.length === 1 ? "" : "s"}
+            </Badge>
           </div>
-          <time className="text-xs text-muted-foreground tabular-nums flex-shrink-0 mt-0.5">
+          <time className="mt-0.5 flex-shrink-0 text-xs tabular-nums text-muted-foreground">
             {new Date(v.date).toLocaleDateString("en", { year: "numeric", month: "long", day: "numeric" })}
           </time>
         </div>
 
         <CardContent className="px-5 py-0">
           {v.description && (
-            <p className="pt-3 pb-0 text-sm text-muted-foreground">{v.description}</p>
+            <p className="pb-0 pt-3 text-sm text-muted-foreground">{v.description}</p>
           )}
           <Separator className="mt-3" />
-          <ul className="py-3 space-y-0.5">
+          {/* ItemGroup rather than a bare <ul>: it owns the separation and
+              spacing between rows, so ChangeItem does not hand-roll it. */}
+          <ItemGroup className="py-2">
             {v.changes.map((c, i) => <ChangeItem key={i} change={c} />)}
-          </ul>
+          </ItemGroup>
         </CardContent>
       </Card>
     </div>
