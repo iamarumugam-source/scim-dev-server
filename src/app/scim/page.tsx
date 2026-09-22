@@ -1,89 +1,59 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import {
-  UsersRound,
-  Boxes,
-  KeyRound,
-  BadgeCheck,
-  Crown,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  TrendingUp,
-  Activity,
-  Globe,
-  RefreshCw,
-  SlidersHorizontal,
-  Gauge,
-  Timer,
-  TicketCheck,
-} from "lucide-react";
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+//
+// Sections: Overview, Traffic, Resources, Diagnostics, Usage.
+//
+// Design notes worth keeping in mind when editing:
+//   • Panels state whether their numbers are EXACT (database counts) or SAMPLED
+//     (derived from the most recent 1000 log entries). Keep that labelling — the
+//     two are freely mixed in this response and silently conflating them is how
+//     the old user-count bug went unnoticed.
+//   • dailyVolume comes from exact per-day counts, NOT the log sample. Deriving a
+//     time series from a recency-capped sample draws a false cliff to zero for
+//     older days. See the note in statsService.
+//   • Series colours live in @/components/scim/dashboard/viz and are validated
+//     for contrast and colour-vision deficiency in both light and dark. Do not
+//     swap in --chart-1..5: those are five steps of a single blue hue, so
+//     adjacent categorical series become indistinguishable.
+//
+// The previous dashboard is archived, unlinked, at /scim/legacy/dashboard.
+
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { motion } from "motion/react";
+import { toast } from "sonner";
 import {
-  motion,
-  AnimatePresence,
-  useMotionValue,
-  useSpring,
-  useTransform,
-  type Variants,
-} from "motion/react";
+  RefreshCw, AlertCircle, CheckCircle2, Activity, Users, KeyRound,
+  Gauge, SlidersHorizontal, Globe, TicketCheck, ScrollText, ShieldCheck,
+  Boxes, BadgeCheck, Crown, Inbox, Rocket, ArrowUpRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { MetricRow } from "@/components/scim/dashboard/metric-row";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { LoginActivityGrid } from "@/components/scim/dashboard/login-activity-grid";
-import { ActivityChart } from "@/components/scim/dashboard/activity-chart";
-import { MethodChart } from "@/components/scim/dashboard/method-chart";
 import { cn } from "@/lib/utils";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface DailyVolume {
-  date: string;
-  label: string;
-  count: number;
-}
-interface TopEndpoint {
-  path: string;
-  count: number;
-}
-interface LoginActivity {
-  timestamps: string[];
-  total:      number;
-}
-
-interface RecentError {
-  url: string;
-  method: string;
-  status: number;
-  time: string;
-}
+import {
+  VizTokens, Section, StatTile, ProportionBar, RateMeter,
+  VolumeChart, MethodChart, EndpointChart, EmptyChart,
+} from "@/components/scim/dashboard/viz";
 
 interface Stats {
   calls: {
-    total: number;
-    last7days: number;
-    success: number;
-    clientErrors: number;
-    serverErrors: number;
-    redirects: number;
-    errorRate: number;
+    total: number; last7days: number; prev7days: number; weekOverWeek: number | null;
+    success: number; clientErrors: number;
+    serverErrors: number; redirects: number; errorRate: number;
     byMethod: Record<string, number>;
-    dailyVolume: DailyVolume[];
-    topEndpoints: TopEndpoint[];
-    recentErrors: RecentError[];
+    dailyVolume: { date: string; label: string; count: number }[];
+    topEndpoints: { path: string; count: number }[];
+    recentErrors: { url: string; method: string; status: number; time: string }[];
   };
   users: { total: number; active: number; inactive: number };
   groups: { total: number };
@@ -94,867 +64,526 @@ interface Stats {
   rateLimit: { enabled: boolean; windowCalls: number; limit: number; rateLimitedCalls: number };
 }
 
-// ─── Animation variants ───────────────────────────────────────────────────────
+interface LoginActivity { timestamps: string[]; total: number }
 
-const fadeUp: Variants = {
-  hidden: { opacity: 0, y: 18, scale: 0.97 },
-  show: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { type: "spring", stiffness: 350, damping: 16, mass: 0.8 },
-  },
-};
+const SAMPLED = "sampled · last 1000 log entries";
+const EXACT   = "exact counts";
 
-const staggerGrid: Variants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.06, delayChildren: 0.03 } },
-};
-
-const staggerList: Variants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.05 } },
-};
-
-const slideInRow: Variants = {
-  hidden: { opacity: 0, x: -10, scale: 0.97 },
-  show: {
-    opacity: 1,
-    x: 0,
-    scale: 1,
-    transition: { type: "spring", stiffness: 380, damping: 18 },
-  },
-};
-
-// ─── Count-up number ──────────────────────────────────────────────────────────
-
-function CountUp({ value }: { value: number }) {
-  const motionVal = useMotionValue(0);
-  const spring  = useSpring(motionVal, { stiffness: 130, damping: 12, mass: 0.7 });
-  const display = useTransform(spring, (v) => Math.round(v).toLocaleString());
-  const hasFired = useRef(false);
-
-  useEffect(() => {
-    if (!hasFired.current) {
-      hasFired.current = true;
-      motionVal.set(value);
-    }
-  }, [motionVal, value]);
-
-  return <motion.span>{display}</motion.span>;
-}
-
-// ─── Section heading ──────────────────────────────────────────────────────────
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-      {children}
-    </h2>
-  );
-}
-
-// ─── Dashboard ────────────────────────────────────────────────────────────────
-
-export default function ScimDashboard() {
+export default function DashboardPage() {
   const { data: session } = useSession();
   const userId = session?.user?.id;
 
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [loginActivity, setLoginActivity] = useState<LoginActivity | null>(null);
+  const [stats,      setStats]      = useState<Stats | null>(null);
+  const [login,      setLogin]      = useState<LoginActivity | null>(null);
+  const [isLoading,  setIsLoading]  = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error,      setError]      = useState<string | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [updatedAt,   setUpdatedAt]   = useState<Date | null>(null);
 
-  const fetchStats = useCallback(async () => {
-    if (!userId) {
-      setIsLoading(false);
-      return;
-    }
-    setIsLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!userId) return;
+    if (silent) setRefreshing(true); else setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/${userId}/scim/v2/stats`);
-      if (!res.ok) throw new Error(`Stats fetch failed: ${res.statusText}`);
-      setStats(await res.json());
-    } catch (e: any) {
-      setError(e.message);
+      const [statsRes, loginRes] = await Promise.all([
+        fetch(`/api/${userId}/scim/v2/stats`),
+        fetch(`/api/${userId}/login-activity`),
+      ]);
+      if (!statsRes.ok) throw new Error(statsRes.statusText || `HTTP ${statsRes.status}`);
+      setStats(await statsRes.json());
+      // Login activity is supplementary — a failure here must not blank the page.
+      if (loginRes.ok) setLogin(await loginRes.json());
+      setUpdatedAt(new Date());
+    } catch (e) {
+      const msg = (e as Error).message;
+      setError(msg);
+      if (silent) toast.error(`Could not refresh: ${msg}`);
     } finally {
       setIsLoading(false);
+      setRefreshing(false);
     }
   }, [userId]);
 
-  useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+  useEffect(() => { load(); }, [load]);
 
+  // Side effects the dashboard owns. Both are writes, so they run exactly once
+  // per mount — deliberately NOT inside load(), which also runs on every manual
+  // refresh and on every auto-refresh tick.
   useEffect(() => {
     if (!userId) return;
 
-    // Page-view analytics (fire-and-forget)
+    // Page-view analytics (fire-and-forget).
     fetch(`/api/${userId}/analytics`, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ path: "/scim" }),
     }).catch(() => {});
 
-    // Login activity: record the event first (once per browser session), then
-    // fetch so the grid always includes the just-recorded login.
+    // Record the sign-in once per browser session, then re-read so the grid
+    // includes the login that was just recorded.
     const SESSION_KEY = "login_tracked";
-    const fetchActivity = () =>
-      fetch(`/api/${userId}/login-activity`)
-        .then((r) => r.json())
-        .then(setLoginActivity)
-        .catch(() => {});
-
-    if (!sessionStorage.getItem(SESSION_KEY)) {
-      sessionStorage.setItem(SESSION_KEY, "1");
-      fetch(`/api/${userId}/login-activity`, { method: "POST" })
-        .finally(fetchActivity);
-    } else {
-      fetchActivity();
-    }
+    if (sessionStorage.getItem(SESSION_KEY)) return;
+    sessionStorage.setItem(SESSION_KEY, "1");
+    fetch(`/api/${userId}/login-activity`, { method: "POST" })
+      .then(() => fetch(`/api/${userId}/login-activity`))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setLogin(d))
+      .catch(() => {});
   }, [userId]);
 
-  const calls = stats?.calls;
-  const totalCalls = calls?.total ?? 0;
-  const successRate =
-    totalCalls > 0
-      ? Math.round(
-          ((calls?.success ?? 0) /
-            Math.min(totalCalls, (calls as any)?.recentSample ?? totalCalls)) *
-            100,
-        )
-      : 0;
+  // Opt-in polling. /stats is explicitly exempt from the tenant rate limit, so
+  // this cannot throttle the tenant — but each call fans out to ~24 queries, so
+  // the interval stays conservative rather than aggressive.
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const id = setInterval(() => load(true), 20_000);
+    return () => clearInterval(id);
+  }, [autoRefresh, load]);
+
+  const c = stats?.calls;
+  const errorTone = !c ? "default" : c.errorRate >= 10 ? "critical" : c.errorRate >= 2 ? "warning" : "good";
+  const successRate = c && c.total > 0
+    ? (c.success / Math.max(c.success + c.redirects + c.clientErrors + c.serverErrors, 1)) * 100
+    : 0;
+  const statusTotal = c ? c.success + c.redirects + c.clientErrors + c.serverErrors : 0;
+
+  const pageViewRows = stats
+    ? Object.entries(stats.pageViews.byPage).sort((a, b) => b[1] - a[1])
+    : [];
+
+  // A brand-new tenant has nothing to plot. Showing a grid of zeros is the most
+  // common first impression and the least useful one, so swap in a path forward.
+  // Page views are excluded from the test — merely opening the dashboard creates
+  // one, so a genuinely empty tenant would never satisfy an all-zero check.
+  const isFirstRun = Boolean(stats) && !!stats &&
+    stats.calls.total === 0 &&
+    stats.users.total === 0 &&
+    stats.groups.total === 0 &&
+    stats.entitlements.total === 0 &&
+    stats.roles.total === 0;
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+    <motion.div
+      className="viz container mx-auto space-y-7 py-6"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+    >
+      <VizTokens />
 
-      {/* ── Overview ──────────────────────────────────────────────────────── */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          {/* <SectionLabel>Overview</SectionLabel> */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchStats}
-            disabled={isLoading}
-            className="ml-auto gap-1.5"
-          >
-            <RefreshCw
-              className={cn("h-3.5 w-3.5", isLoading && "animate-spin")}
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold tracking-tight">Dashboard</h1>
+          <p className="text-xs text-muted-foreground">Provisioning activity for this tenant.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {updatedAt && (
+            <span className="hidden text-[11px] tabular-nums text-muted-foreground sm:inline">
+              Updated {updatedAt.toLocaleTimeString()}
+            </span>
+          )}
+          <div className="flex items-center gap-2">
+            <Switch
+              id="auto-refresh" checked={autoRefresh} onCheckedChange={setAutoRefresh}
+              aria-label="Auto-refresh every 20 seconds"
             />
+            <Label htmlFor="auto-refresh" className="text-[11px] text-muted-foreground">
+              Auto 20s
+            </Label>
+          </div>
+          <Button variant="outline" size="sm" className="h-8 gap-1.5"
+                  onClick={() => load(true)} disabled={refreshing || isLoading}>
+            <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
             Refresh
           </Button>
         </div>
+      </div>
 
-        {/* Cards animate once on mount — skeletons are visible during the stagger */}
-        <motion.div
-          className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
-          variants={staggerGrid}
-          initial="hidden"
-          animate="show"
-        >
-          {[
-            {
-              label: "Provisioned Users",
-              href: "/scim/users",
-              icon: UsersRound,
-              value: stats?.users.total ?? null,
-            },
-            {
-              label: "Groups",
-              href: "/scim/groups",
-              icon: Boxes,
-              value: stats?.groups.total ?? null,
-            },
-            {
-              label: "Entitlements",
-              href: "/scim/entitlements",
-              icon: BadgeCheck,
-              value: stats?.entitlements.total ?? null,
-            },
-            {
-              label: "Roles",
-              href: "/scim/roles",
-              icon: Crown,
-              value: stats?.roles.total ?? null,
-            },
-            {
-              label: "API Keys",
-              href: "/scim/keys",
-              icon: KeyRound,
-              value: stats?.apiKeys.total ?? null,
-            },
-            {
-              label: "Total API Calls",
-              href: "/scim/logs",
-              icon: Activity,
-              value: stats?.calls.total ?? null,
-            },
-          ].map(({ label, href, icon: Icon, value }) => (
-            <motion.div
-              key={label}
-              variants={fadeUp}
-              whileHover={{ y: -4, scale: 1.015 }}
-              whileTap={{ scale: 0.97 }}
-              transition={{ type: "spring", stiffness: 400, damping: 13, mass: 0.7 }}
-              className="will-change-transform"
-            >
-              <Link href={href} className="group block h-full">
-                <Card className="hover:border-primary/40 hover:shadow-md transition-colors cursor-pointer h-full">
-                  <CardHeader>
-                    <CardDescription className="group-hover:text-primary transition-colors">
-                      {label}
-                    </CardDescription>
-                    <CardTitle className="text-2xl font-bold tabular-nums">
-                      <AnimatePresence mode="wait" initial={false}>
-                        {isLoading || value === null ? (
-                          <motion.div
-                            key="skeleton"
-                            initial={{ opacity: 1 }}
-                            exit={{
-                              opacity: 0,
-                              transition: { duration: 0.15 },
-                            }}
-                          >
-                            <Skeleton className="h-7 w-16" />
-                          </motion.div>
-                        ) : (
-                          <motion.span
-                            key="value"
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{
-                              opacity: 1,
-                              y: 0,
-                              transition: { duration: 0.3 },
-                            }}
-                          >
-                            <CountUp value={value} />
-                          </motion.span>
-                        )}
-                      </AnimatePresence>
-                    </CardTitle>
-                    <CardAction>
-                      <Icon className="h-4 w-4 text-foreground/60" />
-                    </CardAction>
-                  </CardHeader>
-                </Card>
-              </Link>
-            </motion.div>
-          ))}
-        </motion.div>
-      </section>
+      {error && !stats && (
+        <Alert variant="destructive">
+          <AlertCircle />
+          <AlertTitle>Could not load dashboard</AlertTitle>
+          <AlertDescription>
+            {error}
+            <Button variant="outline" size="sm" className="mt-2 h-7 w-fit text-xs" onClick={() => load()}>
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
-      {/* ── API Health ─────────────────────────────────────────────────────── */}
-      <motion.section
-        variants={fadeUp}
-        initial="hidden"
-        animate="show"
-        transition={{ delay: 0.3 }}
-      >
-        {/* <SectionLabel>API Health</SectionLabel> */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
-          {/* Success Rate */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">
-                Success Rate
-              </CardTitle>
-              <CardAction>
-                <CheckCircle2 className="h-4 w-4 text-foreground/60" />
-              </CardAction>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <AnimatePresence mode="wait" initial={false}>
-                {isLoading ? (
-                  <motion.div
-                    key="sk-rate"
-                    exit={{ opacity: 0, transition: { duration: 0.15 } }}
-                  >
-                    <Skeleton className="h-7 w-16" />
-                  </motion.div>
-                ) : (
-                  <motion.p
-                    key="rate"
-                    className={cn(
-                      "text-2xl font-bold tabular-nums",
-                      successRate >= 90
-                        ? "text-foreground"
-                        : successRate >= 70
-                          ? "text-foreground/70"
-                          : "text-destructive",
-                    )}
-                    initial={{ opacity: 0, scale: 0.85 }}
-                    animate={{
-                      opacity: 1,
-                      scale: 1,
-                      transition: { duration: 0.3 },
-                    }}
-                  >
-                    {successRate}%
-                  </motion.p>
-                )}
-              </AnimatePresence>
-              <AnimatePresence mode="wait" initial={false}>
-                {isLoading ? (
-                  <motion.div
-                    key="sk"
-                    className="space-y-2.5"
-                    exit={{ opacity: 0, transition: { duration: 0.15 } }}
-                  >
-                    <Skeleton className="h-2 w-full" />
-                    <Skeleton className="h-2 w-full" />
-                    <Skeleton className="h-2 w-full" />
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="rows"
-                    className="space-y-2.5"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1, transition: { duration: 0.3 } }}
-                  >
-                    <MetricRow
-                      label="Success (2xx)"
-                      value={calls?.success ?? 0}
-                      max={totalCalls}
-                      color="bg-primary"
-                    />
-                    <MetricRow
-                      label="Client errors (4xx)"
-                      value={calls?.clientErrors ?? 0}
-                      max={totalCalls}
-                      color="bg-muted-foreground"
-                    />
-                    <MetricRow
-                      label="Server errors (5xx)"
-                      value={calls?.serverErrors ?? 0}
-                      max={totalCalls}
-                      color="bg-destructive"
-                    />
-                    <MetricRow
-                      label="Redirects (3xx)"
-                      value={calls?.redirects ?? 0}
-                      max={totalCalls}
-                      color="bg-primary/40"
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              <AnimatePresence initial={false}>
-                {!isLoading && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{
-                      opacity: 1,
-                      y: 0,
-                      transition: { duration: 0.3, delay: 0.15 },
-                    }}
-                  >
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-center text-xs font-medium tabular-nums py-1.5",
-                        (calls?.errorRate ?? 0) < 5
-                          ? "bg-muted text-foreground/70 border-border"
-                          : (calls?.errorRate ?? 0) < 20
-                            ? "bg-muted text-foreground/80 border-border"
-                            : "bg-destructive/10 text-destructive border-destructive/30",
-                      )}
-                    >
-                      {calls?.errorRate ?? 0}% error rate
-                    </Badge>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </CardContent>
-          </Card>
-
-          {/* By HTTP Method */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">
-                By HTTP Method
-              </CardTitle>
-              <CardAction>
-                <SlidersHorizontal className="h-4 w-4 text-foreground/60" />
-              </CardAction>
-            </CardHeader>
-            <CardContent>
-              <MethodChart
-                byMethod={calls?.byMethod ?? {}}
-                totalCalls={totalCalls}
-                isLoading={isLoading}
+      {isLoading ? (
+        <DashboardSkeleton />
+      ) : !stats ? null : isFirstRun ? (
+        <FirstRun hasKeys={stats.apiKeys.total > 0} />
+      ) : (
+        <>
+          {/* ─── Overview ──────────────────────────────────────────────── */}
+          <Section title="Overview" hint={EXACT}>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <StatTile
+                label="Total API calls" value={stats.calls.total} icon={<Activity className="h-4 w-4" />} accent="blue"
+                sub={<>{stats.calls.last7days.toLocaleString()} in the last 7 days</>}
+                spark={stats.calls.dailyVolume}
+                delta={stats.calls.weekOverWeek}
+                href="/scim/logs"
               />
-            </CardContent>
-          </Card>
+              <StatTile
+                label="Users" value={stats.users.total} icon={<Users className="h-4 w-4" />} accent="violet"
+                sub={<>{stats.users.active.toLocaleString()} active · {stats.users.inactive.toLocaleString()} inactive</>}
+                href="/scim/users"
+              />
+              <StatTile
+                label="Success rate" value={`${successRate.toFixed(1)}%`}
+                tone={successRate >= 98 ? "good" : successRate >= 90 ? "warning" : "critical"}
+                icon={<CheckCircle2 className="h-4 w-4" />} accent="emerald"
+                sub={<>2xx of {statusTotal.toLocaleString()} sampled responses</>}
+              />
+              <StatTile
+                label="Error rate" value={`${stats.calls.errorRate.toFixed(1)}%`}
+                tone={errorTone} icon={<ShieldCheck className="h-4 w-4" />} accent="rose"
+                sub="4xx + 5xx of sampled responses"
+                href="/scim/logs"
+              />
+            </div>
+          </Section>
 
-          {/* Rate Limit */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Rate Limit</CardTitle>
-              <CardAction>
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
-                    <Link href="/scim/keys">Manage</Link>
-                  </Button>
-                  <Timer className="h-4 w-4 text-foreground/60" />
-                </div>
-              </CardAction>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <AnimatePresence mode="wait" initial={false}>
-                {isLoading ? (
-                  <motion.div
-                    key="sk-rl"
-                    className="space-y-2.5"
-                    exit={{ opacity: 0, transition: { duration: 0.15 } }}
-                  >
-                    <Skeleton className="h-4 w-16" />
-                    <Skeleton className="h-2 w-full" />
-                    <Skeleton className="h-4 w-24" />
-                  </motion.div>
+          {/* ─── Traffic ───────────────────────────────────────────────── */}
+          <Section title="Traffic">
+            <div className="grid gap-3 lg:grid-cols-3">
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Daily call volume</CardTitle>
+                  <CardDescription className="text-[11px]">{SAMPLED}</CardDescription>
+                  <CardAction><ScrollText className="h-4 w-4 text-muted-foreground" /></CardAction>
+                </CardHeader>
+                <CardContent>
+                  <VolumeChart data={stats.calls.dailyVolume} />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Rate limit</CardTitle>
+                  <CardDescription className="text-[11px]">live · per tenant</CardDescription>
+                  <CardAction><Gauge className="h-4 w-4 text-muted-foreground" /></CardAction>
+                </CardHeader>
+                <CardContent>
+                  <RateMeter
+                    used={stats.rateLimit.windowCalls}
+                    limit={stats.rateLimit.limit}
+                    enabled={stats.rateLimit.enabled}
+                    throttled={stats.rateLimit.rateLimitedCalls}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid gap-3 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Response classes</CardTitle>
+                  <CardDescription className="text-[11px]">{SAMPLED}</CardDescription>
+                  <CardAction><CheckCircle2 className="h-4 w-4 text-muted-foreground" /></CardAction>
+                </CardHeader>
+                <CardContent>
+                  {/* Status palette — reserved roles, each named in the legend so
+                      meaning never rests on colour alone. */}
+                  <ProportionBar
+                    total={statusTotal}
+                    segments={[
+                      { label: "2xx success",  value: stats.calls.success,      color: "var(--status-good)" },
+                      { label: "3xx redirect", value: stats.calls.redirects,    color: "var(--status-warning)" },
+                      { label: "4xx client",   value: stats.calls.clientErrors, color: "var(--status-serious)" },
+                      { label: "5xx server",   value: stats.calls.serverErrors, color: "var(--status-critical)" },
+                    ]}
+                  />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">By HTTP method</CardTitle>
+                  <CardDescription className="text-[11px]">{SAMPLED}</CardDescription>
+                  <CardAction><SlidersHorizontal className="h-4 w-4 text-muted-foreground" /></CardAction>
+                </CardHeader>
+                <CardContent>
+                  <MethodChart
+                    data={Object.entries(stats.calls.byMethod)
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([label, value]) => ({ label, value }))}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          </Section>
+
+          {/* ─── Resources ─────────────────────────────────────────────── */}
+          <Section title="Resources" hint={EXACT}>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <StatTile label="Groups"       value={stats.groups.total}       icon={<Boxes className="h-4 w-4" />} accent="sky" href="/scim/groups" />
+              <StatTile label="Entitlements" value={stats.entitlements.total} icon={<BadgeCheck className="h-4 w-4" />} accent="emerald" href="/scim/entitlements" />
+              <StatTile label="Roles"        value={stats.roles.total}        icon={<Crown className="h-4 w-4" />} accent="amber" href="/scim/roles" />
+              <StatTile
+                label="API keys" value={stats.apiKeys.total} icon={<KeyRound className="h-4 w-4" />} accent="violet"
+                tone={stats.apiKeys.total === 0 ? "warning" : "default"}
+                sub={stats.apiKeys.total === 0 ? "None — Okta cannot connect yet" : "Active credentials"}
+                href="/scim/keys"
+              />
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">User status</CardTitle>
+                <CardDescription className="text-[11px]">{EXACT}</CardDescription>
+                <CardAction><Users className="h-4 w-4 text-muted-foreground" /></CardAction>
+              </CardHeader>
+              <CardContent>
+                {stats.users.total === 0 ? (
+                  <EmptyChart
+                    title="No users yet" media={<Users className="h-4 w-4" />}
+                    hint="Provision a user from Okta, or seed the tenant with mock data."
+                  />
                 ) : (
-                  <motion.div
-                    key="rl"
-                    className="space-y-3"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1, transition: { duration: 0.3 } }}
-                  >
-                    {(() => {
-                      const rl      = stats?.rateLimit;
-                      const enabled = rl?.enabled         ?? true;
-                      const used    = rl?.windowCalls     ?? 0;
-                      const limit   = rl?.limit           ?? 60;
-                      const blocked = rl?.rateLimitedCalls ?? 0;
-
-                      if (!enabled) {
-                        return (
-                          <>
-                            <Badge
-                              variant="outline"
-                              className="bg-muted text-muted-foreground border-border dark:bg-white/[0.06] dark:border-white/15"
-                            >
-                              Disabled
-                            </Badge>
-                            <p className="text-xs text-muted-foreground">
-                              Rate limiting is off. All requests pass through without restriction.
-                            </p>
-                          </>
-                        );
-                      }
-
-                      const pct       = Math.min((used / limit) * 100, 100);
-                      const nearLimit = used >= limit * 0.7;
-                      const atLimit   = used >= limit;
-                      return (
-                        <>
-                          <Badge
-                            variant="outline"
-                            className="bg-primary/10 text-primary border-primary/30 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-700/50"
-                          >
-                            {limit} req / min
-                          </Badge>
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-muted-foreground">Last 60 s</span>
-                              <span className="font-medium tabular-nums">
-                                {used} / {limit}
-                              </span>
-                            </div>
-                            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                              <motion.div
-                                className={cn(
-                                  "h-full rounded-full",
-                                  atLimit   ? "bg-destructive"
-                                  : nearLimit ? "bg-amber-500"
-                                  : "bg-primary",
-                                )}
-                                initial={{ width: 0 }}
-                                animate={{ width: `${pct}%` }}
-                                transition={{ duration: 0.6, ease: "easeOut" }}
-                              />
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground">429 responses</span>
-                            <span className={cn(
-                              "font-medium tabular-nums",
-                              blocked > 0 ? "text-destructive" : "text-foreground/70",
-                            )}>
-                              {blocked}
-                            </span>
-                          </div>
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-center text-xs font-medium py-1.5",
-                              atLimit || blocked > 0
-                                ? "bg-destructive/10 text-destructive border-destructive/30 dark:bg-destructive/20"
-                                : nearLimit
-                                  ? "bg-amber-500/10 text-amber-600 border-amber-500/30 dark:text-amber-400 dark:border-amber-500/40"
-                                  : "bg-muted text-foreground/70 border-border dark:bg-white/[0.06] dark:text-foreground/80 dark:border-white/15",
-                            )}
-                          >
-                            {atLimit || blocked > 0 ? "Rate limited"
-                              : nearLimit ? "Near limit"
-                              : "Healthy"}
-                          </Badge>
-                        </>
-                      );
-                    })()}
-                  </motion.div>
+                  <ProportionBar
+                    total={stats.users.total}
+                    segments={[
+                      { label: "Active",   value: stats.users.active,   color: "var(--status-good)" },
+                      { label: "Inactive", value: stats.users.inactive, color: "var(--inactive)" },
+                    ]}
+                  />
                 )}
-              </AnimatePresence>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </Section>
 
-          {/* User Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">User Status</CardTitle>
-              <CardAction>
-                <Gauge className="h-4 w-4 text-foreground/60" />
-              </CardAction>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <AnimatePresence mode="wait" initial={false}>
-                {isLoading ? (
-                  <motion.div
-                    key="sk"
-                    className="space-y-2.5"
-                    exit={{ opacity: 0, transition: { duration: 0.15 } }}
-                  >
-                    <Skeleton className="h-2 w-full" />
-                    <Skeleton className="h-2 w-full" />
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="rows"
-                    className="space-y-2.5"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1, transition: { duration: 0.3 } }}
-                  >
-                    <MetricRow
-                      label="Active"
-                      value={stats?.users.active ?? 0}
-                      max={stats?.users.total ?? 1}
-                      color="bg-primary"
+          {/* ─── Diagnostics ───────────────────────────────────────────── */}
+          <Section title="Diagnostics" hint={SAMPLED}>
+            <div className="grid gap-3 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Top endpoints</CardTitle>
+                  <CardDescription className="text-[11px]">Tenant prefix collapsed to “…”</CardDescription>
+                  <CardAction><Activity className="h-4 w-4 text-muted-foreground" /></CardAction>
+                </CardHeader>
+                <CardContent>
+                  <EndpointChart
+                    data={stats.calls.topEndpoints.slice(0, 8).map((e) => ({
+                      // The tenant id is identical on every row and eats the width.
+                      label: e.path.replace(/^\/api\/[^/]+/, "…"),
+                      value: e.count,
+                    }))}
+                  />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Recent errors</CardTitle>
+                  <CardDescription className="text-[11px]">Newest first</CardDescription>
+                  <CardAction>
+                    {/* The logs API takes only limit/offset — no filter param —
+                        so this links to the log list rather than deep-linking to
+                        the specific entry. That needs server-side filtering. */}
+                    <Button asChild variant="ghost" size="sm" className="h-7 gap-1 text-[11px]">
+                      <Link href="/scim/logs">Open Logs <ArrowUpRight className="h-3 w-3" /></Link>
+                    </Button>
+                  </CardAction>
+                </CardHeader>
+                <CardContent>
+                  {stats.calls.recentErrors.length === 0 ? (
+                    <Empty className="border-0 py-8">
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon"><CheckCircle2 className="h-4 w-4 text-[color:var(--status-good)]" /></EmptyMedia>
+                        <EmptyTitle className="text-sm">No recent errors</EmptyTitle>
+                        <EmptyDescription className="text-xs">
+                          Nothing in the recent sample returned 4xx or 5xx.
+                        </EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
+                  ) : (
+                    <ul className="space-y-1.5">
+                      {stats.calls.recentErrors.map((e, i) => (
+                        <li key={`${e.time}-${i}`} className="flex items-center gap-2 text-[11px]">
+                          <Badge
+                            variant="outline" className="h-5 shrink-0 font-mono text-[10px]"
+                            style={{
+                              borderColor: e.status >= 500 ? "var(--status-critical)" : "var(--status-serious)",
+                              color:       e.status >= 500 ? "var(--status-critical)" : "var(--status-serious)",
+                            }}
+                          >
+                            {e.status}
+                          </Badge>
+                          <span className="shrink-0 font-mono text-muted-foreground">{e.method}</span>
+                          <span className="truncate font-mono" title={e.url}>
+                            {e.url.replace(/^https?:\/\/[^/]+/, "").replace(/^\/api\/[^/]+/, "…")}
+                          </span>
+                          <span className="ml-auto shrink-0 text-muted-foreground">
+                            {new Date(e.time).toLocaleTimeString()}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </Section>
+
+          {/* ─── Usage ─────────────────────────────────────────────────── */}
+          <Section title="Usage" hint="dashboard, not SCIM traffic">
+            <div className="grid gap-3 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Page views</CardTitle>
+                  <CardDescription className="text-[11px]">
+                    {stats.pageViews.total.toLocaleString()} total across {pageViewRows.length} page
+                    {pageViewRows.length === 1 ? "" : "s"}
+                  </CardDescription>
+                  <CardAction><Globe className="h-4 w-4 text-muted-foreground" /></CardAction>
+                </CardHeader>
+                <CardContent>
+                  {pageViewRows.length === 0 ? (
+                    <EmptyChart
+                      title="No page views recorded" media={<Inbox className="h-4 w-4" />}
+                      hint="Views accumulate as you navigate the dashboard."
                     />
-                    <MetricRow
-                      label="Inactive"
-                      value={stats?.users.inactive ?? 0}
-                      max={stats?.users.total ?? 1}
-                      color="bg-muted-foreground"
+                  ) : (
+                    <ul className="divide-y">
+                      {pageViewRows.map(([path, count]) => (
+                        <li key={path} className="flex items-center justify-between gap-3 py-1.5 text-[11px]">
+                          <span className="truncate font-mono text-muted-foreground" title={path}>{path}</span>
+                          <span className="shrink-0 font-medium tabular-nums">{count.toLocaleString()}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Login activity</CardTitle>
+                  <CardDescription className="text-[11px]">Sign-in history over the past year</CardDescription>
+                  <CardAction><TicketCheck className="h-4 w-4 text-muted-foreground" /></CardAction>
+                </CardHeader>
+                <CardContent>
+                  {!login ? (
+                    <EmptyChart
+                      title="No sign-in history" media={<TicketCheck className="h-4 w-4" />}
+                      hint="Recorded on the shipped dashboard; this preview only reads it."
                     />
-                  </motion.div>
+                  ) : (
+                    <LoginActivityGrid timestamps={login.timestamps} total={login.total} />
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </Section>
+
+          <Separator />
+
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            Resource counts and total calls are <strong>exact database counts</strong>. Panels
+            marked “{SAMPLED}” derive from the most recent 1000 log entries, so on a busy tenant
+            they describe recent traffic rather than all time. Login activity is read-only in this
+            preview — opening it does not record a sign-in.
+          </p>
+        </>
+      )}
+    </motion.div>
+  );
+}
+
+// ─── First-run state ──────────────────────────────────────────────────────────
+// Three concrete steps rather than a wall of zeros. The API-key step is marked
+// done when one already exists, so the list reflects real progress.
+
+function FirstRun({ hasKeys }: { hasKeys: boolean }) {
+  const steps = [
+    {
+      title: "Create an API key",
+      body:  "Okta authenticates with a bearer token. The key is shown once and stored only as a hash.",
+      href:  "/scim/keys",
+      cta:   "Go to API keys",
+      done:  hasKeys,
+    },
+    {
+      title: "Seed some mock data",
+      body:  "Generate realistic users, groups, entitlements and roles so there is something to look at.",
+      href:  "/scim/users",
+      cta:   "Go to Users",
+      done:  false,
+    },
+    {
+      title: "Point Okta at this tenant",
+      body:  "Use your SCIM base URL with the key as an HTTP-header credential, then Test API Credentials.",
+      href:  "/scim/keys",
+      cta:   "Copy base URL",
+      done:  false,
+    },
+  ];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm font-medium">Nothing here yet</CardTitle>
+        <CardDescription className="text-[11px]">
+          This tenant has no users, groups or recorded calls. Three steps to get going.
+        </CardDescription>
+        <CardAction><Rocket className="h-4 w-4 text-muted-foreground" /></CardAction>
+      </CardHeader>
+      <CardContent>
+        <ol className="space-y-2.5">
+          {steps.map((s, i) => (
+            <li key={s.title} className="flex items-start gap-3 rounded-lg border p-3">
+              <span
+                className={cn(
+                  "mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-semibold",
+                  s.done
+                    ? "bg-[color:var(--status-good)] text-white"
+                    : "border bg-muted text-muted-foreground",
                 )}
-              </AnimatePresence>
-              <Separator />
-              {[
-                {
-                  label: "Calls last 7 days",
-                  value: calls?.last7days ?? 0,
-                  icon: TrendingUp,
-                },
-                {
-                  label: "Page views",
-                  value: stats?.pageViews.total ?? 0,
-                  icon: Globe,
-                },
-              ].map(({ label, value, icon: Icon }) => (
-                <div
-                  key={label}
-                  className="flex items-center justify-between text-xs"
-                >
-                  <span className="flex items-center gap-1.5 text-muted-foreground">
-                    <Icon className="h-3 w-3" />
-                    {label}
-                  </span>
-                  <AnimatePresence mode="wait" initial={false}>
-                    {isLoading ? (
-                      <motion.div
-                        key="sk"
-                        exit={{ opacity: 0, transition: { duration: 0.15 } }}
-                      >
-                        <Skeleton className="h-3 w-8" />
-                      </motion.div>
-                    ) : (
-                      <motion.span
-                        key="val"
-                        className="font-medium tabular-nums"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1, transition: { duration: 0.25 } }}
-                      >
-                        {value.toLocaleString()}
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+              >
+                {s.done ? "✓" : i + 1}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className={cn("text-xs font-medium", s.done && "text-muted-foreground line-through")}>
+                  {s.title}
+                </p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">{s.body}</p>
+              </div>
+              <Button asChild variant={s.done ? "ghost" : "outline"} size="sm" className="h-7 shrink-0 text-xs">
+                <Link href={s.href}>{s.done ? "Review" : s.cta}</Link>
+              </Button>
+            </li>
+          ))}
+        </ol>
+      </CardContent>
+    </Card>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-7">
+      {[4, 3, 4].map((n, s) => (
+        <div key={s} className="space-y-3">
+          <Skeleton className="h-3 w-24" />
+          <div className={cn("grid gap-3", n === 4 ? "sm:grid-cols-2 lg:grid-cols-4" : "lg:grid-cols-3")}>
+            {Array.from({ length: n }).map((_, i) => (
+              <Card key={i}>
+                <CardHeader className="pb-0">
+                  <Skeleton className="h-2.5 w-20" />
+                  <Skeleton className="mt-2 h-7 w-24" />
+                </CardHeader>
+                <CardContent className="pt-2"><Skeleton className="h-2.5 w-32" /></CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
-      </motion.section>
-
-      {/* ── 7-day chart ────────────────────────────────────────────────────── */}
-      <motion.div
-        variants={fadeUp}
-        initial="hidden"
-        animate="show"
-        transition={{ delay: 0.4 }}
-      >
-        <ActivityChart
-          data={
-            calls?.dailyVolume ??
-            Array.from({ length: 7 }, (_, i) => {
-              const d = new Date();
-              d.setDate(d.getDate() - (6 - i));
-              return {
-                date: d.toISOString().split("T")[0],
-                label: d.toLocaleDateString("en", { weekday: "short" }),
-                count: 0,
-              };
-            })
-          }
-          isLoading={isLoading}
-        />
-      </motion.div>
-
-      {/* ── Top endpoints + Recent errors ─────────────────────────────────── */}
-      <motion.div
-        className="grid grid-cols-1 gap-4 lg:grid-cols-2"
-        variants={fadeUp}
-        initial="hidden"
-        animate="show"
-        transition={{ delay: 0.5 }}
-      >
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Top Endpoints</CardTitle>
-            <CardAction>
-              <TrendingUp className="h-4 w-4 text-foreground/60" />
-            </CardAction>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <AnimatePresence mode="wait" initial={false}>
-              {isLoading ? (
-                <motion.div
-                  key="sk"
-                  className="space-y-2"
-                  exit={{ opacity: 0, transition: { duration: 0.15 } }}
-                >
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton key={i} className="h-8 w-full" />
-                  ))}
-                </motion.div>
-              ) : (calls?.topEndpoints ?? []).length > 0 ? (
-                <motion.div
-                  key="list"
-                  className="space-y-1.5"
-                  variants={staggerList}
-                  initial="hidden"
-                  animate="show"
-                >
-                  {(calls?.topEndpoints ?? []).map(({ path, count }) => {
-                    const pct = Math.max(
-                      (count / (calls?.topEndpoints[0]?.count ?? 1)) * 100,
-                      4,
-                    );
-                    return (
-                      <motion.div
-                        key={path}
-                        variants={slideInRow}
-                        className="flex items-center gap-2"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-0.5">
-                            <span className="text-[11px] font-mono text-foreground/80 truncate">
-                              {path}
-                            </span>
-                            <span className="text-[11px] tabular-nums text-muted-foreground ml-2 flex-shrink-0">
-                              {count}
-                            </span>
-                          </div>
-                          <div className="h-1 rounded-full bg-muted overflow-hidden">
-                            <motion.div
-                              className="h-full rounded-full bg-primary/60"
-                              initial={{ width: 0 }}
-                              animate={{ width: `${pct}%` }}
-                              transition={{ duration: 0.6, ease: "easeOut" }}
-                            />
-                          </div>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </motion.div>
-              ) : (
-                <motion.p
-                  key="empty"
-                  className="text-xs text-muted-foreground"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                >
-                  No activity recorded yet.
-                </motion.p>
-              )}
-            </AnimatePresence>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Recent Errors</CardTitle>
-            <CardAction>
-              <XCircle className="h-4 w-4 text-foreground/60" />
-            </CardAction>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <AnimatePresence mode="wait" initial={false}>
-              {isLoading ? (
-                <motion.div
-                  key="sk"
-                  className="space-y-2"
-                  exit={{ opacity: 0, transition: { duration: 0.15 } }}
-                >
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton key={i} className="h-8 w-full" />
-                  ))}
-                </motion.div>
-              ) : (calls?.recentErrors ?? []).length > 0 ? (
-                <motion.div
-                  key="list"
-                  className="divide-y divide-border/60"
-                  variants={staggerList}
-                  initial="hidden"
-                  animate="show"
-                >
-                  {(calls?.recentErrors ?? []).map((err, i) => {
-                    let name = err.url;
-                    try {
-                      name = new URL(err.url).pathname;
-                    } catch {}
-                    return (
-                      <motion.div
-                        key={i}
-                        variants={slideInRow}
-                        className="py-1.5 flex items-start gap-2"
-                      >
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "text-[10px] font-bold flex-shrink-0 mt-0.5",
-                            err.status >= 500
-                              ? "bg-destructive/10 text-destructive border-destructive/30"
-                              : "bg-muted text-foreground/70 border-border",
-                          )}
-                        >
-                          {err.status}
-                        </Badge>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[11px] font-mono text-foreground/80 truncate">
-                            {name}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground">
-                            {err.method} ·{" "}
-                            {err.time
-                              ? new Date(err.time).toLocaleString()
-                              : "—"}
-                          </p>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="ok"
-                  className="flex items-center gap-2 text-xs text-muted-foreground"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                >
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  No recent errors — all good!
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* ── Page views ──────────────────────────────────────────────────────── */}
-      <AnimatePresence>
-        {!isLoading && (stats?.pageViews.total ?? 0) > 0 && (
-          <motion.section
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0, transition: { duration: 0.35 } }}
-            exit={{ opacity: 0 }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm font-medium">
-                  Page Views
-                </CardTitle>
-                <CardAction>
-                  <Globe className="h-4 w-4 text-foreground/60" />
-                </CardAction>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-1.5 sm:grid-cols-3 lg:grid-cols-4">
-                  {Object.entries(stats!.pageViews.byPage)
-                    .sort(([, a], [, b]) => b - a)
-                    .map(([path, count]) => (
-                      <div
-                        key={path}
-                        className="flex items-center justify-between text-xs py-0.5"
-                      >
-                        <span className="font-mono text-muted-foreground truncate">
-                          {path}
-                        </span>
-                        <span className="font-medium tabular-nums ml-2 flex-shrink-0">
-                          {count}
-                        </span>
-                      </div>
-                    ))}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.section>
-        )}
-      </AnimatePresence>
-
-      {/* ── Login Activity ──────────────────────────────────────────────────── */}
-      <AnimatePresence>
-        {loginActivity && (
-          <motion.section
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0, transition: { duration: 0.35 } }}
-            exit={{ opacity: 0 }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm font-medium">Login Activity</CardTitle>
-                <CardDescription>Sign-in history over the past year</CardDescription>
-                <CardAction>
-                  <TicketCheck className="h-4 w-4 text-foreground/60" />
-                </CardAction>
-              </CardHeader>
-              <CardContent>
-                <LoginActivityGrid
-                  timestamps={loginActivity.timestamps}
-                  total={loginActivity.total}
-                />
-              </CardContent>
-            </Card>
-          </motion.section>
-        )}
-      </AnimatePresence>
+      ))}
     </div>
   );
 }

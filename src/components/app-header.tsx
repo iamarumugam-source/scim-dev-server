@@ -49,6 +49,10 @@ const BREADCRUMBS: Record<string, Crumb[]> = {
   "/jwe": [TOOLS, { label: "JWE Decoder" }],
   "/changelog": [TOOLS, { label: "Changelog" }],
   "/meeting-planner": [TOOLS, { label: "Meeting Planner" }],
+  // Archived pages. Listed so they get a breadcrumb if someone navigates to them
+  // directly; being here does not link them from anywhere.
+  "/scim/legacy/dashboard": [TOOLS, SCIM, { label: "Dashboard (archived)" }],
+  "/scim/legacy/users": [TOOLS, SCIM, { label: "Users (archived)" }],
 };
 
 // ─── Theme toggle ─────────────────────────────────────────────────────────────

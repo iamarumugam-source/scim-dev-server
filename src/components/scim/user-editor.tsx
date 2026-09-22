@@ -7,40 +7,20 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
-import { Mail, Pencil, Save, X, Loader2, CheckCircle2, XCircle, BadgeCheck, Crown, Plus } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { JsonViewer } from "@/components/json-viewer";
+import { UserAvatar } from "@/components/scim/user-avatar";
+import { Band, Inline, InlineList, LabelText, Muted, CopyValue } from "@/components/scim/detail-bands";
+import {
+  Mail, Pencil, Save, X, Loader2, CheckCircle2, XCircle, BadgeCheck, Crown,
+  Plus, Boxes, ChevronRight,
+} from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
   user: ScimUser;
   userId: string;
   onUpdate: () => void;
-}
-
-// ─── Section heading ──────────────────────────────────────────────────────────
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mb-2">
-      <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
-        {children}
-      </p>
-      <Separator />
-    </div>
-  );
-}
-
-// ─── Read-only field ──────────────────────────────────────────────────────────
-
-function ReadField({ label, value }: { label: string; value?: string | null }) {
-  return (
-    <div className="min-w-0">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className="mt-0.5 text-xs font-mono text-foreground truncate" title={value ?? undefined}>
-        {value || <span className="text-muted-foreground/40">—</span>}
-      </p>
-    </div>
-  );
 }
 
 // ─── Editable field ───────────────────────────────────────────────────────────
@@ -176,216 +156,232 @@ export function UserEditor({ user, userId, onUpdate }: Props) {
     }
   };
 
-  return (
-    <div className="space-y-4">
+  // ── Derived display values ────────────────────────────────────────────────
+  const shown    = mode === "edit" ? draft : user;
 
-      {/* ── Toolbar ─────────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">
-          {mode === "edit"
-            ? "Editing user — unsaved changes will be lost on cancel."
-            : "Click Edit to modify this user."}
-        </span>
-        {mode === "view" ? (
-          <Button size="sm" variant="outline" onClick={startEdit} className="h-7 text-xs gap-1.5">
-            <Pencil className="h-3 w-3" /> Edit
-          </Button>
-        ) : (
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={cancel} disabled={saving} className="h-7 text-xs gap-1.5">
-              <X className="h-3 w-3" /> Cancel
-            </Button>
-            <Button size="sm" onClick={save} disabled={saving} className="h-7 text-xs gap-1.5">
-              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-              Save
-            </Button>
+  const groupCount = user.groups?.length ?? 0;
+  const entCount   = (mode === "edit" ? draft.entitlements : user.entitlements)?.length ?? 0;
+  const roleCount  = (mode === "edit" ? draft.roles        : user.roles)?.length ?? 0;
+
+
+  return (
+    <div className="space-y-3">
+
+      {/* ── Identity header ───────────────────────────────────────────────── */}
+      {/* Repeats who you are looking at: the expanded row can be tall enough
+          that the collapsed row scrolls out of view. */}
+      <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border bg-muted/30 px-3.5 py-3">
+        <div className="flex min-w-0 items-start gap-3">
+          {/* Same hashed tint and radius as the collapsed row, so expanding a
+              row does not change the user's colour out from under you. */}
+          <UserAvatar user={shown} size="lg" className="flex-shrink-0" />
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="truncate font-mono text-sm font-medium">{shown.userName}</p>
+              {shown.active ? (
+                <Badge variant="outline" className="h-5 gap-1 border-green-300 bg-green-50 text-green-700 dark:border-green-700 dark:bg-green-950/40 dark:text-green-400">
+                  <CheckCircle2 className="h-3 w-3" /> Active
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="h-5 gap-1 text-muted-foreground">
+                  <XCircle className="h-3 w-3" /> Inactive
+                </Badge>
+              )}
+            </div>
+            <p className="truncate text-xs text-muted-foreground">
+              {[shown.displayName || shown.name?.formatted, shown.title].filter(Boolean).join(" · ") || "—"}
+            </p>
+            <CopyValue value={user.id} />
           </div>
-        )}
+        </div>
+
+        <div className="flex flex-shrink-0 items-center gap-2">
+          {mode === "view" ? (
+            <Button size="sm" variant="outline" onClick={startEdit} className="h-7 gap-1.5 text-xs">
+              <Pencil className="h-3 w-3" /> Edit
+            </Button>
+          ) : (
+            <>
+              <Button size="sm" variant="outline" onClick={cancel} disabled={saving} className="h-7 gap-1.5 text-xs">
+                <X className="h-3 w-3" /> Cancel
+              </Button>
+              <Button size="sm" onClick={save} disabled={saving} className="h-7 gap-1.5 text-xs">
+                {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                Save
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+      {mode === "edit" && (
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          Unsaved changes are lost on cancel. Saving issues a SCIM{" "}
+          <code className="font-mono">PUT</code>, which <strong>replaces the whole
+          resource</strong> — attributes cleared here are cleared on the server.
+        </p>
+      )}
 
-        {/* ── Identity ──────────────────────────────────────────────────────── */}
-        <div className="space-y-2">
-          <SectionLabel>Identity</SectionLabel>
+      {/* ── Detail bands ──────────────────────────────────────────────────── */}
+      {/* Deliberately NOT tabs. The expanded row exists to take in a whole user
+          at a glance; putting attributes behind tab clicks defeats that. The
+          original problem was a 3-column grid whose wildly different section
+          heights read as ragged and unrelated — full-width bands fix that while
+          keeping everything on screen, scanning cleanly top-to-bottom.
+          Only the raw JSON is collapsed, because it is bulky and secondary. */}
+      <div className="rounded-lg border">
+
+        <Band label="Identity" first>
           {mode === "view" ? (
-            <dl className="grid grid-cols-1 gap-2">
-              <ReadField label="ID"           value={user.id} />
-              <ReadField label="Username"     value={user.userName} />
-              <ReadField label="Display Name" value={user.displayName} />
-              <ReadField label="User Type"    value={user.userType} />
-            </dl>
+            <InlineList>
+              <Inline label="user"     value={user.userName} mono />
+              <Inline label="display"  value={user.displayName} />
+              <Inline label="type"     value={user.userType} />
+              <Inline label="nickname" value={user.nickName} />
+            </InlineList>
           ) : (
-            <div className="grid grid-cols-1 gap-2">
-              <EditField label="ID"           value={draft.id}          readOnly />
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
               <EditField label="Username"     value={draft.userName}    readOnly />
               <EditField label="Display Name" value={draft.displayName} onChange={(v) => set("displayName", v)} placeholder="John Doe" />
               <EditField label="User Type"    value={draft.userType}    onChange={(v) => set("userType", v)}    placeholder="Employee" />
+              <EditField label="Nickname"     value={draft.nickName}    onChange={(v) => set("nickName", v)}    placeholder="Johnny" />
             </div>
           )}
-        </div>
+        </Band>
 
-        {/* ── Name ──────────────────────────────────────────────────────────── */}
-        <div className="space-y-2">
-          <SectionLabel>Name</SectionLabel>
+        <Band label="Name">
           {mode === "view" ? (
-            <dl className="grid grid-cols-2 gap-2">
-              <ReadField label="Formatted" value={user.name?.formatted} />
-              <ReadField label="Given"     value={user.name?.givenName} />
-              <ReadField label="Family"    value={user.name?.familyName} />
-              <ReadField label="Middle"    value={user.name?.middleName} />
-              <ReadField label="Prefix"    value={user.name?.honorificPrefix} />
-              <ReadField label="Suffix"    value={user.name?.honorificSuffix} />
-            </dl>
+            <InlineList>
+              <Inline label="formatted" value={user.name?.formatted} />
+              <Inline label="given"     value={user.name?.givenName} />
+              <Inline label="family"    value={user.name?.familyName} />
+              <Inline label="middle"    value={user.name?.middleName} />
+              <Inline label="prefix"    value={user.name?.honorificPrefix} />
+              <Inline label="suffix"    value={user.name?.honorificSuffix} />
+            </InlineList>
           ) : (
-            <div className="grid grid-cols-2 gap-2">
-              <div className="col-span-2">
-                <EditField label="Formatted" value={draft.name?.formatted} onChange={(v) => setName("formatted", v)} placeholder="John M. Doe" />
-              </div>
-              <EditField label="Given"  value={draft.name?.givenName}       onChange={(v) => setName("givenName", v)}       placeholder="John" />
-              <EditField label="Family" value={draft.name?.familyName}      onChange={(v) => setName("familyName", v)}      placeholder="Doe" />
-              <EditField label="Middle" value={draft.name?.middleName}      onChange={(v) => setName("middleName", v)}      placeholder="M." />
-              <EditField label="Prefix" value={draft.name?.honorificPrefix} onChange={(v) => setName("honorificPrefix", v)} placeholder="Mr." />
-              <EditField label="Suffix" value={draft.name?.honorificSuffix} onChange={(v) => setName("honorificSuffix", v)} placeholder="Jr." />
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
+              <EditField label="Formatted" value={draft.name?.formatted}       onChange={(v) => setName("formatted", v)}       placeholder="John M. Doe" />
+              <EditField label="Given"     value={draft.name?.givenName}       onChange={(v) => setName("givenName", v)}       placeholder="John" />
+              <EditField label="Family"    value={draft.name?.familyName}      onChange={(v) => setName("familyName", v)}      placeholder="Doe" />
+              <EditField label="Middle"    value={draft.name?.middleName}      onChange={(v) => setName("middleName", v)}      placeholder="M." />
+              <EditField label="Prefix"    value={draft.name?.honorificPrefix} onChange={(v) => setName("honorificPrefix", v)} placeholder="Mr." />
+              <EditField label="Suffix"    value={draft.name?.honorificSuffix} onChange={(v) => setName("honorificSuffix", v)} placeholder="Jr." />
             </div>
           )}
-        </div>
+        </Band>
 
-        {/* ── Account ───────────────────────────────────────────────────────── */}
-        <div className="space-y-2">
-          <SectionLabel>Account</SectionLabel>
+        <Band label="Account">
           {mode === "view" ? (
-            <dl className="grid grid-cols-2 gap-2">
-              <div className="col-span-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Status</p>
-                {user.active ? (
-                  <Badge variant="outline" className="gap-1 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/40">
-                    <CheckCircle2 className="h-3 w-3" /> Active
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="gap-1 text-muted-foreground">
-                    <XCircle className="h-3 w-3" /> Inactive
-                  </Badge>
-                )}
-              </div>
-              <ReadField label="Title"    value={user.title} />
-              <ReadField label="Locale"   value={user.locale} />
-              <ReadField label="Timezone" value={user.timezone} />
-              <ReadField label="Language" value={user.preferredLanguage} />
-            </dl>
+            <InlineList>
+              <Inline label="title"    value={user.title} />
+              <Inline label="locale"   value={user.locale} mono />
+              <Inline label="timezone" value={user.timezone} mono />
+              <Inline label="language" value={user.preferredLanguage} mono />
+            </InlineList>
           ) : (
-            <div className="grid grid-cols-2 gap-2">
-              <div className="col-span-2 flex items-center gap-3">
-                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Active
-                </Label>
+            <div className="space-y-2">
+              <div className="flex w-fit items-center gap-3 rounded-md border px-2.5 py-1.5">
                 <Switch
+                  id={`active-${user.id}`}
                   checked={draft.active}
                   onCheckedChange={(v) => set("active", v)}
                 />
-                <span className="text-xs text-muted-foreground">
+                <Label htmlFor={`active-${user.id}`} className="text-xs font-normal">
                   {draft.active ? "Active" : "Inactive"}
-                </span>
+                </Label>
+                <span className="text-[10px] text-muted-foreground">Okta deactivation maps here</span>
               </div>
-              <div className="col-span-2">
-                <EditField label="Title" value={draft.title} onChange={(v) => set("title", v)} placeholder="Software Engineer" />
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                <EditField label="Title"    value={draft.title}             onChange={(v) => set("title", v)}             placeholder="Software Engineer" />
+                <EditField label="Locale"   value={draft.locale}            onChange={(v) => set("locale", v)}            placeholder="en-US" />
+                <EditField label="Timezone" value={draft.timezone}          onChange={(v) => set("timezone", v)}          placeholder="America/New_York" />
+                <EditField label="Language" value={draft.preferredLanguage} onChange={(v) => set("preferredLanguage", v)} placeholder="en" />
               </div>
-              <EditField label="Locale"   value={draft.locale}            onChange={(v) => set("locale", v)}            placeholder="en-US" />
-              <EditField label="Timezone" value={draft.timezone}          onChange={(v) => set("timezone", v)}          placeholder="America/New_York" />
-              <EditField label="Language" value={draft.preferredLanguage} onChange={(v) => set("preferredLanguage", v)} placeholder="en" />
             </div>
           )}
-        </div>
+        </Band>
 
-        {/* ── Contact ───────────────────────────────────────────────────────── */}
-        <div className="space-y-2">
-          <SectionLabel>Contact</SectionLabel>
+        <Band label="Email">
           {mode === "view" ? (
-            <div className="space-y-1.5">
+            <div className="flex flex-wrap gap-1.5">
               {user.emails?.map((e, i) => (
-                <div key={i} className="flex items-center gap-2 text-xs font-mono">
-                  <Mail className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                  <span className="text-foreground truncate">{e.value}</span>
-                  <div className="flex gap-1 flex-shrink-0">
-                    {e.type    && <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">{e.type}</Badge>}
-                    {e.primary && <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">primary</Badge>}
-                  </div>
-                </div>
+                <span key={i} className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs">
+                  <Mail className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+                  <span className="font-mono">{e.value}</span>
+                  {e.primary && <Badge variant="secondary" className="h-4 px-1 py-0 text-[9px]">primary</Badge>}
+                  {e.type && <span className="text-[10px] text-muted-foreground">{e.type}</span>}
+                </span>
               ))}
-              {(!user.emails || user.emails.length === 0) && (
-                <span className="text-xs text-muted-foreground/40 font-mono">No emails</span>
-              )}
+              {!user.emails?.length && <Muted>No email addresses.</Muted>}
             </div>
           ) : (
             <div className="space-y-2">
-              <EditField
-                label="Primary Email"
-                value={draft.emails?.find((e) => e.primary)?.value}
-                onChange={setPrimaryEmail}
-                placeholder="user@example.com"
-              />
-              {(draft.emails || []).filter((e) => !e.primary).map((e, i) => (
-                <div key={i} className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
-                  <Mail className="h-3 w-3 flex-shrink-0" />
-                  <span className="truncate">{e.value}</span>
-                  {e.type && <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 flex-shrink-0">{e.type}</Badge>}
+              <div className="max-w-sm">
+                <EditField
+                  label="Primary Email"
+                  value={draft.emails?.find((e) => e.primary)?.value}
+                  onChange={setPrimaryEmail}
+                  placeholder="user@example.com"
+                />
+              </div>
+              {(draft.emails || []).filter((e) => !e.primary).length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {(draft.emails || []).filter((e) => !e.primary).map((e, i) => (
+                    <span key={i} className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
+                      <Mail className="h-3 w-3" />
+                      <span className="font-mono">{e.value}</span>
+                      {e.type && <span className="text-[10px]">{e.type}</span>}
+                    </span>
+                  ))}
+                  <Muted>Secondary addresses come from the IdP and are read-only.</Muted>
                 </div>
-              ))}
+              )}
             </div>
           )}
-        </div>
+        </Band>
 
-        {/* ── Group memberships ─────────────────────────────────────────────── */}
-        {user.groups && user.groups.length > 0 && (
-          <div className="space-y-2">
-            <SectionLabel>Group Memberships</SectionLabel>
-            <div className="flex flex-wrap gap-1.5">
-              {user.groups.map((g) => (
-                <Badge key={g.value} variant="secondary" className="text-xs font-mono">
-                  {g.display}
-                </Badge>
-              ))}
-            </div>
-            {mode === "edit" && (
-              <p className="text-[11px] text-muted-foreground/60">Manage memberships from the Groups page.</p>
-            )}
+        <Band label={`Groups${groupCount ? ` (${groupCount})` : ""}`}>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {user.groups?.map((g) => (
+              <Badge key={g.value} variant="secondary" className="gap-1 font-mono text-xs">
+                <Boxes className="h-3 w-3" />
+                {g.display ?? g.value}
+              </Badge>
+            ))}
+            {groupCount === 0 && <Muted>No memberships.</Muted>}
+            {mode === "edit" && <Muted>Managed from the Groups page.</Muted>}
           </div>
-        )}
+        </Band>
 
-        {/* ── Entitlements ──────────────────────────────────────────────────── */}
-        {(mode === "edit" || (draft.entitlements && draft.entitlements.length > 0)) && (
+        <Band label={`Entitlements${entCount ? ` (${entCount})` : ""}`}>
           <div className="space-y-2">
-            <SectionLabel>Entitlements</SectionLabel>
-
-            <div className="flex flex-wrap gap-1.5 min-h-[24px]">
+            <div className="flex flex-wrap items-center gap-1.5">
               {(mode === "edit" ? draft.entitlements : user.entitlements ?? [])?.map((e) => (
                 <Badge
                   key={e.value}
                   variant="outline"
-                  className="gap-1 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40"
+                  className="gap-1 border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400"
                 >
                   <BadgeCheck className="h-3 w-3" />
                   {e.display ?? e.value}
                   {e.type && <span className="opacity-60">· {e.type}</span>}
                   {mode === "edit" && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-3 w-3 ml-0.5 p-0 hover:bg-transparent hover:text-destructive"
+                    <button
                       onClick={() => removeEntitlement(e.value)}
+                      aria-label={`Remove ${e.display ?? e.value}`}
+                      className="ml-0.5 rounded hover:text-destructive"
                     >
                       <X className="h-2.5 w-2.5" />
-                    </Button>
+                    </button>
                   )}
                 </Badge>
               ))}
-              {!(mode === "edit" ? draft.entitlements : user.entitlements ?? [])?.length && mode !== "edit" && (
-                <span className="text-xs text-muted-foreground/40">None assigned.</span>
-              )}
+              {entCount === 0 && mode !== "edit" && <Muted>None assigned.</Muted>}
             </div>
 
             {mode === "edit" && (
-              <div className="relative">
+              <div className="relative max-w-sm">
                 <Input
                   className="h-7 text-xs"
                   placeholder={loadingCatalog ? "Loading…" : "Search entitlements to assign…"}
@@ -394,18 +390,18 @@ export function UserEditor({ user, userId, onUpdate }: Props) {
                   onChange={(e) => setEntitlementSearch(e.target.value)}
                 />
                 {filteredEntitlements.length > 0 && (
-                  <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover shadow-md overflow-hidden">
+                  <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border border-border bg-popover shadow-md">
                     {filteredEntitlements.map((e) => (
                       <Button
                         key={e.id}
                         variant="ghost"
-                        className="w-full justify-start h-auto px-3 py-1.5 text-xs rounded-none gap-2"
+                        className="h-auto w-full justify-start gap-2 rounded-none px-3 py-1.5 text-xs"
                         onMouseDown={() => addEntitlement(e)}
                       >
-                        <BadgeCheck className="h-3 w-3 text-emerald-500 flex-shrink-0" />
-                        <span className="flex-1 font-medium truncate text-left">{e.displayName}</span>
-                        <span className="text-muted-foreground text-[10px] flex-shrink-0">{e.type}</span>
-                        <Plus className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                        <BadgeCheck className="h-3 w-3 flex-shrink-0 text-emerald-500" />
+                        <span className="flex-1 truncate text-left font-medium">{e.displayName}</span>
+                        <span className="flex-shrink-0 text-[10px] text-muted-foreground">{e.type}</span>
+                        <Plus className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
                       </Button>
                     ))}
                   </div>
@@ -413,41 +409,35 @@ export function UserEditor({ user, userId, onUpdate }: Props) {
               </div>
             )}
           </div>
-        )}
+        </Band>
 
-        {/* ── Roles ─────────────────────────────────────────────────────────── */}
-        {(mode === "edit" || (draft.roles && draft.roles.length > 0)) && (
+        <Band label={`Roles${roleCount ? ` (${roleCount})` : ""}`}>
           <div className="space-y-2">
-            <SectionLabel>Roles</SectionLabel>
-
-            <div className="flex flex-wrap gap-1.5 min-h-[24px]">
+            <div className="flex flex-wrap items-center gap-1.5">
               {(mode === "edit" ? draft.roles : user.roles ?? [])?.map((r) => (
                 <Badge
                   key={r.value}
                   variant="outline"
-                  className="gap-1 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40"
+                  className="gap-1 border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-400"
                 >
                   <Crown className="h-3 w-3" />
                   {r.display ?? r.value}
                   {mode === "edit" && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-3 w-3 ml-0.5 p-0 hover:bg-transparent hover:text-destructive"
+                    <button
                       onClick={() => removeRole(r.value)}
+                      aria-label={`Remove ${r.display ?? r.value}`}
+                      className="ml-0.5 rounded hover:text-destructive"
                     >
                       <X className="h-2.5 w-2.5" />
-                    </Button>
+                    </button>
                   )}
                 </Badge>
               ))}
-              {!(mode === "edit" ? draft.roles : user.roles ?? [])?.length && mode !== "edit" && (
-                <span className="text-xs text-muted-foreground/40">None assigned.</span>
-              )}
+              {roleCount === 0 && mode !== "edit" && <Muted>None assigned.</Muted>}
             </div>
 
             {mode === "edit" && (
-              <div className="relative">
+              <div className="relative max-w-sm">
                 <Input
                   className="h-7 text-xs"
                   placeholder={loadingCatalog ? "Loading…" : "Search roles to assign…"}
@@ -456,17 +446,17 @@ export function UserEditor({ user, userId, onUpdate }: Props) {
                   onChange={(e) => setRoleSearch(e.target.value)}
                 />
                 {filteredRoles.length > 0 && (
-                  <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover shadow-md overflow-hidden">
+                  <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border border-border bg-popover shadow-md">
                     {filteredRoles.map((r) => (
                       <Button
                         key={r.id}
                         variant="ghost"
-                        className="w-full justify-start h-auto px-3 py-1.5 text-xs rounded-none gap-2"
+                        className="h-auto w-full justify-start gap-2 rounded-none px-3 py-1.5 text-xs"
                         onMouseDown={() => addRole(r)}
                       >
-                        <Crown className="h-3 w-3 text-rose-500 flex-shrink-0" />
-                        <span className="flex-1 font-medium truncate text-left">{r.displayName}</span>
-                        <Plus className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                        <Crown className="h-3 w-3 flex-shrink-0 text-rose-500" />
+                        <span className="flex-1 truncate text-left font-medium">{r.displayName}</span>
+                        <Plus className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
                       </Button>
                     ))}
                   </div>
@@ -474,19 +464,42 @@ export function UserEditor({ user, userId, onUpdate }: Props) {
               </div>
             )}
           </div>
-        )}
+        </Band>
 
-        {/* ── Meta ──────────────────────────────────────────────────────────── */}
-        <div className="space-y-2">
-          <SectionLabel>Meta</SectionLabel>
-          <dl className="grid grid-cols-1 gap-2">
-            <ReadField label="Resource Type" value={user.meta?.resourceType} />
-            <ReadField label="Created"       value={user.meta?.created       ? new Date(user.meta.created).toLocaleString()       : undefined} />
-            <ReadField label="Last Modified" value={user.meta?.lastModified  ? new Date(user.meta.lastModified).toLocaleString()  : undefined} />
-            <ReadField label="Version"       value={user.meta?.version} />
-          </dl>
-        </div>
+        <Band label="Meta">
+          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            <Inline label="created"  value={user.meta?.created      ? new Date(user.meta.created).toLocaleString()      : undefined} />
+            <Inline label="modified" value={user.meta?.lastModified ? new Date(user.meta.lastModified).toLocaleString() : undefined} />
+            {user.meta?.version && (
+              <span className="inline-flex items-baseline gap-1.5">
+                <LabelText>etag</LabelText>
+                <CopyValue value={user.meta.version} />
+              </span>
+            )}
+            {user.meta?.location && (
+              <span className="inline-flex min-w-0 items-baseline gap-1.5">
+                <LabelText>location</LabelText>
+                <CopyValue value={user.meta.location} className="max-w-[28rem]" />
+              </span>
+            )}
+          </div>
+        </Band>
 
+        {/* Raw resource — the only thing hidden by default, because it is bulky
+            and secondary. In edit mode it shows the DRAFT, so you can read the
+            exact body a Save would PUT before committing to it. */}
+        <Collapsible>
+          <CollapsibleTrigger className="group/json flex w-full items-center gap-2 border-t px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:bg-muted/40 hover:text-foreground">
+            <ChevronRight className="h-3.5 w-3.5 transition-transform group-data-[state=open]/json:rotate-90" />
+            {mode === "edit" ? "Pending resource (unsaved draft)" : "Raw JSON"}
+            <span className="ml-auto font-normal normal-case tracking-normal">
+              what the service provider receives
+            </span>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="border-t p-3">
+            <JsonViewer data={mode === "edit" ? draft : user} className="max-h-[340px]" />
+          </CollapsibleContent>
+        </Collapsible>
       </div>
     </div>
   );

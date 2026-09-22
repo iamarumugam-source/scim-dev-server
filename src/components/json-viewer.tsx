@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { Copy, Check, SquarePlus, SquareMinus } from "lucide-react";
+import { createContext, useContext, useMemo, useState, useCallback } from "react";
+import { Copy, Check, SquarePlus, SquareMinus, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -84,25 +84,85 @@ function ToggleButton({
   );
 }
 
+
+// ─── Match highlighting ───────────────────────────────────────────────────────
+// A context rather than prop drilling: the tree is recursive and arbitrarily
+// deep, so threading a query through every node would touch every signature.
+
+const HighlightContext = createContext<string>("");
+
+function Highlight({ text }: { text: string }) {
+  const q = useContext(HighlightContext).trim().toLowerCase();
+  if (!q) return <>{text}</>;
+  const idx = text.toLowerCase().indexOf(q);
+  if (idx === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="rounded-[2px] bg-[color:var(--j-mark)] px-0.5 text-inherit">
+        {text.slice(idx, idx + q.length)}
+      </mark>
+      {text.slice(idx + q.length)}
+    </>
+  );
+}
+
+// ─── Syntax palette ───────────────────────────────────────────────────────────
+//
+// Replaces hardcoded VS Code hex values that were duplicated onto every span.
+// The previous light-mode string colour was #a31515 — red — which in a log
+// viewer reads as "error" on every string value. And #0000ff for booleans is
+// maximally saturated, the classic eye-strain choice on white.
+//
+// Measured against this app's real card surfaces (#ffffff / #18181b):
+//   contrast  — all five roles >= 4.5:1, i.e. WCAG AA for body text, both modes
+//   CVD       — worst adjacent pair deltaE 8.3 light / 10.6 dark (>=8 target)
+//
+// Type is never carried by colour alone either: strings keep their quotes,
+// numbers are bare digits, and null/boolean render italic — so the distinction
+// survives greyscale and colour-vision deficiency.
+function JsonSyntaxTokens() {
+  return (
+    <style>{`
+      .jsonv {
+        --j-key:    #1c5cab;
+        --j-string: #0a6e4f;
+        --j-number: #8a4b00;
+        --j-bool:   #6d28d9;
+        --j-punct:  #71717a;
+        --j-mark:   #fde68a;
+      }
+      .dark .jsonv {
+        --j-key:    #7cb7f0;
+        --j-string: #57d0b4;
+        --j-number: #ef9a5a;
+        --j-bool:   #c4b5fd;
+        --j-punct:  #a1a1aa;
+        --j-mark:   #78500a;
+      }
+    `}</style>
+  );
+}
+
 function PrimitiveValue({ value }: { value: JsonPrimitive }) {
   if (value === null) {
     return (
-      <span className="text-[#0000ff] dark:text-[#569cd6] italic">null</span>
+      <span className="italic text-[color:var(--j-bool)]">null</span>
     );
   }
   if (typeof value === "boolean") {
     return (
-      <span className="text-[#0000ff] dark:text-[#569cd6]">{value.toString()}</span>
+      <span className="italic text-[color:var(--j-bool)]">{value.toString()}</span>
     );
   }
   if (typeof value === "number") {
     return (
-      <span className="text-[#098658] dark:text-[#b5cea8]">{value}</span>
+      <span className="tabular-nums text-[color:var(--j-number)]">{value}</span>
     );
   }
   return (
-    <span className="text-[#a31515] dark:text-[#ce9178] break-all">
-      &quot;{value}&quot;
+    <span className="break-all text-[color:var(--j-string)]">
+      &quot;<Highlight text={String(value)} />&quot;
     </span>
   );
 }
@@ -122,8 +182,8 @@ function KeyLabel({
     );
   }
   return (
-    <span className="text-[#0451a5] dark:text-[#9cdcfe] font-medium flex-shrink-0">
-      &quot;{name}&quot;
+    <span className="flex-shrink-0 font-medium text-[color:var(--j-key)]">
+      &quot;<Highlight text={String(name)} />&quot;
     </span>
   );
 }
@@ -269,35 +329,94 @@ interface JsonViewerProps {
 export function JsonViewer({ data, className }: JsonViewerProps) {
   const [allExpanded, setAllExpanded] = useState(false);
   const [treeKey,     setTreeKey]     = useState(0);
+  const [query,       setQuery]       = useState("");
 
-  const handleExpandAll  = () => { setAllExpanded(true);  setTreeKey((k) => k + 1); };
+  const handleExpandAll   = () => { setAllExpanded(true);  setTreeKey((k) => k + 1); };
   const handleCollapseAll = () => { setAllExpanded(false); setTreeKey((k) => k + 1); };
+
+  const searching = query.trim().length > 0;
+
+  // Number of matches, counted off the serialised form — cheap, and it tells you
+  // whether a search found anything without hunting for highlights.
+  const matchCount = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return 0;
+    try {
+      const hay = JSON.stringify(data)?.toLowerCase() ?? "";
+      let n = 0, i = hay.indexOf(q);
+      while (i !== -1) { n++; i = hay.indexOf(q, i + q.length); }
+      return n;
+    } catch { return 0; }
+  }, [data, query]);
+
+  // Searching force-expands, otherwise matches stay hidden inside collapsed
+  // nodes and the highlight is invisible.
+  const expand = allExpanded || searching;
+  const treeSeed = `${treeKey}-${searching ? "s" : "c"}`;
 
   return (
     <div
       className={cn(
-        "flex flex-col rounded-md bg-card text-card-foreground border border-border overflow-hidden",
+        "jsonv flex flex-col overflow-hidden rounded-md border border-border bg-card text-card-foreground",
         className,
       )}
     >
-      <div className="flex items-center justify-end gap-1 px-3 py-1.5 border-b border-border/60 bg-muted/30 flex-shrink-0">
+      <JsonSyntaxTokens />
+
+      <div className="flex flex-shrink-0 items-center gap-2 border-b border-border/60 bg-muted/30 px-2 py-1.5">
+        {/* Search first: on a SCIM payload the usual question is "does this
+            response contain X", which previously meant reading the whole tree. */}
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Find in JSON…"
+            aria-label="Find in JSON"
+            className="h-6 w-full rounded border border-transparent bg-transparent pl-7 pr-6 font-mono text-[11px] outline-none placeholder:text-muted-foreground/70 focus:border-border focus:bg-background"
+          />
+          {searching && (
+            <button
+              onClick={() => setQuery("")}
+              aria-label="Clear search"
+              className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+
+        {searching && (
+          <span className={cn(
+            "flex-shrink-0 tabular-nums text-[10px]",
+            matchCount === 0 ? "text-destructive" : "text-muted-foreground",
+          )}>
+            {matchCount === 0 ? "no matches" : `${matchCount} match${matchCount === 1 ? "" : "es"}`}
+          </span>
+        )}
+
         <button
           onClick={allExpanded ? handleCollapseAll : handleExpandAll}
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-muted"
+          disabled={searching}
+          title={searching ? "Searching expands everything" : undefined}
+          className="flex-shrink-0 rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
         >
-          {allExpanded ? "Collapse all" : "Expand all"}
+          {expand ? "Collapse all" : "Expand all"}
         </button>
         <CopyAllButton data={data} />
       </div>
-      <div className="font-mono text-xs leading-5 p-4 overflow-y-auto overflow-x-hidden min-h-0 flex-1">
-        <JsonNode
-          key={treeKey}
-          value={data as JsonValue}
-          depth={0}
-          isLast={true}
-          isArrayItem={false}
-          forceExpand={allExpanded}
-        />
+
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 font-mono text-xs leading-5">
+        <HighlightContext.Provider value={query}>
+          <JsonNode
+            key={treeSeed}
+            value={data as JsonValue}
+            depth={0}
+            isLast={true}
+            isArrayItem={false}
+            forceExpand={expand}
+          />
+        </HighlightContext.Provider>
       </div>
     </div>
   );

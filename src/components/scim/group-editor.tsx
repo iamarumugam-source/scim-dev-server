@@ -1,28 +1,50 @@
 "use client";
 
+// ─── Group expanded row ───────────────────────────────────────────────────────
+//
+// Same structure as UserEditor: identity header, full-width detail bands, and
+// the raw resource behind a collapsible. Both use the shared primitives in
+// detail-bands.tsx so the two cannot drift apart visually.
+//
+// Not tabs — an expanded row exists to take in a whole resource at a glance.
+
 import { useState, useEffect, useCallback, useRef } from "react";
-import { ScimGroup } from "@/lib/scim/models/scimSchemas";
-import { ScimUser } from "@/lib/scim/models/scimSchemas";
+import { ScimGroup, ScimUser } from "@/lib/scim/models/scimSchemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Save, X, Loader2, UserPlus, UserMinus, Search } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { JsonViewer } from "@/components/json-viewer";
+import {
+  Band, Inline, InlineList, LabelText, Muted, CopyValue,
+} from "@/components/scim/detail-bands";
+import { avatarColor } from "@/components/scim/user-avatar";
+import {
+  Pencil, Save, X, Loader2, UserPlus, UserMinus, Search, Boxes, ChevronRight,
+} from "lucide-react";
 import { toast } from "sonner";
-import { avatarColor } from "@/app/scim/users/columns";
+import { cn } from "@/lib/utils";
 
 interface Member { value: string; display?: string; $ref?: string; type?: string }
 
 function memberInitials(display?: string): string {
   if (!display) return "?";
-  const parts = display.trim().split(/\s+/);
+  const parts = display.trim().split(/\s+/).filter(Boolean);
   return parts.length >= 2
     ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
     : display.slice(0, 2).toUpperCase();
 }
 
-function Avatar({ name, id }: { name?: string; id: string }) {
+// rounded-md to match UserAvatar — a member here and a user in the list should
+// read as the same class of thing. (Named MemberAvatar so it does not shadow the
+// shadcn Avatar primitive.)
+function MemberAvatar({ name, id }: { name?: string; id: string }) {
   return (
-    <div className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${avatarColor(id)}`}>
+    <div className={cn(
+      "flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-[10px] font-semibold",
+      avatarColor(id),
+    )}>
       {memberInitials(name)}
     </div>
   );
@@ -125,80 +147,90 @@ export function GroupEditor({ group, userId, onUpdate }: Props) {
       }).filter((u) => !memberIds.has(u.id)).slice(0, 8)
     : [];
 
+  // In edit mode show the pending member list, so the count never disagrees with
+  // the rows beneath it.
+  const shownMembers = mode === "edit" ? members : (group.members || []);
+  const draft = { ...group, displayName: displayName.trim() || group.displayName, members };
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">
-          {mode === "edit" ? "Editing group — unsaved changes will be lost on cancel." : "Click Edit to modify this group."}
-        </span>
-        {mode === "view" ? (
-          <Button size="sm" variant="outline" onClick={startEdit} className="h-7 text-xs gap-1.5">
-            <Pencil className="h-3 w-3" /> Edit
-          </Button>
-        ) : (
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={cancel} disabled={saving} className="h-7 text-xs gap-1.5">
-              <X className="h-3 w-3" /> Cancel
-            </Button>
-            <Button size="sm" onClick={save} disabled={saving} className="h-7 text-xs gap-1.5">
-              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-              Save
-            </Button>
+    <div className="space-y-3">
+
+      {/* ── Identity header ───────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border bg-muted/30 px-3.5 py-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-sky-100 text-sky-700 dark:bg-sky-900/60 dark:text-sky-300">
+            <Boxes className="h-4 w-4" />
           </div>
-        )}
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="truncate text-sm font-medium">
+                {mode === "edit" ? (displayName || group.displayName) : group.displayName}
+              </p>
+              <Badge variant="secondary" className="h-5 tabular-nums text-[10px]">
+                {shownMembers.length} member{shownMembers.length === 1 ? "" : "s"}
+              </Badge>
+            </div>
+            <CopyValue value={group.id} />
+          </div>
+        </div>
+
+        <div className="flex flex-shrink-0 items-center gap-2">
+          {mode === "view" ? (
+            <Button size="sm" variant="outline" onClick={startEdit} className="h-7 gap-1.5 text-xs">
+              <Pencil className="h-3 w-3" /> Edit
+            </Button>
+          ) : (
+            <>
+              <Button size="sm" variant="outline" onClick={cancel} disabled={saving} className="h-7 gap-1.5 text-xs">
+                <X className="h-3 w-3" /> Cancel
+              </Button>
+              <Button size="sm" onClick={save} disabled={saving} className="h-7 gap-1.5 text-xs">
+                {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                Save
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        <div className="space-y-3">
-          <h4 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground border-b border-border/60 pb-1">
-            Group Info
-          </h4>
+      {mode === "edit" && (
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          Unsaved changes are lost on cancel. Saving issues a SCIM{" "}
+          <code className="font-mono">PUT</code>, which <strong>replaces the whole
+          resource</strong> — the member list is sent as-is, so removals here are
+          removals on the server.
+        </p>
+      )}
 
-          <div className="min-w-0">
-            <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block mb-0.5">
-              Display Name
-            </label>
-            {mode === "view" ? (
-              <p className="text-sm font-medium">{group.displayName}</p>
-            ) : (
+      {/* ── Detail bands ──────────────────────────────────────────────────── */}
+      <div className="rounded-lg border">
+
+        <Band label="Name" first>
+          {mode === "view" ? (
+            <p className="text-sm font-medium">{group.displayName}</p>
+          ) : (
+            <div className="max-w-sm space-y-0.5">
+              <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Display Name <span className="text-destructive">*</span>
+              </Label>
               <Input
                 className="h-7 text-xs"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="e.g. Engineering Team"
               />
-            )}
-          </div>
+            </div>
+          )}
+        </Band>
 
-          <div className="grid grid-cols-1 gap-1.5">
-            {[
-              ["ID",            group.id],
-              ["Schema",        group.schemas?.[0]],
-              ["Resource Type", group.meta?.resourceType],
-              ["Created",       group.meta?.created ? new Date(group.meta.created).toLocaleString() : undefined],
-              ["Last Modified", group.meta?.lastModified ? new Date(group.meta.lastModified).toLocaleString() : undefined],
-              ["Version",       group.meta?.version],
-            ].map(([label, value]) => (
-              <div key={label} className="min-w-0">
-                <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</dt>
-                <dd className="mt-0.5 text-xs font-mono text-foreground truncate">{value || <span className="text-muted-foreground/40">—</span>}</dd>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <h4 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground border-b border-border/60 pb-1">
-            Members ({members.length})
-          </h4>
-
-          {mode === "edit" && (
-            <div className="relative">
-              <div className="relative">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+        <Band label={`Members (${shownMembers.length})`}>
+          <div className="space-y-2">
+            {mode === "edit" && (
+              <div className="relative max-w-sm">
+                <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   ref={searchRef}
-                  className="h-7 text-xs pl-7"
+                  className="h-7 pl-7 text-xs"
                   placeholder={loadingUsers ? "Loading users…" : "Search to add a member…"}
                   value={search}
                   disabled={loadingUsers}
@@ -206,60 +238,106 @@ export function GroupEditor({ group, userId, onUpdate }: Props) {
                   onFocus={() => setShowDropdown(true)}
                   onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
                 />
-              </div>
-              {showDropdown && filtered.length > 0 && (
-                <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover shadow-md overflow-hidden">
-                  {filtered.map((user) => (
-                    <button
-                      key={user.id}
-                      type="button"
-                      className="flex w-full items-center gap-2.5 px-3 py-1.5 text-xs hover:bg-muted transition-colors"
-                      onMouseDown={() => addMember(user)}
-                    >
-                      <Avatar name={user.name?.formatted || user.displayName} id={user.id} />
-                      <div className="min-w-0 text-left">
-                        <p className="font-medium truncate">{user.name?.formatted || user.displayName || user.userName}</p>
-                        <p className="text-muted-foreground font-mono truncate text-[10px]">{user.userName}</p>
-                      </div>
-                      <UserPlus className="h-3 w-3 text-muted-foreground ml-auto flex-shrink-0" />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="space-y-1.5 max-h-48 overflow-y-auto">
-            {members.length > 0 ? (
-              members.map((member) => (
-                <div key={member.value} className="flex items-center gap-2.5 group/member">
-                  <Avatar name={member.display} id={member.value} />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium truncate">{member.display || "Unknown"}</p>
-                    <p className="text-[11px] text-muted-foreground font-mono truncate">{member.value}</p>
+                {showDropdown && filtered.length > 0 && (
+                  <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border border-border bg-popover shadow-md">
+                    {filtered.map((user) => (
+                      <button
+                        key={user.id}
+                        type="button"
+                        className="flex w-full items-center gap-2.5 px-3 py-1.5 text-xs transition-colors hover:bg-muted"
+                        onMouseDown={() => addMember(user)}
+                      >
+                        <MemberAvatar name={user.name?.formatted || user.displayName} id={user.id} />
+                        <div className="min-w-0 text-left">
+                          <p className="truncate font-medium">{user.name?.formatted || user.displayName || user.userName}</p>
+                          <p className="truncate font-mono text-[10px] text-muted-foreground">{user.userName}</p>
+                        </div>
+                        <UserPlus className="ml-auto h-3 w-3 flex-shrink-0 text-muted-foreground" />
+                      </button>
+                    ))}
                   </div>
-                  {member.type && (
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 flex-shrink-0">{member.type}</Badge>
-                  )}
-                  {mode === "edit" && (
-                    <button
-                      type="button"
-                      onClick={() => removeMember(member.value)}
-                      className="opacity-0 group-hover/member:opacity-100 text-muted-foreground hover:text-destructive transition-all flex-shrink-0"
-                      title="Remove member"
-                    >
-                      <UserMinus className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              ))
+                )}
+              </div>
+            )}
+
+            {shownMembers.length > 0 ? (
+              <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
+                {shownMembers.map((member) => (
+                  <div
+                    key={member.value}
+                    className="group/member flex items-center gap-2.5 rounded-md border px-2 py-1.5"
+                  >
+                    <MemberAvatar name={member.display} id={member.value} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-medium">{member.display || "Unknown"}</p>
+                      <p className="truncate font-mono text-[10px] text-muted-foreground">{member.value}</p>
+                    </div>
+                    {member.type && (
+                      <Badge variant="outline" className="h-4 flex-shrink-0 px-1.5 py-0 text-[10px]">
+                        {member.type}
+                      </Badge>
+                    )}
+                    {mode === "edit" && (
+                      <button
+                        type="button"
+                        onClick={() => removeMember(member.value)}
+                        aria-label={`Remove ${member.display || member.value}`}
+                        className="flex-shrink-0 text-muted-foreground opacity-0 transition-all hover:text-destructive group-hover/member:opacity-100 focus-visible:opacity-100"
+                      >
+                        <UserMinus className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             ) : (
-              <p className="text-xs text-muted-foreground/50 font-mono">
-                {mode === "edit" ? "No members yet — search above to add some." : "No members in this group."}
-              </p>
+              <Muted>
+                {mode === "edit"
+                  ? "No members yet — search above to add some."
+                  : "No members in this group."}
+              </Muted>
             )}
           </div>
-        </div>
+        </Band>
+
+        <Band label="Meta">
+          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            <InlineList>
+              <Inline label="schema"   value={group.schemas?.[0]} mono />
+              <Inline label="type"     value={group.meta?.resourceType} />
+              <Inline label="created"  value={group.meta?.created      ? new Date(group.meta.created).toLocaleString()      : undefined} />
+              <Inline label="modified" value={group.meta?.lastModified ? new Date(group.meta.lastModified).toLocaleString() : undefined} />
+            </InlineList>
+            {group.meta?.version && (
+              <span className="inline-flex items-baseline gap-1.5">
+                <LabelText>etag</LabelText>
+                <CopyValue value={group.meta.version} />
+              </span>
+            )}
+            {group.meta?.location && (
+              <span className="inline-flex min-w-0 items-baseline gap-1.5">
+                <LabelText>location</LabelText>
+                <CopyValue value={group.meta.location} className="max-w-[28rem]" />
+              </span>
+            )}
+          </div>
+        </Band>
+
+        {/* Raw resource — the only collapsed thing, because it is bulky and
+            secondary. In edit mode it shows the DRAFT, so you can read the exact
+            body a Save would PUT before committing to it. */}
+        <Collapsible>
+          <CollapsibleTrigger className="group/json flex w-full items-center gap-2 border-t px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:bg-muted/40 hover:text-foreground">
+            <ChevronRight className="h-3.5 w-3.5 transition-transform group-data-[state=open]/json:rotate-90" />
+            {mode === "edit" ? "Pending resource (unsaved draft)" : "Raw JSON"}
+            <span className="ml-auto font-normal normal-case tracking-normal">
+              what the service provider receives
+            </span>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="border-t p-3">
+            <JsonViewer data={mode === "edit" ? draft : group} className="max-h-[340px]" />
+          </CollapsibleContent>
+        </Collapsible>
       </div>
     </div>
   );

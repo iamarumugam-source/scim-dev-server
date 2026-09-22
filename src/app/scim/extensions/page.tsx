@@ -12,6 +12,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle,
+} from "@/components/ui/empty";
+import { VizTokens, Section } from "@/components/scim/dashboard/viz";
 import { Separator } from "@/components/ui/separator";
 import { usePageTracking } from "@/hooks/usePageTracking";
 import { JsonTemplateConverter } from "@/components/scim/json-template-converter";
@@ -70,17 +74,30 @@ export default function ExtensionsPage() {
 
   return (
     <motion.div
-      className="container mx-auto py-6 space-y-6"
+      className="viz container mx-auto space-y-7 py-6"
       initial={{ opacity: 0, y: 20, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: "spring", stiffness: 300, damping: 18, mass: 0.8 }}
     >
+      <VizTokens />
+
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-4">
-        <p className="text-sm text-muted-foreground">
-          Configure custom SCIM schema extensions injected into user responses on the fly.
-          Values are computed at request time — nothing is stored on the user record.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-lg font-semibold tracking-tight">
+            Extensions
+            {!isLoading && extensions.length > 0 && (
+              <span className="ml-2 text-sm font-normal tabular-nums text-muted-foreground">
+                {extensions.length}
+              </span>
+            )}
+          </h1>
+          <p className="max-w-2xl text-xs text-muted-foreground">
+            Custom SCIM schema extensions injected into user responses on the fly. Values
+            are computed at request time — nothing is stored on the user record, so a change
+            here shows up on the very next <code className="font-mono">GET /Users</code>.
+          </p>
+        </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <JsonTemplateConverter />
           <Button size="sm" onClick={() => setShowNew((p) => !p)} className="gap-1.5">
@@ -140,7 +157,7 @@ export default function ExtensionsPage() {
       )}
       </AnimatePresence>
 
-      {/* Extension list */}
+      <Section title="Schemas" hint="applied to every user response">
       <AnimatePresence mode="wait" initial={false}>
         {isLoading ? (
           <motion.div key="loading" className="space-y-3" exit={{ opacity: 0, transition: { duration: 0.15 } }}>
@@ -154,17 +171,25 @@ export default function ExtensionsPage() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ type: "spring", stiffness: 300, damping: 18 }}
           >
-            <Card className="border-dashed">
-              <CardContent className="p-12 text-center space-y-3">
-                <FloatIcon amplitude={8} speed={3} className="inline-block">
-                  <FlaskConical className="h-9 w-9 text-muted-foreground/40" />
-                </FloatIcon>
-                <p className="text-sm font-medium text-muted-foreground">No schema extensions yet</p>
-                <p className="text-xs text-muted-foreground/60">
-                  Create an extension to start adding custom attributes to SCIM user responses.
-                </p>
-              </CardContent>
-            </Card>
+            <Empty className="border border-dashed">
+              <EmptyHeader>
+                <EmptyMedia variant="icon" className="bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300">
+                  <FloatIcon amplitude={6} speed={3} className="inline-block">
+                    <FlaskConical className="h-4 w-4" />
+                  </FloatIcon>
+                </EmptyMedia>
+                <EmptyTitle className="text-sm">No schema extensions yet</EmptyTitle>
+                <EmptyDescription className="text-xs">
+                  Add one to start injecting custom attributes into SCIM user responses —
+                  useful for reproducing a customer&apos;s custom-attribute setup.
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                <Button size="sm" className="gap-1.5" onClick={() => setShowNew(true)}>
+                  <Plus className="h-3.5 w-3.5" /> New extension
+                </Button>
+              </EmptyContent>
+            </Empty>
           </motion.div>
         ) : (
           <StaggerList key="list" className="space-y-3">
@@ -176,8 +201,11 @@ export default function ExtensionsPage() {
           </StaggerList>
         )}
       </AnimatePresence>
+      </Section>
 
-      <ReferenceCard />
+      <Section title="Reference" hint="user properties and faker generators">
+        <ReferenceCard />
+      </Section>
     </motion.div>
   );
 }

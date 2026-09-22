@@ -1,28 +1,29 @@
 "use client";
 
-// ─── Groups ───────────────────────────────────────────────────────────────────
+// ─── Catalogue list ───────────────────────────────────────────────────────────
 //
-// Same pattern as /scim/users: lazy loading, search, sorting, row selection and
-// bulk actions, with the detail editor in an expandable row.
+// Shared list for the flat catalogue resources — Entitlements and Roles. Those
+// two pages were ~270 lines each differing by about 80: same state, same fetch,
+// same table, same create dialog. Only the icon, the accent, whether a `type`
+// field exists, and the expanded editor actually differ. One component
+// parameterised on those means the design cannot drift between them.
 //
-// One deliberate difference from Users, because the server differs: the Groups
-// endpoint accepts ONLY startIndex/count — there is no `filter` parameter and
-// groupService.getGroups takes no filter argument. So search here is CLIENT-side
-// over the rows already loaded, and the UI says so. Group counts are small (the
-// mock generator caps at 100), so lazy loading reaches the full set quickly and
-// the practical difference is slight — but it is not the same guarantee Users
-// gives, and pretending otherwise would mislead.
+// Same pattern as /scim/users and /scim/groups: lazy loading, search, sorting,
+// row selection with bulk delete, split empty-vs-no-match states.
+//
+// Search and sort are CLIENT-side. Neither the Entitlements nor the Roles
+// endpoint accepts a `filter` parameter — both take only startIndex/count — so
+// the UI says it is filtering the rows already loaded rather than implying a
+// server-side query.
 
-import { useEffect, useState, useMemo, useCallback, useRef, Fragment } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef, Fragment, type ReactNode } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
-import { ScimGroup } from "@/lib/scim/models/scimSchemas";
+import { motion, AnimatePresence } from "motion/react";
 import {
-  ChevronRight, Boxes, Plus, Loader2, Search, X, RefreshCw, Trash2,
+  ChevronRight, Plus, Loader2, Search, X, RefreshCw, Trash2,
   ArrowUpDown, ArrowUp, ArrowDown, Sparkles,
 } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
-
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -32,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Kbd } from "@/components/ui/kbd";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -41,50 +43,86 @@ import {
 import {
   InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput,
 } from "@/components/ui/input-group";
-import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { GroupEditor } from "@/components/scim/group-editor";
 import { usePageTracking } from "@/hooks/usePageTracking";
 
 const PAGE_SIZE = 30;
 
-type SortKey = "displayName" | "members" | "lastModified";
+// Tint pairs matching the StatTile accents and the avatars, so a row icon here
+// belongs to the same colour language as the rest of the app.
+const TINTS = {
+  emerald: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
+  amber:   "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
+  sky:     "bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300",
+  violet:  "bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300",
+} as const;
+
+/** Minimum shape every catalogue resource shares. */
+interface CatalogItem {
+  id: string;
+  displayName: string;
+  description?: string;
+  type?: string;
+  meta?: { lastModified?: string };
+}
+
+type SortKey = "displayName" | "type" | "lastModified";
 type SortDir = "asc" | "desc";
 
-export default function GroupsPage() {
+export function CatalogList<T extends CatalogItem>({
+  resource,
+  noun,
+  nounPlural,
+  icon,
+  accent,
+  hasType,
+  schema,
+  renderEditor,
+}: {
+  /** SCIM path segment, e.g. "Entitlements". */
+  resource: string;
+  noun: string;
+  nounPlural: string;
+  icon: ReactNode;
+  accent: keyof typeof TINTS;
+  /** Entitlements carry a `type`; Roles do not. */
+  hasType?: boolean;
+  schema: string;
+  renderEditor: (item: T, onUpdate: () => void) => ReactNode;
+}) {
   usePageTracking();
   const { data: session } = useSession();
   const userId = session?.user?.id;
 
-  const [groups,     setGroups]     = useState<ScimGroup[]>([]);
-  const [total,      setTotal]      = useState(0);
-  const [isLoading,  setIsLoading]  = useState(true);
-  const [isPaging,   setIsPaging]   = useState(false);
+  const [items,        setItems]        = useState<T[]>([]);
+  const [total,        setTotal]        = useState(0);
+  const [isLoading,    setIsLoading]    = useState(true);
+  const [isPaging,     setIsPaging]     = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [loadError,  setLoadError]  = useState<string | null>(null);
+  const [loadError,    setLoadError]    = useState<string | null>(null);
 
   const [query,   setQuery]   = useState("");
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
-  const [selected,   setSelected]   = useState<Set<string>>(new Set());
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selected,    setSelected]    = useState<Set<string>>(new Set());
+  const [expandedId,  setExpandedId]  = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [bulkBusy,   setBulkBusy]   = useState(false);
+  const [bulkBusy,    setBulkBusy]    = useState(false);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newName,    setNewName]    = useState("");
+  const [newType,    setNewType]    = useState("");
+  const [newDesc,    setNewDesc]    = useState("");
   const [creating,   setCreating]   = useState(false);
 
   const searchRef   = useRef<HTMLInputElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  // Guards a second fetch firing before the first resolves — the observer can
-  // retrigger while a request is still in flight.
   const inFlight    = useRef(false);
 
-  const hasMore = groups.length < total;
+  const hasMore = items.length < total;
+  const cols    = hasType ? 7 : 6;
 
-  // ⌘K / Ctrl+K focuses search.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -97,107 +135,94 @@ export default function GroupsPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const fetchPage = useCallback(async (
-    startIndex: number,
-    mode: "replace" | "append",
-  ) => {
+  const fetchPage = useCallback(async (startIndex: number, mode: "replace" | "append") => {
     if (!userId || inFlight.current) return;
     inFlight.current = true;
     if (mode === "replace") setIsLoading(true); else setIsPaging(true);
     setLoadError(null);
-
     try {
       const res = await fetch(
-        `/api/${userId}/scim/v2/Groups?startIndex=${startIndex}&count=${PAGE_SIZE}`,
+        `/api/${userId}/scim/v2/${resource}?startIndex=${startIndex}&count=${PAGE_SIZE}`,
       );
       if (!res.ok) throw new Error(res.statusText || `HTTP ${res.status}`);
-
       const data  = await res.json();
-      const batch = (data.Resources ?? []) as ScimGroup[];
+      const batch = (data.Resources ?? []) as T[];
       setTotal(data.totalResults ?? 0);
-
-      setGroups((prev) => {
+      setItems((prev) => {
         if (mode === "replace") return batch;
-        // De-dupe by id: rows can shift between requests if data changes
-        // underneath us, which would otherwise duplicate React keys.
-        const seen = new Set(prev.map((g) => g.id));
-        return [...prev, ...batch.filter((g) => !seen.has(g.id))];
+        const seen = new Set(prev.map((x) => x.id));
+        return [...prev, ...batch.filter((x) => !seen.has(x.id))];
       });
     } catch (e) {
       const msg = (e as Error).message;
       setLoadError(msg);
-      if (mode === "replace") toast.error(`Failed to load groups: ${msg}`);
+      if (mode === "replace") toast.error(`Failed to load ${nounPlural}: ${msg}`);
     } finally {
       inFlight.current = false;
       setIsLoading(false);
       setIsPaging(false);
       setIsRefreshing(false);
     }
-  }, [userId]);
+  }, [userId, resource, nounPlural]);
 
   useEffect(() => { fetchPage(1, "replace"); }, [fetchPage]);
 
-  // ─── Infinite scroll ───────────────────────────────────────────────────────
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el || !hasMore || isLoading) return;
-
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !inFlight.current) {
-          fetchPage(groups.length + 1, "append");
-        }
-      },
-      { rootMargin: "240px" },
-    );
+    const io = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && !inFlight.current) {
+        fetchPage(items.length + 1, "append");
+      }
+    }, { rootMargin: "240px" });
     io.observe(el);
     return () => io.disconnect();
-  }, [hasMore, isLoading, groups.length, fetchPage]);
+  }, [hasMore, isLoading, items.length, fetchPage]);
 
   const refresh = () => {
     setIsRefreshing(true);
-    setGroups([]);
-    setTotal(0);
-    setSelected(new Set());
+    setItems([]); setTotal(0); setSelected(new Set());
     fetchPage(1, "replace");
   };
 
-  // Drop selections no longer on screen, so the bulk count can never claim rows
+  // Drop selections no longer on screen so the bulk count can never claim rows
   // the user cannot see.
   useEffect(() => {
     setSelected((prev) => {
       if (prev.size === 0) return prev;
-      const visible = new Set(groups.map((g) => g.id));
+      const visible = new Set(items.map((x) => x.id));
       const next = new Set([...prev].filter((id) => visible.has(id)));
       return next.size === prev.size ? prev : next;
     });
-  }, [groups]);
+  }, [items]);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     let out = q
-      ? groups.filter((g) =>
-          g.displayName?.toLowerCase().includes(q) || g.id.toLowerCase().includes(q))
-      : groups;
+      ? items.filter((x) =>
+          x.displayName?.toLowerCase().includes(q) ||
+          x.description?.toLowerCase().includes(q) ||
+          x.type?.toLowerCase().includes(q) ||
+          x.id.toLowerCase().includes(q))
+      : items;
 
     if (sortKey) {
       const dir = sortDir === "asc" ? 1 : -1;
       out = [...out].sort((a, b) => {
-        if (sortKey === "members") {
-          return ((a.members?.length ?? 0) - (b.members?.length ?? 0)) * dir;
-        }
         if (sortKey === "lastModified") {
           const at = a.meta?.lastModified ? Date.parse(a.meta.lastModified) : 0;
           const bt = b.meta?.lastModified ? Date.parse(b.meta.lastModified) : 0;
           return (at - bt) * dir;
         }
-        return (a.displayName ?? "").localeCompare(b.displayName ?? "") * dir;
+        const av = (sortKey === "type" ? a.type : a.displayName) ?? "";
+        const bv = (sortKey === "type" ? b.type : b.displayName) ?? "";
+        return av.localeCompare(bv) * dir;
       });
     }
     return out;
-  }, [groups, query, sortKey, sortDir]);
+  }, [items, query, sortKey, sortDir]);
 
-  const allSelected = rows.length > 0 && rows.every((g) => selected.has(g.id));
+  const allSelected = rows.length > 0 && rows.every((x) => selected.has(x.id));
   const isFiltered  = query.trim().length > 0;
 
   const toggleSort = (key: SortKey) => {
@@ -207,7 +232,7 @@ export default function GroupsPage() {
   };
 
   const toggleAll = () =>
-    setSelected(allSelected ? new Set() : new Set(rows.map((g) => g.id)));
+    setSelected(allSelected ? new Set() : new Set(rows.map((x) => x.id)));
 
   const toggleOne = (id: string) =>
     setSelected((prev) => {
@@ -216,22 +241,26 @@ export default function GroupsPage() {
       return next;
     });
 
-  const createGroup = async () => {
-    if (!newName.trim()) { toast.error("Group name is required."); return; }
+  const resetDialog = () => { setNewName(""); setNewType(""); setNewDesc(""); };
+
+  const create = async () => {
+    if (!newName.trim())            { toast.error("Display name is required."); return; }
+    if (hasType && !newType.trim()) { toast.error("Type is required.");         return; }
     setCreating(true);
     try {
-      const res = await fetch(`/api/${userId}/scim/v2/Groups`, {
+      const res = await fetch(`/api/${userId}/scim/v2/${resource}`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          schemas:     ["urn:ietf:params:scim:schemas:core:2.0:Group"],
+          schemas:     [schema],
           displayName: newName.trim(),
-          members:     [],
+          ...(hasType ? { type: newType.trim() } : {}),
+          description: newDesc.trim() || undefined,
         }),
       });
-      if (!res.ok) throw new Error((await res.json()).detail || "Failed to create group.");
-      toast.success("Group created.");
-      setNewName("");
+      if (!res.ok) throw new Error((await res.json()).detail || `Failed to create ${noun}.`);
+      toast.success(`${noun[0].toUpperCase()}${noun.slice(1)} created.`);
+      resetDialog();
       setDialogOpen(false);
       refresh();
     } catch (e) {
@@ -241,29 +270,24 @@ export default function GroupsPage() {
     }
   };
 
-  // Sequential rather than Promise.all: the tenant is rate limited to 60 req/min
-  // and a parallel burst would trip it.
+  // Sequential rather than parallel: the tenant is capped at 60 req/min.
   const bulkDelete = async () => {
     if (!userId || selected.size === 0) return;
     setBulkBusy(true);
     const ids = [...selected];
     let ok = 0;
-
     for (const id of ids) {
       try {
-        const res = await fetch(`/api/${userId}/scim/v2/Groups/${id}`, { method: "DELETE" });
+        const res = await fetch(`/api/${userId}/scim/v2/${resource}/${id}`, { method: "DELETE" });
         if (!res.ok) throw new Error(res.statusText);
         ok++;
-      } catch { /* failures counted by omission */ }
+      } catch { /* counted by omission */ }
     }
-
     setBulkBusy(false);
     setConfirmOpen(false);
     setSelected(new Set());
-
-    if (ok === ids.length) toast.success(`Deleted ${ok} group${ok === 1 ? "" : "s"}.`);
+    if (ok === ids.length) toast.success(`Deleted ${ok} ${ok === 1 ? noun : nounPlural}.`);
     else toast.error(`Deleted ${ok} of ${ids.length} — ${ids.length - ok} failed.`);
-
     refresh();
   };
 
@@ -281,11 +305,12 @@ export default function GroupsPage() {
           <TableCell>
             <div className="flex items-center gap-2">
               <Skeleton className="h-7 w-7 rounded-md" />
-              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-4 w-36" />
             </div>
           </TableCell>
-          <TableCell><Skeleton className="h-4 w-56" /></TableCell>
-          <TableCell><Skeleton className="h-5 w-8 rounded-full" /></TableCell>
+          {hasType && <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>}
+          <TableCell><Skeleton className="h-4 w-48" /></TableCell>
+          <TableCell><Skeleton className="h-4 w-52" /></TableCell>
           <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
         </TableRow>
       ))}
@@ -302,67 +327,80 @@ export default function GroupsPage() {
       {/* ─── Toolbar ─────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-2">
         <InputGroup className="min-w-[220px] flex-1">
-          <InputGroupAddon>
-            <Search className="h-3.5 w-3.5" />
-          </InputGroupAddon>
+          <InputGroupAddon><Search className="h-3.5 w-3.5" /></InputGroupAddon>
           <InputGroupInput
             ref={searchRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Filter loaded groups by name or id…"
-            aria-label="Filter loaded groups"
+            placeholder={`Filter loaded ${nounPlural}…`}
+            aria-label={`Filter loaded ${nounPlural}`}
             className="text-xs"
           />
           <InputGroupAddon align="inline-end">
             {query ? (
-              <InputGroupButton
-                size="icon-xs" variant="ghost"
-                onClick={() => setQuery("")} aria-label="Clear filter"
-              >
+              <InputGroupButton size="icon-xs" variant="ghost" onClick={() => setQuery("")} aria-label="Clear filter">
                 <X className="h-3.5 w-3.5" />
               </InputGroupButton>
-            ) : (
-              <Kbd>⌘K</Kbd>
-            )}
+            ) : <Kbd>⌘K</Kbd>}
           </InputGroupAddon>
         </InputGroup>
 
-        <Button
-          variant="outline" size="sm" className="h-9 gap-1.5"
-          onClick={refresh} disabled={isRefreshing || isLoading}
-        >
+        <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={refresh} disabled={isRefreshing || isLoading}>
           <RefreshCw className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")} />
           Refresh
         </Button>
 
-        <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setNewName(""); }}>
+        <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) resetDialog(); }}>
           <DialogTrigger asChild>
             <Button size="sm" className="h-9 gap-1.5">
-              <Plus className="h-3.5 w-3.5" /> New Group
+              <Plus className="h-3.5 w-3.5" /> New {noun}
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-sm">
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>New Group</DialogTitle>
-              <DialogDescription>Create a new provisioned group.</DialogDescription>
+              <DialogTitle>New {noun}</DialogTitle>
+              <DialogDescription>
+                Fields marked <span className="text-destructive">*</span> are required.
+              </DialogDescription>
             </DialogHeader>
-            <div className="space-y-1 py-2">
-              <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Group Name <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                className="h-8 text-xs"
-                placeholder="e.g. Engineering Team"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") createGroup(); }}
-              />
+            <div className="space-y-3 py-2">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Display Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  className="h-8 text-xs" value={newName}
+                  placeholder={hasType ? "e.g. Admin Access" : "e.g. Developer"}
+                  onChange={(e) => setNewName(e.target.value)}
+                />
+              </div>
+              {hasType && (
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Type <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    className="h-8 text-xs" value={newType}
+                    placeholder="e.g. role · permission · license · feature"
+                    onChange={(e) => setNewType(e.target.value)}
+                  />
+                </div>
+              )}
+              <div className="space-y-1">
+                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Description
+                </Label>
+                <Input
+                  className="h-8 text-xs" value={newDesc}
+                  placeholder="Optional"
+                  onChange={(e) => setNewDesc(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") create(); }}
+                />
+              </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => { setDialogOpen(false); setNewName(""); }}>
-                Cancel
-              </Button>
-              <Button onClick={createGroup} disabled={creating} className="gap-1.5">
+              <Button variant="outline" onClick={() => { setDialogOpen(false); resetDialog(); }}>Cancel</Button>
+              <Button onClick={create} disabled={creating} className="gap-1.5">
                 {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
                 Create
               </Button>
@@ -371,13 +409,10 @@ export default function GroupsPage() {
         </Dialog>
       </div>
 
-      {/* States what is server-side vs client-side, rather than implying parity
-          with the Users page. */}
       <p className="-mt-1 text-[11px] leading-relaxed text-muted-foreground">
-        The Groups endpoint has no server-side filter, so this searches the{" "}
-        {groups.length} group{groups.length === 1 ? "" : "s"} loaded so far
-        {hasMore && <> of {total} — scroll to load the rest</>}. Sorting is also
-        client-side.
+        The {resource} endpoint has no server-side filter, so this searches the{" "}
+        {items.length} {items.length === 1 ? noun : nounPlural} loaded so far
+        {hasMore && <> of {total} — scroll to load the rest</>}. Sorting is also client-side.
       </p>
 
       {/* ─── Bulk action bar ─────────────────────────────────────────────── */}
@@ -421,27 +456,28 @@ export default function GroupsPage() {
             <TableRow>
               <TableHead className="w-9 pl-3">
                 <Checkbox
-                  checked={allSelected}
-                  onCheckedChange={toggleAll}
-                  aria-label="Select all shown groups"
-                  disabled={rows.length === 0}
+                  checked={allSelected} onCheckedChange={toggleAll}
+                  aria-label={`Select all shown ${nounPlural}`} disabled={rows.length === 0}
                 />
               </TableHead>
               <TableHead className="w-8" />
               <TableHead className="text-xs font-semibold uppercase tracking-wide">
                 <button onClick={() => toggleSort("displayName")} className="flex items-center gap-1.5 hover:text-foreground">
-                  Group Name <SortIcon col="displayName" />
+                  Name <SortIcon col="displayName" />
                 </button>
               </TableHead>
-              <TableHead className="text-xs font-semibold uppercase tracking-wide">Group ID</TableHead>
-              <TableHead className="w-28 text-xs font-semibold uppercase tracking-wide">
-                <button onClick={() => toggleSort("members")} className="flex items-center gap-1.5 hover:text-foreground">
-                  Members <SortIcon col="members" />
-                </button>
-              </TableHead>
+              {hasType && (
+                <TableHead className="text-xs font-semibold uppercase tracking-wide">
+                  <button onClick={() => toggleSort("type")} className="flex items-center gap-1.5 hover:text-foreground">
+                    Type <SortIcon col="type" />
+                  </button>
+                </TableHead>
+              )}
+              <TableHead className="text-xs font-semibold uppercase tracking-wide">Description</TableHead>
+              <TableHead className="text-xs font-semibold uppercase tracking-wide">ID</TableHead>
               <TableHead className="hidden text-xs font-semibold uppercase tracking-wide md:table-cell">
                 <button onClick={() => toggleSort("lastModified")} className="flex items-center gap-1.5 hover:text-foreground">
-                  Last Modified <SortIcon col="lastModified" />
+                  Modified <SortIcon col="lastModified" />
                 </button>
               </TableHead>
             </TableRow>
@@ -452,16 +488,16 @@ export default function GroupsPage() {
               <SkeletonRows n={6} />
             ) : rows.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={6} className="p-0">
+                <TableCell colSpan={cols} className="p-0">
                   {isFiltered ? (
                     <Empty className="border-0">
                       <EmptyHeader>
                         <EmptyMedia variant="icon"><Search className="h-4 w-4" /></EmptyMedia>
-                        <EmptyTitle className="text-sm">No matching groups</EmptyTitle>
+                        <EmptyTitle className="text-sm">No matching {nounPlural}</EmptyTitle>
                         <EmptyDescription className="text-xs">
-                          Nothing among the loaded groups matches{" "}
+                          Nothing among the loaded {nounPlural} matches{" "}
                           <code className="font-mono">{query}</code>.
-                          {hasMore && " Older groups may not be loaded yet — scroll to load more."}
+                          {hasMore && " More may not be loaded yet — scroll to load them."}
                         </EmptyDescription>
                       </EmptyHeader>
                       <EmptyContent>
@@ -473,16 +509,17 @@ export default function GroupsPage() {
                   ) : (
                     <Empty className="border-0">
                       <EmptyHeader>
-                        <EmptyMedia variant="icon"><Boxes className="h-4 w-4" /></EmptyMedia>
-                        <EmptyTitle className="text-sm">No groups yet</EmptyTitle>
+                        <EmptyMedia variant="icon">{icon}</EmptyMedia>
+                        <EmptyTitle className="text-sm">No {nounPlural} yet</EmptyTitle>
                         <EmptyDescription className="text-xs">
-                          Groups appear here once Okta pushes them, or you can create one
-                          directly and seed members from the mock generator.
+                          {nounPlural[0].toUpperCase()}{nounPlural.slice(1)} appear here once
+                          Okta pushes them, or create one directly. The mock generator also
+                          seeds a catalogue.
                         </EmptyDescription>
                       </EmptyHeader>
                       <EmptyContent className="flex-row flex-wrap justify-center gap-2">
                         <Button size="sm" className="gap-1.5" onClick={() => setDialogOpen(true)}>
-                          <Plus className="h-3.5 w-3.5" /> New group
+                          <Plus className="h-3.5 w-3.5" /> New {noun}
                         </Button>
                         <Button variant="outline" size="sm" className="gap-1.5">
                           <Sparkles className="h-3.5 w-3.5" /> Generate mock data
@@ -493,21 +530,20 @@ export default function GroupsPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              rows.map((g) => {
-                const isSel  = selected.has(g.id);
-                const isOpen = expandedId === g.id;
+              rows.map((item) => {
+                const isSel  = selected.has(item.id);
+                const isOpen = expandedId === item.id;
                 return (
-                  <Fragment key={g.id}>
+                  <Fragment key={item.id}>
                     <TableRow
                       data-state={isSel ? "selected" : undefined}
                       className={cn("cursor-pointer transition-colors", isSel && "bg-primary/5 hover:bg-primary/10")}
-                      onClick={() => setExpandedId(isOpen ? null : g.id)}
+                      onClick={() => setExpandedId(isOpen ? null : item.id)}
                     >
                       <TableCell className="pl-3" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
-                          checked={isSel}
-                          onCheckedChange={() => toggleOne(g.id)}
-                          aria-label={`Select ${g.displayName}`}
+                          checked={isSel} onCheckedChange={() => toggleOne(item.id)}
+                          aria-label={`Select ${item.displayName}`}
                         />
                       </TableCell>
                       <TableCell className="text-muted-foreground">
@@ -515,29 +551,35 @@ export default function GroupsPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          {/* Same rounded-md tile radius as UserAvatar, so a group
-                              and a user read as the same class of thing. */}
-                          <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-sky-100 text-sky-700 dark:bg-sky-900/60 dark:text-sky-300">
-                            <Boxes className="h-3.5 w-3.5" />
+                          <div className={cn(
+                            "flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md",
+                            TINTS[accent],
+                          )}>
+                            {icon}
                           </div>
-                          <span className="text-sm font-medium">{g.displayName}</span>
+                          <span className="text-sm font-medium">{item.displayName}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">{g.id}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="tabular-nums">{g.members?.length ?? 0}</Badge>
+                      {hasType && (
+                        <TableCell>
+                          {item.type
+                            ? <Badge variant="outline" className="text-[10px]">{item.type}</Badge>
+                            : <span className="text-xs text-muted-foreground">—</span>}
+                        </TableCell>
+                      )}
+                      <TableCell className="max-w-[22rem] truncate text-xs text-muted-foreground" title={item.description}>
+                        {item.description || "—"}
                       </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{item.id}</TableCell>
                       <TableCell className="hidden text-xs text-muted-foreground md:table-cell">
-                        {g.meta?.lastModified ? new Date(g.meta.lastModified).toLocaleDateString() : "—"}
+                        {item.meta?.lastModified ? new Date(item.meta.lastModified).toLocaleDateString() : "—"}
                       </TableCell>
                     </TableRow>
 
                     {isOpen && (
                       <TableRow className="bg-muted/20 hover:bg-muted/20">
-                        <TableCell colSpan={6} className="border-t border-border/60 p-0">
-                          <div className="px-5 py-4">
-                            <GroupEditor group={g} userId={userId!} onUpdate={refresh} />
-                          </div>
+                        <TableCell colSpan={cols} className="border-t border-border/60 p-0">
+                          <div className="px-5 py-4">{renderEditor(item, refresh)}</div>
                         </TableCell>
                       </TableRow>
                     )}
@@ -553,22 +595,22 @@ export default function GroupsPage() {
 
       {/* ─── Lazy-load sentinel ──────────────────────────────────────────── */}
       <div ref={sentinelRef} className="flex flex-col items-center gap-2 py-1">
-        {loadError && groups.length > 0 && (
+        {loadError && items.length > 0 && (
           <p className="text-xs text-destructive">Could not load more: {loadError}</p>
         )}
         {hasMore && !isPaging && (
           <Button
             variant="outline" size="sm" className="h-8 gap-1.5 text-xs"
-            onClick={() => fetchPage(groups.length + 1, "append")}
+            onClick={() => fetchPage(items.length + 1, "append")}
           >
-            Load {Math.min(PAGE_SIZE, total - groups.length)} more
+            Load {Math.min(PAGE_SIZE, total - items.length)} more
           </Button>
         )}
         {!isLoading && (
           <p className="text-xs text-muted-foreground">
-            {total === 0 ? "No groups yet" : (
+            {total === 0 ? `No ${nounPlural} yet` : (
               <>
-                <span className="font-medium tabular-nums text-foreground">{groups.length}</span>
+                <span className="font-medium tabular-nums text-foreground">{items.length}</span>
                 {" of "}
                 <span className="font-medium tabular-nums text-foreground">{total}</span>
                 {" loaded"}
@@ -585,12 +627,12 @@ export default function GroupsPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              Delete {selected.size} group{selected.size === 1 ? "" : "s"}?
+              Delete {selected.size} {selected.size === 1 ? noun : nounPlural}?
             </DialogTitle>
             <DialogDescription>
-              This removes {selected.size === 1 ? "the group" : "the groups"} and{" "}
-              {selected.size === 1 ? "its" : "their"} memberships. The member users
-              themselves are not deleted. This cannot be undone.
+              Users currently assigned {selected.size === 1 ? "this" : "these"} keep the
+              reference in their resource until the next sync, which will then report it
+              as unknown. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
