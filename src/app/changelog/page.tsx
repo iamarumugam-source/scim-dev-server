@@ -40,6 +40,9 @@ const TYPES = Object.keys(TYPE_CONFIG) as ChangeType[];
 export default function ChangelogPage() {
   const [query, setQuery] = useState("");
   const [types, setTypes] = useState<Set<ChangeType>>(new Set());
+  // Which releases are expanded. Controlled rather than per-card `defaultOpen`,
+  // which Radix only reads on mount — see the note in VersionBlock.
+  const [openVersions, setOpenVersions] = useState<Set<string>>(new Set());
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -83,6 +86,20 @@ export default function ChangelogPage() {
 
   const shownChanges = filtered.reduce((n, r) => n + r.changes.length, 0);
   const isFiltered   = query.trim().length > 0 || types.size > 0;
+
+  // Whenever the query or type filter changes, open every release that still has
+  // a match. Without this a match inside a collapsed release stays invisible.
+  useEffect(() => {
+    if (isFiltered) setOpenVersions(new Set(filtered.map((r) => r.v.version)));
+    else            setOpenVersions(new Set([VERSIONS[0].version]));
+  }, [isFiltered, filtered]);
+
+  const toggleVersion = (ver: string, next: boolean) =>
+    setOpenVersions((p) => {
+      const n = new Set(p);
+      if (next) n.add(ver); else n.delete(ver);
+      return n;
+    });
 
   const toggleType = (t: ChangeType) =>
     setTypes((p) => { const n = new Set(p); if (n.has(t)) n.delete(t); else n.add(t); return n; });
@@ -223,16 +240,15 @@ export default function ChangelogPage() {
           </Empty>
         ) : (
           <div className="relative">
-            {filtered.map(({ v, changes }, i) => (
+            {filtered.map(({ v, changes }) => (
               <VersionBlock
                 key={v.version}
                 v={v}
                 changes={changes}
                 matchedOf={v.changes.length}
                 isLatest={v.version === latest.version}
-                // Latest open by default; filtering opens everything, since a
-                // collapsed card would hide the match you searched for.
-                defaultOpen={isFiltered || i === 0}
+                open={openVersions.has(v.version)}
+                onOpenChange={(next) => toggleVersion(v.version, next)}
               />
             ))}
           </div>

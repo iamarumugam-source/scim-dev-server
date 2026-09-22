@@ -20,19 +20,25 @@ export interface Version {
 }
 
 export function VersionBlock({
-  v, isLatest, defaultOpen, changes, matchedOf,
+  v, isLatest, open, onOpenChange, changes, matchedOf,
 }: {
   v: Version;
   isLatest: boolean;
-  /** Older releases start collapsed — 12 expanded releases is a very long scroll. */
-  defaultOpen: boolean;
+  /**
+   * CONTROLLED, deliberately. This was `defaultOpen`, which Radix reads once on
+   * mount — so with a stable key, a search could not reopen an already-collapsed
+   * release. The card and its count updated while the matched entry stayed
+   * hidden inside, which made search look broken.
+   */
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   /** Changes to render; may be a filtered subset of v.changes. */
   changes: Change[];
   /** When filtering, how many of the total matched. */
   matchedOf?: number;
 }) {
   return (
-    <Collapsible defaultOpen={defaultOpen} className="relative pl-8">
+    <Collapsible open={open} onOpenChange={onOpenChange} className="relative pl-8">
       {/* Timeline dot + line */}
       <div className={cn(
         "absolute left-0 top-[19px] h-3 w-3 rounded-full border-2 border-background ring-2",

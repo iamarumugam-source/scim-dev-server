@@ -93,16 +93,45 @@ export class UserService {
     return newUser;
   }
 
+  /**
+   * `filter` is the SCIM filter and stays spec-compliant — Okta depends on
+   * `userName eq "..."` returning an exact match (and 404 on no match, which is
+   * what makes create-on-assign work). It must not become fuzzy.
+   *
+   * `search` is a separate, non-SCIM parameter for the admin UI: a substring
+   * match across username, display name, name.formatted and email. Adding it
+   * alongside rather than loosening `filter` keeps the two concerns apart.
+   */
   public async getUsers(
     startIndex: number,
     count: number,
     userId: string,
-    filter?: string | null
+    filter?: string | null,
+    search?: string | null
   ): Promise<{ users: ScimUser[]; total: number }> {
     let query = supabase
       .from(TABLE_NAME)
       .select("resource", { count: "exact" })
       .eq("tenantId", userId);
+
+    if (search && search.trim()) {
+      // PostgREST's or() takes a comma-separated grammar, so commas, parens and
+      // its own wildcard have to go or the expression breaks. ilike uses * as
+      // the wildcard here, not %.
+      const q = search.trim().replace(/[,()*%\\]/g, "");
+      if (q) {
+        query = query.or(
+          [
+            `username.ilike.*${q}*`,
+            `resource->>displayName.ilike.*${q}*`,
+            `resource->name->>formatted.ilike.*${q}*`,
+            // emails is an array of objects; ->> serialises it, so this matches
+            // any address in it without needing a join.
+            `resource->>emails.ilike.*${q}*`,
+          ].join(","),
+        );
+      }
+    }
 
     if (filter) {
       const filterRegex = /([\w\.]+)\s+eq\s+"([^"]+)"/i;

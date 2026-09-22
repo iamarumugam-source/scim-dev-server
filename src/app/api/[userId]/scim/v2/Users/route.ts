@@ -38,16 +38,21 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const count = parseInt(searchParams.get("count") || "10", 10);
 
   const filter = searchParams.get("filter");
+  // Non-SCIM, admin-UI only: substring match across username, display name,
+  // name.formatted and email. Kept separate from `filter` so the SCIM semantics
+  // Okta depends on are untouched.
+  const search = searchParams.get("search");
 
   try {
     const { users, total } = await userService.getUsers(
       startIndex,
       count,
       userId,
-      filter
+      filter,
+      search
     );
 
-    if (total === 0 && filter !== null) {
+    if (total === 0 && filter !== null && search === null) {
       const notFound = {
         schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"],
         detail: "User not found",

@@ -82,11 +82,17 @@ export class UserService {
     return newUser;
   }
 
+  /**
+   * `filter` is the SCIM filter and stays exact — Okta relies on it. `search` is
+   * the separate admin-UI substring match. See the supabase implementation for
+   * the full rationale.
+   */
   public async getUsers(
     startIndex: number,
     count: number,
     userId: string,
-    filter?: string | null
+    filter?: string | null,
+    search?: string | null
   ): Promise<{ users: ScimUser[]; total: number }> {
     const pool   = getPool();
     const offset = startIndex - 1;
@@ -122,14 +128,30 @@ export class UserService {
       }
     }
 
-    const result = await pool.query(
-      `SELECT resource, COUNT(*) OVER()::int AS total_count
-       FROM scim_users
-       WHERE "tenantId" = $1
-       ORDER BY created_at
-       OFFSET $2 LIMIT $3`,
-      [userId, offset, count],
-    );
+    // Native SQL takes the pattern as a bind parameter, so nothing needs
+    // escaping the way the PostgREST or() grammar does.
+    const q = search?.trim();
+    const result = q
+      ? await pool.query(
+          `SELECT resource, COUNT(*) OVER()::int AS total_count
+             FROM scim_users
+            WHERE "tenantId" = $1
+              AND (username                     ILIKE $2
+                OR resource->>'displayName'     ILIKE $2
+                OR resource->'name'->>'formatted' ILIKE $2
+                OR resource->>'emails'          ILIKE $2)
+            ORDER BY created_at
+            OFFSET $3 LIMIT $4`,
+          [userId, `%${q}%`, offset, count],
+        )
+      : await pool.query(
+          `SELECT resource, COUNT(*) OVER()::int AS total_count
+             FROM scim_users
+            WHERE "tenantId" = $1
+            ORDER BY created_at
+            OFFSET $2 LIMIT $3`,
+          [userId, offset, count],
+        );
 
     const total = result.rows.length > 0 ? result.rows[0].total_count : 0;
     const users = result.rows.map((r: any) => normalizeUser(r.resource as ScimUser));

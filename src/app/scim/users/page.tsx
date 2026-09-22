@@ -5,13 +5,11 @@
 // Server-paginated list with lazy loading, search, sorting, row selection and
 // bulk actions.
 //
-// Two behaviours that look like bugs but are not — keep them:
-//   • Search hits the SCIM filter, which supports ONLY `userName eq "…"`. Exact
-//     whole-username match, no substring. The placeholder and the line under the
-//     toolbar say so; if that ever changes, the server needs a `co` branch in
-//     userService first.
-//   • A filter matching nothing returns 404 with a SCIM error body, not an empty
-//     ListResponse. That is handled as "no matches", not as an error.
+// Search uses the non-SCIM `search` query parameter, which does a substring match
+// across username, display name, name.formatted and email. It deliberately does
+// NOT use the SCIM `filter` parameter: that stays exact-match because Okta relies
+// on `userName eq "..."` returning one user, and on a 404 when there is none,
+// which is what makes create-on-assign work.
 //
 // Status filtering and column sorting act on rows already fetched — the server
 // supports neither — so the UI scopes them to what is loaded rather than
@@ -127,18 +125,12 @@ export default function UsersPage() {
         startIndex: String(startIndex),
         count:      String(PAGE_SIZE),
       });
-      // The server filter supports exactly one shape: userName eq "…".
-      if (activeQuery) params.set("filter", `userName eq "${activeQuery}"`);
+      // `search`, not `filter`: a substring match across username, display name,
+      // name.formatted and email. The SCIM `filter` parameter stays exact because
+      // Okta depends on that, so the UI uses a separate one.
+      if (activeQuery) params.set("search", activeQuery);
 
       const res = await fetch(`/api/${userId}/scim/v2/Users?${params}`);
-
-      // A filter matching nothing returns 404 with a SCIM error body, not an
-      // empty ListResponse. That is a legitimate "no matches", not a failure.
-      if (res.status === 404 && activeQuery) {
-        setUsers([]);
-        setTotalUsers(0);
-        return;
-      }
       if (!res.ok) throw new Error(res.statusText || `HTTP ${res.status}`);
 
       const data  = await res.json();
@@ -314,9 +306,9 @@ export default function UsersPage() {
             ref={searchRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Find by exact username…"
-            aria-label="Find users by exact username"
-            className="font-mono text-xs"
+            placeholder="Search name, email or username…"
+            aria-label="Search users by name, email or username"
+            className="text-xs"
           />
           <InputGroupAddon align="inline-end">
             {query ? (
@@ -357,10 +349,9 @@ export default function UsersPage() {
 
       {/* Honest labelling of what is server-side vs client-side. */}
       <p className="-mt-1 text-[11px] leading-relaxed text-muted-foreground">
-        Search runs on the server and matches <strong>whole usernames only</strong> — the SCIM
-        filter supports <code className="font-mono">userName eq</code> and nothing else.
-        Status and sorting apply to the {users.length} row{users.length === 1 ? "" : "s"} loaded
-        so far.
+        Search runs on the server across <strong>username, display name and email</strong>,
+        so it covers every matching user rather than only the loaded ones. Status and column
+        sorting apply to the {users.length} row{users.length === 1 ? "" : "s"} loaded so far.
       </p>
 
       {/* ─── Bulk action bar ─────────────────────────────────────────────── */}
@@ -469,9 +460,8 @@ export default function UsersPage() {
                         <EmptyTitle className="text-sm">No matching users</EmptyTitle>
                         <EmptyDescription className="text-xs">
                           {activeQuery ? (
-                            <>Nothing matches the exact username{" "}
-                            <code className="font-mono">{activeQuery}</code>. Partial matches
-                            are not supported by the SCIM filter.</>
+                            <>No user&apos;s username, name or email contains{" "}
+                            <code className="font-mono">{activeQuery}</code>.</>
                           ) : (
                             <>None of the loaded users match the selected status.</>
                           )}
