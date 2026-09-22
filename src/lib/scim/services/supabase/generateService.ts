@@ -1,6 +1,17 @@
 import { supabase } from "../../db";
 import { ScimUser, ScimGroup, ScimEntitlement, ScimRole } from "../../models/scimSchemas";
 
+// A 5000-user batch serialises to several MB of JSON in a single PostgREST
+// call, which risks request-size limits and function timeouts. Insert in
+// chunks instead — large enough to stay fast, small enough to stay safe.
+const INSERT_CHUNK_SIZE = 500;
+
+function chunk<T>(rows: T[], size = INSERT_CHUNK_SIZE): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < rows.length; i += size) out.push(rows.slice(i, i + size));
+  return out;
+}
+
 export class GenerateService {
   async deleteExistingData(userId: string): Promise<void> {
     const { error: er } = await supabase.from("scim_roles").delete().eq("tenantId", userId);
@@ -47,18 +58,19 @@ export class GenerateService {
     roles: ScimRole[],
   ): Promise<void> {
     if (users.length > 0) {
-      const { error } = await supabase.from("scim_users").insert(
-        users.map((u) => ({ id: u.id, username: u.userName, active: u.active, resource: u, tenantId: userId }))
-      );
-      if (error) throw new Error(`User insertion failed: ${error.message}`);
+      const rows = users.map((u) => ({ id: u.id, username: u.userName, active: u.active, resource: u, tenantId: userId }));
+      for (const batch of chunk(rows)) {
+        const { error } = await supabase.from("scim_users").insert(batch);
+        if (error) throw new Error(`User insertion failed: ${error.message}`);
+      }
     }
 
     if (existingUsers.length > 0) {
-      const { error } = await supabase.from("scim_users").upsert(
-        existingUsers.map((u) => ({ id: u.id, username: u.userName, active: u.active, resource: u, tenantId: userId })),
-        { onConflict: "id" }
-      );
-      if (error) throw new Error(`Existing user update failed: ${error.message}`);
+      const rows = existingUsers.map((u) => ({ id: u.id, username: u.userName, active: u.active, resource: u, tenantId: userId }));
+      for (const batch of chunk(rows)) {
+        const { error } = await supabase.from("scim_users").upsert(batch, { onConflict: "id" });
+        if (error) throw new Error(`Existing user update failed: ${error.message}`);
+      }
     }
 
     if (groups.length > 0) {

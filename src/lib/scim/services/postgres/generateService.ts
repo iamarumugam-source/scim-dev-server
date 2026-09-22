@@ -1,6 +1,16 @@
 import { getPool } from "../../db-postgres";
 import { ScimUser, ScimGroup, ScimEntitlement, ScimRole } from "../../models/scimSchemas";
 
+// Postgres caps a single statement at 65535 bind parameters, and 5000 users ×
+// 5 columns leaves little headroom. Insert in chunks to stay well clear.
+const INSERT_CHUNK_SIZE = 500;
+
+function chunk<T>(rows: T[], size = INSERT_CHUNK_SIZE): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < rows.length; i += size) out.push(rows.slice(i, i + size));
+  return out;
+}
+
 export class GenerateService {
   async deleteExistingData(userId: string): Promise<void> {
     const pool = getPool();
@@ -43,12 +53,14 @@ export class GenerateService {
     const pool = getPool();
 
     if (users.length > 0) {
-      const values  = users.map((_, i) => `($${i * 5 + 1}, $${i * 5 + 2}, $${i * 5 + 3}, $${i * 5 + 4}, $${i * 5 + 5})`).join(", ");
-      const params  = users.flatMap((u) => [u.id, u.userName, u.active, JSON.stringify(u), userId]);
-      await pool.query(
-        `INSERT INTO scim_users (id, username, active, resource, "tenantId") VALUES ${values}`,
-        params,
-      );
+      for (const batch of chunk(users)) {
+        const values = batch.map((_, i) => `($${i * 5 + 1}, $${i * 5 + 2}, $${i * 5 + 3}, $${i * 5 + 4}, $${i * 5 + 5})`).join(", ");
+        const params = batch.flatMap((u) => [u.id, u.userName, u.active, JSON.stringify(u), userId]);
+        await pool.query(
+          `INSERT INTO scim_users (id, username, active, resource, "tenantId") VALUES ${values}`,
+          params,
+        );
+      }
     }
 
     if (existingUsers.length > 0) {

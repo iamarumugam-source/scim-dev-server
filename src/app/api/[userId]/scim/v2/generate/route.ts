@@ -96,6 +96,36 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const actualUserCount  = generateUsers  ? userCount  : 0;
     const actualGroupCount = generateGroups ? groupCount : 0;
 
+    // userName carries a unique constraint in the DB, but faker draws from a
+    // finite name pool — so collisions are a birthday-paradox certainty well
+    // before userCount reaches its 5000 ceiling. Seed the set with the names
+    // already stored for this tenant, then suffix any base name that repeats.
+    // Compared case-insensitively: stricter than Postgres, so always safe.
+    const usedUserNames = new Set<string>(
+      existingUsers
+        .map((u) => u.userName?.toLowerCase())
+        .filter((n): n is string => Boolean(n)),
+    );
+
+    const uniqueUserName = (firstName: string, lastName: string): string => {
+      const base = faker.internet.username({ firstName, lastName });
+      if (!usedUserNames.has(base.toLowerCase())) {
+        usedUserNames.add(base.toLowerCase());
+        return base;
+      }
+      for (let n = 2; n <= 10_000; n++) {
+        const candidate = `${base}${n}`;
+        if (!usedUserNames.has(candidate.toLowerCase())) {
+          usedUserNames.add(candidate.toLowerCase());
+          return candidate;
+        }
+      }
+      // Pathological fallback — a random token rather than an unbounded loop.
+      const candidate = `${base}.${faker.string.alphanumeric({ length: 8, casing: "lower" })}`;
+      usedUserNames.add(candidate.toLowerCase());
+      return candidate;
+    };
+
     const users: ScimUser[] = [];
     for (let i = 0; i < actualUserCount; i++) {
       const firstName = faker.person.firstName();
@@ -105,7 +135,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       users.push({
         schemas:           ["urn:ietf:params:scim:schemas:core:2.0:User"],
         id,
-        userName:          faker.internet.username({ firstName, lastName }),
+        userName:          uniqueUserName(firstName, lastName),
         displayName:       `${firstName} ${lastName}`,
         name: {
           givenName:  firstName,
