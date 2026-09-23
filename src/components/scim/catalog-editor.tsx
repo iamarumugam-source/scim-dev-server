@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { JsonViewer } from "@/components/json-viewer";
 import { Band, Inline, InlineList, LabelText, Muted, CopyValue } from "@/components/scim/detail-bands";
-import { ResourceTile } from "@/components/scim/resource-tile";
+import { ResourceIcon } from "@/components/scim/resource-icon";
 import { Pencil, Save, X, Loader2, Trash2, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
@@ -113,8 +113,7 @@ export function CatalogEditor<T extends CatalogItem>({
       {/* ── Identity header ───────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border bg-muted/30 px-3.5 py-3">
         <div className="flex min-w-0 items-start gap-3">
-          {/* Hashed off the name so it matches the collapsed row. */}
-          <ResourceTile icon={icon} hashKey={item.displayName} size="lg" />
+          <ResourceIcon icon={icon} className="mt-0.5" />
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <p className="truncate text-sm font-medium">

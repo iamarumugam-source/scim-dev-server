@@ -44,7 +44,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { GroupEditor } from "@/components/scim/group-editor";
-import { ResourceTile } from "@/components/scim/resource-tile";
+import { ResourceIcon } from "@/components/scim/resource-icon";
 import { usePageTracking } from "@/hooks/usePageTracking";
 
 const PAGE_SIZE = 30;
@@ -515,10 +515,8 @@ export default function GroupsPage() {
                         <ChevronRight className={cn("h-4 w-4 transition-transform duration-150", isOpen && "rotate-90")} />
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          {/* Icon = kind of thing; tint hashed off the name so the
-                              row is also tellable apart at a glance. */}
-                          <ResourceTile icon={<Boxes className="h-3.5 w-3.5" />} hashKey={g.displayName} />
+                        <div className="flex items-center gap-2.5">
+                          <ResourceIcon icon={<Boxes className="h-4 w-4" />} />
                           <span className="text-sm font-medium">{g.displayName}</span>
                         </div>
                       </TableCell>

@@ -22,7 +22,7 @@ export default function EntitlementsPage() {
       resource="Entitlements"
       noun="entitlement"
       nounPlural="entitlements"
-      icon={<BadgeCheck className="h-3.5 w-3.5" />}
+      icon={<BadgeCheck className="h-4 w-4" />}
       hasType
       schema="urn:okta:scim:schemas:core:1.0:Entitlement"
       renderEditor={(entitlement, onUpdate) => (
@@ -31,7 +31,7 @@ export default function EntitlementsPage() {
           userId={userId}
           resource="Entitlements"
           noun="entitlement"
-          icon={<BadgeCheck className="h-4 w-4" />}
+          icon={<BadgeCheck className="h-[18px] w-[18px]" />}
           hasType
           onUpdate={onUpdate}
           onDelete={onUpdate}

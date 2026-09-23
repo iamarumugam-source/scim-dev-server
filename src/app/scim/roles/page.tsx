@@ -19,7 +19,7 @@ export default function RolesPage() {
       resource="Roles"
       noun="role"
       nounPlural="roles"
-      icon={<Crown className="h-3.5 w-3.5" />}
+      icon={<Crown className="h-4 w-4" />}
       schema="urn:okta:scim:schemas:core:1.0:Role"
       renderEditor={(role, onUpdate) => (
         <CatalogEditor
@@ -27,7 +27,7 @@ export default function RolesPage() {
           userId={userId}
           resource="Roles"
           noun="role"
-          icon={<Crown className="h-4 w-4" />}
+          icon={<Crown className="h-[18px] w-[18px]" />}
           onUpdate={onUpdate}
           onDelete={onUpdate}
         />

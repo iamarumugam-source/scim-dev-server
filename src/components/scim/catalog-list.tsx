@@ -45,7 +45,7 @@ import {
 } from "@/components/ui/input-group";
 import { cn } from "@/lib/utils";
 import { usePageTracking } from "@/hooks/usePageTracking";
-import { ResourceTile } from "@/components/scim/resource-tile";
+import { ResourceIcon } from "@/components/scim/resource-icon";
 
 const PAGE_SIZE = 30;
 
@@ -540,10 +540,8 @@ export function CatalogList<T extends CatalogItem>({
                         <ChevronRight className={cn("h-4 w-4 transition-transform duration-150", isOpen && "rotate-90")} />
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          {/* Tint hashed off the name, not a fixed accent: every
-                              row previously carried an identical tile. */}
-                          <ResourceTile icon={icon} hashKey={item.displayName} />
+                        <div className="flex items-center gap-2.5">
+                          <ResourceIcon icon={icon} />
                           <span className="text-sm font-medium">{item.displayName}</span>
                         </div>
                       </TableCell>
