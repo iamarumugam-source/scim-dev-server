@@ -20,6 +20,7 @@ import {
   Band, Inline, InlineList, LabelText, Muted, CopyValue,
 } from "@/components/scim/detail-bands";
 import { avatarColor } from "@/components/scim/user-avatar";
+import { ResourceTile } from "@/components/scim/resource-tile";
 import {
   Pencil, Save, X, Loader2, UserPlus, UserMinus, Search, Boxes, ChevronRight,
 } from "lucide-react";
@@ -158,9 +159,9 @@ export function GroupEditor({ group, userId, onUpdate }: Props) {
       {/* ── Identity header ───────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border bg-muted/30 px-3.5 py-3">
         <div className="flex min-w-0 items-start gap-3">
-          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-sky-100 text-sky-700 dark:bg-sky-900/60 dark:text-sky-300">
-            <Boxes className="h-4 w-4" />
-          </div>
+          {/* Same hash as the collapsed row, so expanding does not change the
+              group's colour out from under you. */}
+          <ResourceTile icon={<Boxes className="h-4 w-4" />} hashKey={group.displayName} size="lg" />
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <p className="truncate text-sm font-medium">

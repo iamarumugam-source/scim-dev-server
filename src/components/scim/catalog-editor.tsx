@@ -21,9 +21,9 @@ import {
 } from "@/components/ui/dialog";
 import { JsonViewer } from "@/components/json-viewer";
 import { Band, Inline, InlineList, LabelText, Muted, CopyValue } from "@/components/scim/detail-bands";
+import { ResourceTile } from "@/components/scim/resource-tile";
 import { Pencil, Save, X, Loader2, Trash2, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 
 interface CatalogItem {
   id: string;
@@ -35,7 +35,7 @@ interface CatalogItem {
 }
 
 export function CatalogEditor<T extends CatalogItem>({
-  item, userId, resource, noun, icon, tint, hasType, onUpdate, onDelete,
+  item, userId, resource, noun, icon, hasType, onUpdate, onDelete,
 }: {
   item: T;
   userId: string;
@@ -43,8 +43,6 @@ export function CatalogEditor<T extends CatalogItem>({
   resource: string;
   noun: string;
   icon: ReactNode;
-  /** Tint classes for the header tile — matches the row icon in the list. */
-  tint: string;
   hasType?: boolean;
   onUpdate: () => void;
   onDelete: () => void;
@@ -115,9 +113,8 @@ export function CatalogEditor<T extends CatalogItem>({
       {/* ── Identity header ───────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border bg-muted/30 px-3.5 py-3">
         <div className="flex min-w-0 items-start gap-3">
-          <div className={cn("flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md", tint)}>
-            {icon}
-          </div>
+          {/* Hashed off the name so it matches the collapsed row. */}
+          <ResourceTile icon={icon} hashKey={item.displayName} size="lg" />
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <p className="truncate text-sm font-medium">

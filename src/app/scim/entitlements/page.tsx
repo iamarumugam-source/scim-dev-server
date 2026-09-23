@@ -13,8 +13,6 @@ import { ScimEntitlement } from "@/lib/scim/models/scimSchemas";
 import { CatalogList } from "@/components/scim/catalog-list";
 import { CatalogEditor } from "@/components/scim/catalog-editor";
 
-const TINT = "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300";
-
 export default function EntitlementsPage() {
   const { data: session } = useSession();
   const userId = session?.user?.id ?? "";
@@ -25,7 +23,6 @@ export default function EntitlementsPage() {
       noun="entitlement"
       nounPlural="entitlements"
       icon={<BadgeCheck className="h-3.5 w-3.5" />}
-      accent="emerald"
       hasType
       schema="urn:okta:scim:schemas:core:1.0:Entitlement"
       renderEditor={(entitlement, onUpdate) => (
@@ -35,7 +32,6 @@ export default function EntitlementsPage() {
           resource="Entitlements"
           noun="entitlement"
           icon={<BadgeCheck className="h-4 w-4" />}
-          tint={TINT}
           hasType
           onUpdate={onUpdate}
           onDelete={onUpdate}

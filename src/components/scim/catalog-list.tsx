@@ -45,17 +45,9 @@ import {
 } from "@/components/ui/input-group";
 import { cn } from "@/lib/utils";
 import { usePageTracking } from "@/hooks/usePageTracking";
+import { ResourceTile } from "@/components/scim/resource-tile";
 
 const PAGE_SIZE = 30;
-
-// Tint pairs matching the StatTile accents and the avatars, so a row icon here
-// belongs to the same colour language as the rest of the app.
-const TINTS = {
-  emerald: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
-  amber:   "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
-  sky:     "bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300",
-  violet:  "bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300",
-} as const;
 
 /** Minimum shape every catalogue resource shares. */
 interface CatalogItem {
@@ -74,7 +66,6 @@ export function CatalogList<T extends CatalogItem>({
   noun,
   nounPlural,
   icon,
-  accent,
   hasType,
   schema,
   renderEditor,
@@ -84,7 +75,6 @@ export function CatalogList<T extends CatalogItem>({
   noun: string;
   nounPlural: string;
   icon: ReactNode;
-  accent: keyof typeof TINTS;
   /** Entitlements carry a `type`; Roles do not. */
   hasType?: boolean;
   schema: string;
@@ -551,12 +541,9 @@ export function CatalogList<T extends CatalogItem>({
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <div className={cn(
-                            "flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md",
-                            TINTS[accent],
-                          )}>
-                            {icon}
-                          </div>
+                          {/* Tint hashed off the name, not a fixed accent: every
+                              row previously carried an identical tile. */}
+                          <ResourceTile icon={icon} hashKey={item.displayName} />
                           <span className="text-sm font-medium">{item.displayName}</span>
                         </div>
                       </TableCell>

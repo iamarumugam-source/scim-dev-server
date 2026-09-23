@@ -44,6 +44,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { GroupEditor } from "@/components/scim/group-editor";
+import { ResourceTile } from "@/components/scim/resource-tile";
 import { usePageTracking } from "@/hooks/usePageTracking";
 
 const PAGE_SIZE = 30;
@@ -515,11 +516,9 @@ export default function GroupsPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          {/* Same rounded-md tile radius as UserAvatar, so a group
-                              and a user read as the same class of thing. */}
-                          <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-sky-100 text-sky-700 dark:bg-sky-900/60 dark:text-sky-300">
-                            <Boxes className="h-3.5 w-3.5" />
-                          </div>
+                          {/* Icon = kind of thing; tint hashed off the name so the
+                              row is also tellable apart at a glance. */}
+                          <ResourceTile icon={<Boxes className="h-3.5 w-3.5" />} hashKey={g.displayName} />
                           <span className="text-sm font-medium">{g.displayName}</span>
                         </div>
                       </TableCell>

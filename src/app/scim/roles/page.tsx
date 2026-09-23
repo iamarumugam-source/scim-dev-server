@@ -10,8 +10,6 @@ import { ScimRole } from "@/lib/scim/models/scimSchemas";
 import { CatalogList } from "@/components/scim/catalog-list";
 import { CatalogEditor } from "@/components/scim/catalog-editor";
 
-const TINT = "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300";
-
 export default function RolesPage() {
   const { data: session } = useSession();
   const userId = session?.user?.id ?? "";
@@ -22,7 +20,6 @@ export default function RolesPage() {
       noun="role"
       nounPlural="roles"
       icon={<Crown className="h-3.5 w-3.5" />}
-      accent="amber"
       schema="urn:okta:scim:schemas:core:1.0:Role"
       renderEditor={(role, onUpdate) => (
         <CatalogEditor
@@ -31,7 +28,6 @@ export default function RolesPage() {
           resource="Roles"
           noun="role"
           icon={<Crown className="h-4 w-4" />}
-          tint={TINT}
           onUpdate={onUpdate}
           onDelete={onUpdate}
         />
