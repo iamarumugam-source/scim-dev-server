@@ -114,9 +114,7 @@ export default function ChangelogPage() {
       {/* ─── Header ──────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-3">
-          <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300">
-            <ScrollText className="h-4 w-4" />
-          </span>
+          <ScrollText className="mt-0.5 h-[18px] w-[18px] flex-shrink-0 text-muted-foreground" />
           <div>
             <h1 className="text-lg font-semibold tracking-tight">Changelog</h1>
             <p className="text-xs text-muted-foreground">
@@ -150,23 +148,23 @@ export default function ChangelogPage() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatTile
             label="Releases" value={VERSIONS.length}
-            icon={<Rocket className="h-4 w-4" />} accent="violet"
+            icon={<Rocket className="h-4 w-4" />}
             sub={`since ${new Date(VERSIONS[VERSIONS.length - 1].date).toLocaleDateString("en", { month: "short", year: "numeric" })}`}
           />
           <StatTile
             label="Changes logged" value={totalChanges}
-            icon={<ListChecks className="h-4 w-4" />} accent="blue"
+            icon={<ListChecks className="h-4 w-4" />}
             sub="across all releases"
           />
           <StatTile
             label="Latest" value={`v${latest.version}`}
-            icon={<Tag className="h-4 w-4" />} accent="emerald"
+            icon={<Tag className="h-4 w-4" />}
             sub={latest.title}
           />
           <StatTile
             label="Last updated"
             value={new Date(latest.date).toLocaleDateString("en", { day: "numeric", month: "short" })}
-            icon={<CalendarDays className="h-4 w-4" />} accent="amber"
+            icon={<CalendarDays className="h-4 w-4" />}
             sub={new Date(latest.date).toLocaleDateString("en", { year: "numeric" })}
           />
         </div>

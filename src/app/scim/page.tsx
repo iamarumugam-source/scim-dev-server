@@ -223,26 +223,26 @@ export default function DashboardPage() {
           <Section title="Overview" hint={EXACT}>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <StatTile
-                label="Total API calls" value={stats.calls.total} icon={<Activity className="h-4 w-4" />} accent="blue"
+                label="Total API calls" value={stats.calls.total} icon={<Activity className="h-4 w-4" />}
                 sub={<>{stats.calls.last7days.toLocaleString()} in the last 7 days</>}
                 spark={stats.calls.dailyVolume}
                 delta={stats.calls.weekOverWeek}
                 href="/scim/logs"
               />
               <StatTile
-                label="Users" value={stats.users.total} icon={<Users className="h-4 w-4" />} accent="violet"
+                label="Users" value={stats.users.total} icon={<Users className="h-4 w-4" />}
                 sub={<>{stats.users.active.toLocaleString()} active · {stats.users.inactive.toLocaleString()} inactive</>}
                 href="/scim/users"
               />
               <StatTile
                 label="Success rate" value={`${successRate.toFixed(1)}%`}
                 tone={successRate >= 98 ? "good" : successRate >= 90 ? "warning" : "critical"}
-                icon={<CheckCircle2 className="h-4 w-4" />} accent="emerald"
+                icon={<CheckCircle2 className="h-4 w-4" />}
                 sub={<>2xx of {statusTotal.toLocaleString()} sampled responses</>}
               />
               <StatTile
                 label="Error rate" value={`${stats.calls.errorRate.toFixed(1)}%`}
-                tone={errorTone} icon={<ShieldCheck className="h-4 w-4" />} accent="rose"
+                tone={errorTone} icon={<ShieldCheck className="h-4 w-4" />}
                 sub="4xx + 5xx of sampled responses"
                 href="/scim/logs"
               />
@@ -322,11 +322,11 @@ export default function DashboardPage() {
           {/* ─── Resources ─────────────────────────────────────────────── */}
           <Section title="Resources" hint={EXACT}>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <StatTile label="Groups"       value={stats.groups.total}       icon={<Boxes className="h-4 w-4" />} accent="sky" href="/scim/groups" />
-              <StatTile label="Entitlements" value={stats.entitlements.total} icon={<BadgeCheck className="h-4 w-4" />} accent="emerald" href="/scim/entitlements" />
-              <StatTile label="Roles"        value={stats.roles.total}        icon={<Crown className="h-4 w-4" />} accent="amber" href="/scim/roles" />
+              <StatTile label="Groups"       value={stats.groups.total}       icon={<Boxes className="h-4 w-4" />} href="/scim/groups" />
+              <StatTile label="Entitlements" value={stats.entitlements.total} icon={<BadgeCheck className="h-4 w-4" />} href="/scim/entitlements" />
+              <StatTile label="Roles"        value={stats.roles.total}        icon={<Crown className="h-4 w-4" />} href="/scim/roles" />
               <StatTile
-                label="API keys" value={stats.apiKeys.total} icon={<KeyRound className="h-4 w-4" />} accent="violet"
+                label="API keys" value={stats.apiKeys.total} icon={<KeyRound className="h-4 w-4" />}
                 tone={stats.apiKeys.total === 0 ? "warning" : "default"}
                 sub={stats.apiKeys.total === 0 ? "None — Okta cannot connect yet" : "Active credentials"}
                 href="/scim/keys"

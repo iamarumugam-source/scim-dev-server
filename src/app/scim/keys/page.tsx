@@ -219,7 +219,6 @@ export default function ApiPage() {
             label="API keys"
             value={stats ? keyCount : "—"}
             icon={<KeyRound className="h-4 w-4" />}
-            accent="violet"
             tone={stats && !hasKeys ? "warning" : "default"}
             sub={stats
               ? (hasKeys ? "Bearer credentials active" : "None — Okta cannot connect yet")
@@ -229,14 +228,12 @@ export default function ApiPage() {
             label="Auth methods"
             value={4}
             icon={<ShieldCheck className="h-4 w-4" />}
-            accent="emerald"
             sub="Session · API key · local JWT · Okta JWT"
           />
           <StatTile
             label="Requests seen"
             value={stats ? stats.calls.total : "—"}
             icon={<Activity className="h-4 w-4" />}
-            accent="blue"
             sub={stats ? `${stats.calls.last7days.toLocaleString()} in the last 7 days` : "Loading…"}
             href="/scim/logs"
           />
@@ -244,7 +241,6 @@ export default function ApiPage() {
             label="Rate limit"
             value={stats ? (stats.rateLimit.enabled ? `${stats.rateLimit.limit}/min` : "Off") : "—"}
             icon={<Gauge className="h-4 w-4" />}
-            accent="amber"
             tone={stats && !stats.rateLimit.enabled ? "warning" : "default"}
             sub={stats
               ? (stats.rateLimit.enabled
@@ -275,11 +271,7 @@ export default function ApiPage() {
               Use this as the SCIM base URL in your identity provider, regardless of
               which authentication method you choose.
             </CardDescription>
-            <CardAction>
-              <span className="flex size-7 items-center justify-center rounded-md bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300">
-                <Server className="h-4 w-4" />
-              </span>
-            </CardAction>
+            <CardAction><Server className="h-4 w-4 text-muted-foreground" /></CardAction>
           </CardHeader>
           <CardContent>
             <CopyField label="URL" value={userId ? scimEndpoint : undefined} />
@@ -295,11 +287,7 @@ export default function ApiPage() {
                 <strong className="text-foreground">Authorization endpoint</strong> in
                 the SCIM provisioning settings.
               </CardDescription>
-              <CardAction>
-              <span className="flex size-7 items-center justify-center rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
-                <Zap className="h-4 w-4" />
-              </span>
-            </CardAction>
+              <CardAction><Zap className="h-4 w-4 text-muted-foreground" /></CardAction>
             </CardHeader>
             <CardContent>
               <EndpointField method="GET" value={authorizeUrl} />
@@ -314,11 +302,7 @@ export default function ApiPage() {
                 <strong className="text-foreground">Token endpoint</strong>. Issues a
                 Bearer token valid for one hour.
               </CardDescription>
-              <CardAction>
-              <span className="flex size-7 items-center justify-center rounded-md bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
-                <KeyRound className="h-4 w-4" />
-              </span>
-            </CardAction>
+              <CardAction><KeyRound className="h-4 w-4 text-muted-foreground" /></CardAction>
             </CardHeader>
             <CardContent>
               <EndpointField method="POST" value={tokenUrl} />
@@ -338,11 +322,7 @@ export default function ApiPage() {
               grant to obtain a Bearer token directly from the token endpoint — no Okta
               redirect required. They also work with the Authorization Code flow.
             </CardDescription>
-            <CardAction>
-              <span className="flex size-7 items-center justify-center rounded-md bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300">
-                <Unlock className="h-4 w-4" />
-              </span>
-            </CardAction>
+            <CardAction><Unlock className="h-4 w-4 text-muted-foreground" /></CardAction>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -364,11 +344,7 @@ export default function ApiPage() {
             <CardHeader>
               <CardTitle className="text-sm font-medium">Current usage</CardTitle>
               <CardDescription className="text-[11px]">live · 60s window</CardDescription>
-              <CardAction>
-              <span className="flex size-7 items-center justify-center rounded-md bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
-                <Gauge className="h-4 w-4" />
-              </span>
-            </CardAction>
+              <CardAction><Gauge className="h-4 w-4 text-muted-foreground" /></CardAction>
             </CardHeader>
             <CardContent>
               {stats ? (
@@ -395,11 +371,7 @@ export default function ApiPage() {
                 How many SCIM API requests this tenant may make per minute. When
                 disabled, all requests pass through unrestricted.
               </CardDescription>
-              <CardAction>
-              <span className="flex size-7 items-center justify-center rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
-                <ShieldCheck className="h-4 w-4" />
-              </span>
-            </CardAction>
+              <CardAction><ShieldCheck className="h-4 w-4 text-muted-foreground" /></CardAction>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between gap-4">
@@ -488,11 +460,7 @@ export default function ApiPage() {
             <CardDescription>
               Connect your Okta SCIM app using OAuth 2.0.
             </CardDescription>
-            <CardAction>
-              <span className="flex size-7 items-center justify-center rounded-md bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300">
-                <ListOrdered className="h-4 w-4" />
-              </span>
-            </CardAction>
+            <CardAction><ListOrdered className="h-4 w-4 text-muted-foreground" /></CardAction>
           </CardHeader>
           <CardContent>
             <ol className="space-y-3">

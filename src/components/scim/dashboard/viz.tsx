@@ -95,24 +95,8 @@ export function Section({ title, hint, children }: { title: string; hint?: strin
 // ─── Stat tile ────────────────────────────────────────────────────────────────
 // A bare number is the right form for a single magnitude — no chart.
 
-// Decorative identity tints for tile icons. Deliberately NOT the status palette
-// — status colours (good/warning/serious/critical) are reserved for state and
-// must never be spent on decoration, or a red icon stops meaning "problem".
-// These are the same contrast-safe tint/text pairs the avatars and entitlement
-// badges already use, so this adds colour without adding a new palette.
-const ACCENTS = {
-  blue:    "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
-  violet:  "bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300",
-  emerald: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
-  amber:   "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
-  rose:    "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300",
-  sky:     "bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300",
-} as const;
-
-export type Accent = keyof typeof ACCENTS;
-
 export function StatTile({
-  label, value, sub, tone = "default", icon, spark, delta, href, accent,
+  label, value, sub, tone = "default", icon, spark, delta, href,
 }: {
   label: string;
   value: string | number;
@@ -124,8 +108,6 @@ export function StatTile({
   delta?: number | null;
   /** When set, the whole tile becomes a link — tiles were previously dead ends. */
   href?: string;
-  /** Decorative icon tint. Identity only — never encodes state. */
-  accent?: Accent;
 }) {
   const toneClass = {
     default:  "",
@@ -144,16 +126,13 @@ export function StatTile({
           {typeof value === "number" ? value.toLocaleString() : value}
           {delta !== undefined && <DeltaBadge delta={delta} />}
         </CardTitle>
+        {/* Bare muted glyph, no tinted chip. Colour here was decoration — it is
+            now reserved for status, charts and user avatars, where it means
+            something. A link tile swaps the glyph for an arrow on hover. */}
         <CardAction className="text-muted-foreground">
-          {icon && accent ? (
-            // Tinted chip rather than a bare grey glyph — this is what makes a
-            // wall of tiles read as distinct cards instead of one flat block.
-            <span className={cn("flex size-7 items-center justify-center rounded-md", ACCENTS[accent])}>
-              {icon}
-            </span>
-          ) : href ? (
-            <ArrowUpRight className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover/tile:opacity-100" />
-          ) : icon}
+          {href
+            ? <ArrowUpRight className="h-4 w-4 opacity-40 transition-opacity group-hover/tile:opacity-100" />
+            : icon}
         </CardAction>
       </CardHeader>
       <CardContent className="pt-2">
