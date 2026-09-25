@@ -83,30 +83,52 @@ export class GroupService {
     startIndex: number = 1,
     count: number = 10,
     userId: string,
+    filter?: string | null,
   ): Promise<{ groups: ScimGroup[]; total: number }> {
     const pool   = getPool();
     const offset = startIndex - 1;
 
-    const result = await pool.query(
-      `SELECT resource, COUNT(*) OVER()::int AS total_count
-       FROM scim_groups
-       WHERE "tenantId" = $1
-       ORDER BY created_at
-       OFFSET $2 LIMIT $3`,
-      [userId, offset, count],
-    );
+    // Okta group push/import sends `displayName eq "..."` to check existence
+    // before create/link. Honour it (exact match); an unmatched filter yields an
+    // empty ListResponse, which is what SCIM group push expects.
+    let displayNameEq: string | null = null;
+    if (filter) {
+      const m = filter.match(/^\s*displayName\s+eq\s+"([^"]*)"\s*$/i);
+      if (!m) {
+        throw new Error(`Invalid or unsupported filter: "${filter}" (only displayName eq is supported)`);
+      }
+      displayNameEq = m[1];
+    }
+
+    const result = displayNameEq !== null
+      ? await pool.query(
+          `SELECT resource, COUNT(*) OVER()::int AS total_count
+             FROM scim_groups
+            WHERE "tenantId" = $1 AND display_name = $2
+            ORDER BY created_at
+            OFFSET $3 LIMIT $4`,
+          [userId, displayNameEq, offset, count],
+        )
+      : await pool.query(
+          `SELECT resource, COUNT(*) OVER()::int AS total_count
+             FROM scim_groups
+            WHERE "tenantId" = $1
+            ORDER BY created_at
+            OFFSET $2 LIMIT $3`,
+          [userId, offset, count],
+        );
 
     const total  = result.rows.length > 0 ? result.rows[0].total_count : 0;
     const groups = result.rows.map((r: any) => normalizeGroup(r.resource as ScimGroup));
     return { groups, total };
   }
 
-  public async getGroupById(id: string): Promise<ScimGroup | undefined> {
+  public async getGroupById(id: string, tenantId: string): Promise<ScimGroup | undefined> {
     const pool = getPool();
     try {
       const result = await pool.query(
-        'SELECT resource FROM scim_groups WHERE id = $1',
-        [id],
+        'SELECT resource FROM scim_groups WHERE id = $1 AND "tenantId" = $2',
+        [id, tenantId],
       );
       if (result.rows.length === 0) return undefined;
       return normalizeGroup(result.rows[0].resource as ScimGroup);
@@ -119,8 +141,9 @@ export class GroupService {
   public async updateGroup(
     id: string,
     groupData: Partial<ScimGroup>,
+    tenantId: string,
   ): Promise<ScimGroup | null> {
-    const originalGroup = await this.getGroupById(id);
+    const originalGroup = await this.getGroupById(id, tenantId);
     if (!originalGroup) return null;
 
     const now = new Date().toISOString();
@@ -140,8 +163,8 @@ export class GroupService {
     await pool.query(
       `UPDATE scim_groups
        SET display_name = $1, resource = $2, last_modified_at = $3
-       WHERE id = $4`,
-      [updatedGroup.displayName, updatedGroup, now, id],
+       WHERE id = $4 AND "tenantId" = $5`,
+      [updatedGroup.displayName, updatedGroup, now, id, tenantId],
     );
 
     const originalIds = new Set((originalGroup.members ?? []).map((m) => m.value));
@@ -153,11 +176,11 @@ export class GroupService {
     return updatedGroup;
   }
 
-  public async deleteGroup(id: string): Promise<boolean> {
+  public async deleteGroup(id: string, tenantId: string): Promise<boolean> {
     const pool   = getPool();
     const result = await pool.query(
-      'DELETE FROM scim_groups WHERE id = $1 RETURNING id',
-      [id],
+      'DELETE FROM scim_groups WHERE id = $1 AND "tenantId" = $2 RETURNING id',
+      [id, tenantId],
     );
     return result.rowCount !== null && result.rowCount > 0;
   }
@@ -240,8 +263,9 @@ export class GroupService {
   public async patchGroup(
     id: string,
     patchData: ScimPatchOp,
+    tenantId: string,
   ): Promise<ScimGroup | null> {
-    const originalGroup = await this.getGroupById(id);
+    const originalGroup = await this.getGroupById(id, tenantId);
     if (!originalGroup) return null;
 
     const groupToUpdate: ScimGroup = JSON.parse(JSON.stringify(originalGroup));
@@ -287,7 +311,18 @@ export class GroupService {
           break;
 
         case "remove": {
-          const match = op.path.match(/members\[value eq "(.+?)"\]/);
+          // path: members[value eq "<id>"]  OR  path: members, value:[{value}]
+          const match = op.path?.match(/members\[value eq "(.+?)"\]/);
+          if (!match && op.path === "members" && op.value != null) {
+            const toRemove = new Set(
+              (Array.isArray(op.value) ? op.value : [op.value]).map((m: any) => m.value),
+            );
+            removedMemberIds.push(...[...toRemove].filter(Boolean) as string[]);
+            groupToUpdate.members = (groupToUpdate.members || []).filter(
+              (m) => !toRemove.has(m.value),
+            );
+            break;
+          }
           if (match) {
             const idToRemove = match[1];
             removedMemberIds.push(idToRemove);
@@ -315,8 +350,8 @@ export class GroupService {
     await pool.query(
       `UPDATE scim_groups
        SET display_name = $1, resource = $2, last_modified_at = $3
-       WHERE id = $4`,
-      [groupToUpdate.displayName, groupToUpdate, now, id],
+       WHERE id = $4 AND "tenantId" = $5`,
+      [groupToUpdate.displayName, groupToUpdate, now, id, tenantId],
     );
 
     await this.syncUserGroupMemberships(groupToUpdate, addedMemberIds, removedMemberIds);

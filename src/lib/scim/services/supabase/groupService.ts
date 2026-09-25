@@ -49,8 +49,9 @@ export class GroupService {
     const { data: existingGroup } = await supabase
       .from(TABLE_NAME)
       .select("id")
+      .eq("tenantId", userId)
       .eq("display_name", groupData.displayName)
-      .single();
+      .maybeSingle();
 
     if (existingGroup) {
       throw new Error(
@@ -93,16 +94,29 @@ export class GroupService {
     startIndex: number = 1,
     count: number = 10,
     userId: string,
+    filter?: string | null,
   ): Promise<{ groups: ScimGroup[]; total: number }> {
-    const {
-      data,
-      error,
-      count: total,
-    } = await supabase
+    let query = supabase
       .from(TABLE_NAME)
       .select("resource", { count: "exact" })
-      .eq("tenantId", userId)
-      .range(startIndex - 1, startIndex - 1 + count - 1);
+      .eq("tenantId", userId);
+
+    // Okta's group push and group import both send `displayName eq "..."` to
+    // check whether a group already exists before creating or linking it. Without
+    // honouring it, Okta gets an unfiltered page back and can't find the group —
+    // producing duplicates or failed links. Exact match on display_name mirrors
+    // what Okta sends; an unmatched filter returns an empty ListResponse (not a
+    // 404), which is what SCIM group push expects.
+    if (filter) {
+      const m = filter.match(/^\s*displayName\s+eq\s+"([^"]*)"\s*$/i);
+      if (!m) {
+        throw new Error(`Invalid or unsupported filter: "${filter}" (only displayName eq is supported)`);
+      }
+      query = query.eq("display_name", m[1]);
+    }
+
+    const { data, error, count: total } =
+      await query.range(startIndex - 1, startIndex - 1 + count - 1);
 
     if (error) {
       throw new Error(`Supabase error getting groups: ${error.message}`);
@@ -112,10 +126,11 @@ export class GroupService {
     return { groups, total: total || 0 };
   }
 
-  public async getGroupById(id: string): Promise<ScimGroup | undefined> {
+  public async getGroupById(id: string, tenantId: string): Promise<ScimGroup | undefined> {
     const { data, error } = await supabase
       .from(TABLE_NAME)
       .select("resource")
+      .eq("tenantId", tenantId)
       .eq("id", id)
       .single();
 
@@ -130,8 +145,9 @@ export class GroupService {
   public async updateGroup(
     id: string,
     groupData: Partial<ScimGroup>,
+    tenantId: string,
   ): Promise<ScimGroup | null> {
-    const originalGroup = await this.getGroupById(id);
+    const originalGroup = await this.getGroupById(id, tenantId);
 
     if (!originalGroup) {
       return null;
@@ -157,6 +173,7 @@ export class GroupService {
         resource: updatedGroup,
         last_modified_at: now,
       })
+      .eq("tenantId", tenantId)
       .eq("id", id);
 
     if (error) {
@@ -172,10 +189,11 @@ export class GroupService {
     return updatedGroup;
   }
 
-  public async deleteGroup(id: string): Promise<boolean> {
+  public async deleteGroup(id: string, tenantId: string): Promise<boolean> {
     const { error, count } = await supabase
       .from(TABLE_NAME)
       .delete({ count: "exact" })
+      .eq("tenantId", tenantId)
       .eq("id", id);
 
     if (error) {
@@ -255,8 +273,9 @@ export class GroupService {
   public async patchGroup(
     id: string,
     patchData: ScimPatchOp,
+    tenantId: string,
   ): Promise<ScimGroup | null> {
-    const originalGroup = await this.getGroupById(id);
+    const originalGroup = await this.getGroupById(id, tenantId);
 
     if (!originalGroup) {
       return null;
@@ -307,12 +326,23 @@ export class GroupService {
           break;
 
         case "remove": {
-          const match = op.path.match(/members\[value eq "(.+?)"\]/);
+          // Two shapes both occur from Okta:
+          //   1. path: members[value eq "<id>"]              (filtered path)
+          //   2. path: members, value: [{ value: "<id>" }]   (value array)
+          const match = op.path?.match(/members\[value eq "(.+?)"\]/);
           if (match) {
             const idToRemove = match[1];
             removedMemberIds.push(idToRemove);
             groupToUpdate.members = (groupToUpdate.members || []).filter(
               (m) => m.value !== idToRemove,
+            );
+          } else if (op.path === "members" && op.value != null) {
+            const toRemove = new Set(
+              (Array.isArray(op.value) ? op.value : [op.value]).map((m: any) => m.value),
+            );
+            removedMemberIds.push(...[...toRemove].filter(Boolean) as string[]);
+            groupToUpdate.members = (groupToUpdate.members || []).filter(
+              (m) => !toRemove.has(m.value),
             );
           }
           break;
@@ -338,6 +368,7 @@ export class GroupService {
         resource: groupToUpdate,
         last_modified_at: now,
       })
+      .eq("tenantId", tenantId)
       .eq("id", id);
 
     if (error) {

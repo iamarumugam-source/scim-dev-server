@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { GroupService } from "@/lib/scim/services/groupService";
 import { logExternalRequest } from "@/lib/scim/logging";
 import { protectWithApiKey } from "@/lib/scim/apiHelper";
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return createAndLogResponse(request, errorData, { status: 401 }, userId);
   }
   try {
-    const group = await groupService.getGroupById(id);
+    const group = await groupService.getGroupById(id, userId);
     if (!group) {
       return notFoundResponse(request, userId);
     }
@@ -72,7 +72,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const body = await request.clone().json();
 
-    const updatedGroup = await groupService.updateGroup(id, body);
+    const updatedGroup = await groupService.updateGroup(id, body, userId);
     if (!updatedGroup) {
       return notFoundResponse(reqBody, userId);
     }
@@ -98,7 +98,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
   try {
     const body = await request.clone().json();
-    const patchedGroup = await groupService.patchGroup(id, body);
+    const patchedGroup = await groupService.patchGroup(id, body, userId);
 
     if (!patchedGroup) {
       return notFoundResponse(request, userId);
@@ -125,7 +125,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     return createAndLogResponse(request, errorData, { status: 401 }, userId);
   }
   try {
-    const success = await groupService.deleteGroup(id);
+    const success = await groupService.deleteGroup(id, userId);
     if (!success) {
       return notFoundResponse(request, userId);
     }

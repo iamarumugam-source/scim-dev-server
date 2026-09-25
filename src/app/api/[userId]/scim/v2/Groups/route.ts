@@ -36,12 +36,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const { searchParams } = new URL(request.url);
   const startIndex = parseInt(searchParams.get("startIndex") || "1", 10);
   const count = parseInt(searchParams.get("count") || "10", 10);
+  // Okta sends `displayName eq "..."` to check group existence before push/link.
+  const filter = searchParams.get("filter");
 
   try {
     const { groups, total } = await groupService.getGroups(
       startIndex,
       count,
-      userId
+      userId,
+      filter,
     );
     const listResponse: ScimListResponse<ScimGroup> = {
       schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
@@ -52,8 +55,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     };
     return createAndLogResponse(request, listResponse, { status: 200 }, userId);
   } catch (error: any) {
-    const errorData = { detail: error.message, status: "500" };
-    return createAndLogResponse(request, errorData, { status: 500 }, userId);
+    const isFilterError = error.message?.includes("filter");
+    const errorData = {
+      schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"],
+      detail: error.message,
+      status: isFilterError ? "400" : "500",
+    };
+    return createAndLogResponse(request, errorData, { status: isFilterError ? 400 : 500 }, userId);
   }
 }
 
