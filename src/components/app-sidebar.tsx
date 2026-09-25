@@ -19,6 +19,8 @@ import {
   Minus,
   Plus,
   CalendarCheck,
+  FlaskConical,
+  LogIn,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -81,7 +83,7 @@ import { KeyboardShortcuts } from "./keyboard-shortcuts";
 
 import { Input } from "./ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -118,6 +120,16 @@ const otherTools: {
   { title: "HAR Analyser",     url: "/har-analyser",    icon: ScanSearch  },
   { title: "JWE Decoder",      url: "/jwe",             icon: LockKeyhole },
   { title: "Meeting Planner",  url: "/meeting-planner",  icon: CalendarCheck, beta: true },
+];
+
+// Experimental tools, shown only to accounts on the preview allowlist. This is a
+// nav-visibility gate — the routes themselves stay reachable by URL, and each
+// operates only on the caller's own tenant.
+const labsItems: { title: string; url: string; icon: React.ElementType }[] = [
+  { title: "OIDC login test", url: "/scim/preview/downstream-login", icon: LogIn },
+  { title: "SCIM simulator",  url: "/scim/preview/login-test",       icon: FlaskConical },
+  { title: "Logs preview",    url: "/scim/preview/logs",             icon: ScrollText },
+  { title: "Manage access",   url: "/scim/preview/labs",             icon: KeyRound },
 ];
 
 type FormValues = z.infer<typeof FormSchema>;
@@ -178,6 +190,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   useHotkeys("meta+l",         () => router.push("/scim/logs"), { preventDefault: true });
 
   const userId = session?.user?.id;
+
+  // Preview allowlist controls whether the Labs group is shown. Nav-only: it does
+  // not protect the routes, which stay reachable by URL.
+  const [labsAllowed, setLabsAllowed] = useState(false);
+  useEffect(() => {
+    if (!userId) return;
+    fetch("/api/preview-access")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setLabsAllowed(Boolean(d?.allowed)))
+      .catch(() => {});
+  }, [userId]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(FormSchema),
@@ -698,6 +721,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
+
+            {labsAllowed && (
+              <>
+                <SidebarGroupLabel className="mt-2">Labs</SidebarGroupLabel>
+                {labsItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={pathname.startsWith(item.url)}>
+                      <a href={item.url}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </a>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </>
+            )}
           </SidebarMenu>
         </SidebarGroup>
         <SidebarGroup className="relative flex w-full min-w-0 flex-col p-2 mt-auto">
