@@ -74,12 +74,34 @@ export class UserService {
       },
     };
 
+    // external_id is mirrored into its own column so an OIDC `sub` can be looked
+    // up by index. It also lives inside `resource`, the SCIM source of truth.
     await pool.query(
-      'INSERT INTO scim_users (id, username, active, resource, "tenantId") VALUES ($1, $2, $3, $4, $5)',
-      [newUser.id, newUser.userName, newUser.active, newUser, userId],
+      `INSERT INTO scim_users (id, username, external_id, active, resource, "tenantId")
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [newUser.id, newUser.userName, newUser.externalId ?? null, newUser.active, newUser, userId],
     );
 
     return newUser;
+  }
+
+  /**
+   * Resolve a user by the IdP's own identifier. Used by the downstream OIDC login
+   * test to match an ID token `sub` to a provisioned record — a stronger link than
+   * matching on username, which can be mapped differently by the OIDC app and the
+   * SCIM app in the same Okta org.
+   */
+  public async getUserByExternalId(
+    tenantId: string,
+    externalId: string
+  ): Promise<ScimUser | null> {
+    const pool = getPool();
+    const result = await pool.query(
+      'SELECT resource FROM scim_users WHERE "tenantId" = $1 AND external_id = $2 LIMIT 1',
+      [tenantId, externalId],
+    );
+    if (result.rows.length === 0) return null;
+    return normalizeUser(result.rows[0].resource as ScimUser);
   }
 
   /**
@@ -196,9 +218,9 @@ export class UserService {
     const pool = getPool();
     await pool.query(
       `UPDATE scim_users
-       SET username = $1, active = $2, resource = $3, last_modified_at = $4
-       WHERE id = $5`,
-      [updatedUser.userName, updatedUser.active, updatedUser, now, id],
+       SET username = $1, external_id = $2, active = $3, resource = $4, last_modified_at = $5
+       WHERE id = $6`,
+      [updatedUser.userName, updatedUser.externalId ?? null, updatedUser.active, updatedUser, now, id],
     );
 
     return updatedUser;

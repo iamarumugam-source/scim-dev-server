@@ -10,6 +10,7 @@
 CREATE TABLE IF NOT EXISTS scim_users (
   id               UUID        PRIMARY KEY,
   username         TEXT        NOT NULL,
+  external_id      TEXT,
   active           BOOLEAN     NOT NULL DEFAULT true,
   resource         JSONB       NOT NULL,
   "tenantId"       TEXT        NOT NULL,
@@ -146,3 +147,53 @@ RETURNS void AS $$
   ON CONFLICT ("tenantId", path)
   DO UPDATE SET count = scim_page_views.count + 1, updated_at = NOW();
 $$ LANGUAGE sql;
+
+-- ── downstream OIDC login test ───────────────────────────────
+-- Mirrors supabase/migrations/add_downstream_oidc.sql.
+--
+-- Config is deliberately NOT in tenant_settings: GET /api/[userId]/settings is
+-- unauthenticated by design (Edge middleware self-fetches it for the rate-limit
+-- cache), so a client secret must not sit behind that endpoint.
+
+CREATE TABLE IF NOT EXISTS downstream_oidc_config (
+  "tenantId"    TEXT        PRIMARY KEY,
+  issuer        TEXT        NOT NULL,
+  client_id     TEXT        NOT NULL,
+  client_secret TEXT,
+  scopes        TEXT        NOT NULL DEFAULT 'openid profile email',
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Decoded claims only — never raw tokens.
+CREATE TABLE IF NOT EXISTS downstream_login_attempts (
+  id                   UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  "tenantId"           TEXT        NOT NULL,
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  outcome              TEXT        NOT NULL,
+  error                TEXT,
+  initiated_by         TEXT        NOT NULL DEFAULT 'sp',
+  id_token_claims      JSONB,
+  userinfo             JSONB,
+  matched_scim_user_id TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_dla_tenant_created
+  ON downstream_login_attempts ("tenantId", created_at DESC);
+
+-- Existing databases skip the CREATE above, so add the column explicitly too.
+ALTER TABLE scim_users ADD COLUMN IF NOT EXISTS external_id TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_scim_users_tenant_external
+  ON scim_users ("tenantId", external_id);
+
+-- ── preview access allowlist ─────────────────────────────────
+-- Mirrors supabase/migrations/add_preview_access.sql. Which accounts see the
+-- experimental Labs tools in the sidebar. No id is seeded — the first entry is
+-- added from the UI using the live session.
+
+CREATE TABLE IF NOT EXISTS preview_access (
+  user_id   TEXT        PRIMARY KEY,
+  label     TEXT,
+  added_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+

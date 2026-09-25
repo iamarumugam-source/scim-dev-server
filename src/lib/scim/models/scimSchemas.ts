@@ -56,6 +56,12 @@ export interface ScimRoleAttribute {
 export interface ScimUser {
   schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"];
   id: string;
+  /**
+   * The IdP's own identifier for this user. Okta sends it on every SCIM create;
+   * it is the canonical IdP↔SP linkage and is what lets an OIDC `sub` be matched
+   * back to a provisioned record instead of guessing on username.
+   */
+  externalId?: string;
   userName: string;
   name: Name;
   displayName?: string;

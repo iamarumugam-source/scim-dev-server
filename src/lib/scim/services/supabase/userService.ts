@@ -81,6 +81,9 @@ export class UserService {
     const { error } = await supabase.from(TABLE_NAME).insert({
       id: newUser.id,
       username: newUser.userName,
+      // Mirrored into its own column so an OIDC `sub` can be looked up by index.
+      // It also lives inside `resource`, which stays the SCIM source of truth.
+      external_id: newUser.externalId ?? null,
       active: newUser.active,
       resource: newUser,
       tenantId: userId,
@@ -91,6 +94,27 @@ export class UserService {
     }
 
     return newUser;
+  }
+
+  /**
+   * Resolve a user by the IdP's own identifier. Used by the downstream OIDC login
+   * test to match an ID token `sub` to a provisioned record — a stronger link than
+   * matching on username, which can be mapped differently by the OIDC app and the
+   * SCIM app in the same Okta org.
+   */
+  public async getUserByExternalId(
+    tenantId: string,
+    externalId: string
+  ): Promise<ScimUser | null> {
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .select("resource")
+      .eq("tenantId", tenantId)
+      .eq("external_id", externalId)
+      .maybeSingle();
+
+    if (error) throw new Error(`Supabase error fetching user by externalId: ${error.message}`);
+    return data ? normalizeUser(data.resource as ScimUser) : null;
   }
 
   /**
@@ -214,6 +238,7 @@ export class UserService {
       .from(TABLE_NAME)
       .update({
         username: updatedUser.userName,
+        external_id: updatedUser.externalId ?? null,
         active: updatedUser.active,
         resource: updatedUser,
         last_modified_at: now,
