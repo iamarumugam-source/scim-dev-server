@@ -186,14 +186,3 @@ ALTER TABLE scim_users ADD COLUMN IF NOT EXISTS external_id TEXT;
 CREATE INDEX IF NOT EXISTS idx_scim_users_tenant_external
   ON scim_users ("tenantId", external_id);
 
--- ── preview access allowlist ─────────────────────────────────
--- Mirrors supabase/migrations/add_preview_access.sql. Which accounts see the
--- experimental Labs tools in the sidebar. No id is seeded — the first entry is
--- added from the UI using the live session.
-
-CREATE TABLE IF NOT EXISTS preview_access (
-  user_id   TEXT        PRIMARY KEY,
-  label     TEXT,
-  added_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
