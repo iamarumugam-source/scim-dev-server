@@ -186,3 +186,28 @@ ALTER TABLE scim_users ADD COLUMN IF NOT EXISTS external_id TEXT;
 CREATE INDEX IF NOT EXISTS idx_scim_users_tenant_external
   ON scim_users ("tenantId", external_id);
 
+-- ── CIMD (Client ID Metadata Document) ──────────────────────
+-- Mirrors supabase/migrations/add_cimd.sql.
+
+CREATE TABLE IF NOT EXISTS cimd_config (
+  "tenantId"                   TEXT        PRIMARY KEY,
+  client_name                  TEXT        NOT NULL DEFAULT 'SCIM Dev Server — CIMD test',
+  redirect_uris                JSONB       NOT NULL DEFAULT '[]'::jsonb,
+  scopes                       TEXT        NOT NULL DEFAULT 'openid profile email',
+  token_endpoint_auth_method   TEXT        NOT NULL DEFAULT 'none',
+  jwks                         JSONB,
+  client_uri                   TEXT,
+  updated_at                   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS cimd_fetch_log (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  "tenantId"  TEXT        NOT NULL,
+  fetched_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  user_agent  TEXT,
+  ip          TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_cimd_fetch_tenant_time
+  ON cimd_fetch_log ("tenantId", fetched_at DESC);
+
