@@ -15,7 +15,12 @@
       "Read(//Users/arumugam/development/har-electron-demo/**)",
       "Bash(rtk read *)",
       "Bash(mkdir -p tmp_migrations)",
-      "Bash(cp supabase/migrations/*.sql tmp_migrations/)"
+      "Bash(cp supabase/migrations/*.sql tmp_migrations/)",
+      "Bash(git config *)",
+      "Bash(git fetch *)",
+      "Bash(git rev-list *)",
+      "Bash(export FILTER_BRANCH_SQUELCH_WARNING=1)",
+      "Bash(git filter-branch -f --env-filter ' *)"
     ]
   }
 }

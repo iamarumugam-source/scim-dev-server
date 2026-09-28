@@ -45,6 +45,7 @@ const BREADCRUMBS: Record<string, Crumb[]> = {
   "/scim/extensions": [TOOLS, SCIM, { label: "Extensions" }],
   "/scim/entitlements": [TOOLS, SCIM, { label: "Entitlements" }],
   "/scim/roles": [TOOLS, SCIM, { label: "Roles" }],
+  "/scim/cimd": [TOOLS, SCIM, { label: "CIMD" }],
   "/har-analyser": [TOOLS, { label: "HAR Analyser" }],
   "/jwe": [TOOLS, { label: "JWE Decoder" }],
   "/changelog": [TOOLS, { label: "Changelog" }],

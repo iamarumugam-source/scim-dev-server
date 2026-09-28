@@ -1,13 +1,11 @@
 "use client";
 
-// ─── UNLINKED PREVIEW ─────────────────────────────────────────────────────────
+// ─── CIMD ─────────────────────────────────────────────────────────────────────
 //
-// Client ID Metadata Document (CIMD) tooling. Serves a spec-correct CIMD
-// document at a per-tenant URL, so that URL can be pasted into Okta as the
-// client_id and Okta dereferences it dynamically. Logs every fetch so the
-// operator can confirm Okta actually retrieved it.
-//
-// Under /scim/* → auth-protected. No usePageTracking.
+// Client ID Metadata Document tooling. Serves a spec-correct CIMD document at a
+// per-tenant URL, so that URL can be pasted into Okta as the client_id and Okta
+// dereferences it dynamically. Logs every fetch so the operator can confirm Okta
+// actually retrieved it.
 
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
@@ -19,7 +17,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle,
 } from "@/components/ui/card";
@@ -28,10 +25,12 @@ import { JsonViewer } from "@/components/json-viewer";
 import { Band, CopyValue, Muted } from "@/components/scim/detail-bands";
 import { VizTokens, Section } from "@/components/scim/dashboard/viz";
 import { cn } from "@/lib/utils";
+import { usePageTracking } from "@/hooks/usePageTracking";
 
 interface FetchEntry { id: string; fetchedAt: string; userAgent: string | null; ip: string | null }
 
 export default function CimdPage() {
+  usePageTracking();
   const { data: session } = useSession();
   const tenantId = session?.user?.id;
 
@@ -117,17 +116,6 @@ export default function CimdPage() {
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
     >
       <VizTokens />
-
-      <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30">
-        <Fingerprint className="text-amber-600 dark:text-amber-400" />
-        <AlertTitle className="text-amber-900 dark:text-amber-200">
-          Design preview — not linked from navigation
-        </AlertTitle>
-        <AlertDescription className="text-amber-800/80 dark:text-amber-300/70">
-          Serves a Client ID Metadata Document so you can paste the URL as a <code className="font-mono">client_id</code> in
-          Okta and watch Okta fetch it dynamically.
-        </AlertDescription>
-      </Alert>
 
       <div>
         <h1 className="text-lg font-semibold tracking-tight">Client ID Metadata Document (CIMD)</h1>

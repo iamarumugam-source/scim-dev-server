@@ -19,6 +19,7 @@ import {
   Minus,
   Plus,
   CalendarCheck,
+  Fingerprint,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -107,6 +108,7 @@ const items = [
   { title: "Roles", url: "/scim/roles", icon: Crown },
   { title: "Logs", url: "/scim/logs", icon: ScrollText },
   { title: "Extensions", url: "/scim/extensions", icon: Puzzle },
+  { title: "CIMD", url: "/scim/cimd", icon: Fingerprint },
 ];
 
 const otherTools: {
@@ -115,9 +117,14 @@ const otherTools: {
   icon: React.ElementType;
   beta?: boolean;
 }[] = [
-  { title: "HAR Analyser",     url: "/har-analyser",    icon: ScanSearch  },
-  { title: "JWE Decoder",      url: "/jwe",             icon: LockKeyhole },
-  { title: "Meeting Planner",  url: "/meeting-planner",  icon: CalendarCheck, beta: true },
+  { title: "HAR Analyser", url: "/har-analyser", icon: ScanSearch },
+  { title: "JWE Decoder", url: "/jwe", icon: LockKeyhole },
+  {
+    title: "Meeting Planner",
+    url: "/meeting-planner",
+    icon: CalendarCheck,
+    beta: true,
+  },
 ];
 
 type FormValues = z.infer<typeof FormSchema>;
@@ -171,11 +178,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   };
 
   // ── Keyboard shortcuts ──────────────────────────────────────────────────────
-  useHotkeys("meta+backslash", () => toggleSidebar(),           { preventDefault: true });
-  useHotkeys("shift+slash",    () => setIsShortcutsOpen(true),  { preventDefault: true });
-  useHotkeys("meta+g",         () => setIsDialogOpen(true),     { preventDefault: true });
-  useHotkeys("meta+backspace",  () => setIsResetDialogOpen(true), { preventDefault: true });
-  useHotkeys("meta+l",         () => router.push("/scim/logs"), { preventDefault: true });
+  useHotkeys("meta+backslash", () => toggleSidebar(), { preventDefault: true });
+  useHotkeys("shift+slash", () => setIsShortcutsOpen(true), {
+    preventDefault: true,
+  });
+  useHotkeys("meta+g", () => setIsDialogOpen(true), { preventDefault: true });
+  useHotkeys("meta+backspace", () => setIsResetDialogOpen(true), {
+    preventDefault: true,
+  });
+  useHotkeys("meta+l", () => router.push("/scim/logs"), {
+    preventDefault: true,
+  });
 
   const userId = session?.user?.id;
 
@@ -348,7 +361,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             What to generate
                           </p>
                           <div className="flex flex-col gap-2">
-
                             {/* Users */}
                             <FormField
                               control={form.control}
@@ -363,7 +375,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                           onCheckedChange={field.onChange}
                                         />
                                       </FormControl>
-                                      <FormLabel className="text-sm font-normal cursor-pointer">Users</FormLabel>
+                                      <FormLabel className="text-sm font-normal cursor-pointer">
+                                        Users
+                                      </FormLabel>
                                     </div>
                                     {field.value && (
                                       <FormField
@@ -378,15 +392,48 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                                   value={f.value}
                                                   min={1}
                                                   max={5000}
-                                                  onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) f.onChange(Math.min(5000, Math.max(1, v))); }}
+                                                  onChange={(e) => {
+                                                    const v = parseInt(
+                                                      e.target.value,
+                                                    );
+                                                    if (!isNaN(v))
+                                                      f.onChange(
+                                                        Math.min(
+                                                          5000,
+                                                          Math.max(1, v),
+                                                        ),
+                                                      );
+                                                  }}
                                                   className="w-12 text-sm tabular-nums font-medium text-center bg-transparent outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                 />
                                                 <div className="w-px self-stretch bg-border" />
-                                                <button type="button" className="h-full w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => f.onChange(Math.max(1, Number(f.value) - 1))}>
+                                                <button
+                                                  type="button"
+                                                  className="h-full w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+                                                  onClick={() =>
+                                                    f.onChange(
+                                                      Math.max(
+                                                        1,
+                                                        Number(f.value) - 1,
+                                                      ),
+                                                    )
+                                                  }
+                                                >
                                                   <Minus className="h-3.5 w-3.5" />
                                                 </button>
                                                 <div className="w-px self-stretch bg-border" />
-                                                <button type="button" className="h-full w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => f.onChange(Math.min(5000, Number(f.value) + 1))}>
+                                                <button
+                                                  type="button"
+                                                  className="h-full w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+                                                  onClick={() =>
+                                                    f.onChange(
+                                                      Math.min(
+                                                        5000,
+                                                        Number(f.value) + 1,
+                                                      ),
+                                                    )
+                                                  }
+                                                >
                                                   <Plus className="h-3.5 w-3.5" />
                                                 </button>
                                               </div>
@@ -416,7 +463,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                           onCheckedChange={field.onChange}
                                         />
                                       </FormControl>
-                                      <FormLabel className="text-sm font-normal cursor-pointer">Groups</FormLabel>
+                                      <FormLabel className="text-sm font-normal cursor-pointer">
+                                        Groups
+                                      </FormLabel>
                                     </div>
                                     {field.value && (
                                       <FormField
@@ -431,15 +480,48 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                                   value={f.value}
                                                   min={1}
                                                   max={50}
-                                                  onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) f.onChange(Math.min(50, Math.max(1, v))); }}
+                                                  onChange={(e) => {
+                                                    const v = parseInt(
+                                                      e.target.value,
+                                                    );
+                                                    if (!isNaN(v))
+                                                      f.onChange(
+                                                        Math.min(
+                                                          50,
+                                                          Math.max(1, v),
+                                                        ),
+                                                      );
+                                                  }}
                                                   className="w-12 text-sm tabular-nums font-medium text-center bg-transparent outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                 />
                                                 <div className="w-px self-stretch bg-border" />
-                                                <button type="button" className="h-full w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => f.onChange(Math.max(1, Number(f.value) - 1))}>
+                                                <button
+                                                  type="button"
+                                                  className="h-full w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+                                                  onClick={() =>
+                                                    f.onChange(
+                                                      Math.max(
+                                                        1,
+                                                        Number(f.value) - 1,
+                                                      ),
+                                                    )
+                                                  }
+                                                >
                                                   <Minus className="h-3.5 w-3.5" />
                                                 </button>
                                                 <div className="w-px self-stretch bg-border" />
-                                                <button type="button" className="h-full w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => f.onChange(Math.min(50, Number(f.value) + 1))}>
+                                                <button
+                                                  type="button"
+                                                  className="h-full w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+                                                  onClick={() =>
+                                                    f.onChange(
+                                                      Math.min(
+                                                        50,
+                                                        Number(f.value) + 1,
+                                                      ),
+                                                    )
+                                                  }
+                                                >
                                                   <Plus className="h-3.5 w-3.5" />
                                                 </button>
                                               </div>
@@ -469,9 +551,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                           onCheckedChange={field.onChange}
                                         />
                                       </FormControl>
-                                      <FormLabel className="text-sm font-normal cursor-pointer">Entitlements</FormLabel>
+                                      <FormLabel className="text-sm font-normal cursor-pointer">
+                                        Entitlements
+                                      </FormLabel>
                                     </div>
-                                    <span className="text-xs text-muted-foreground">from catalog</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      from catalog
+                                    </span>
                                   </div>
                                   <Separator />
                                 </FormItem>
@@ -492,14 +578,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                           onCheckedChange={field.onChange}
                                         />
                                       </FormControl>
-                                      <FormLabel className="text-sm font-normal cursor-pointer">Roles</FormLabel>
+                                      <FormLabel className="text-sm font-normal cursor-pointer">
+                                        Roles
+                                      </FormLabel>
                                     </div>
-                                    <span className="text-xs text-muted-foreground">from catalog</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      from catalog
+                                    </span>
                                   </div>
                                 </FormItem>
                               )}
                             />
-
                           </div>
                         </div>
 
@@ -519,9 +608,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                 />
                               </FormControl>
                               <div className="space-y-0.5">
-                                <FormLabel className="text-sm">Delete existing data first</FormLabel>
+                                <FormLabel className="text-sm">
+                                  Delete existing data first
+                                </FormLabel>
                                 <FormDescription className="text-xs">
-                                  Removes existing users, groups, entitlements, and roles before generating new ones.
+                                  Removes existing users, groups, entitlements,
+                                  and roles before generating new ones.
                                 </FormDescription>
                               </div>
                             </FormItem>
@@ -573,12 +665,36 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <div className="flex flex-col gap-2 py-1">
                       {(
                         [
-                          { key: "users",        label: "Users",        desc: "All provisioned user accounts"    },
-                          { key: "groups",       label: "Groups",       desc: "All user groups and memberships"  },
-                          { key: "entitlements", label: "Entitlements", desc: "All entitlement definitions"      },
-                          { key: "roles",        label: "Roles",        desc: "All role definitions"             },
-                          { key: "logs",         label: "Logs",         desc: "All API request logs"             },
-                          { key: "pageViews",    label: "Page views",   desc: "Page view counters"               },
+                          {
+                            key: "users",
+                            label: "Users",
+                            desc: "All provisioned user accounts",
+                          },
+                          {
+                            key: "groups",
+                            label: "Groups",
+                            desc: "All user groups and memberships",
+                          },
+                          {
+                            key: "entitlements",
+                            label: "Entitlements",
+                            desc: "All entitlement definitions",
+                          },
+                          {
+                            key: "roles",
+                            label: "Roles",
+                            desc: "All role definitions",
+                          },
+                          {
+                            key: "logs",
+                            label: "Logs",
+                            desc: "All API request logs",
+                          },
+                          {
+                            key: "pageViews",
+                            label: "Page views",
+                            desc: "Page view counters",
+                          },
                         ] as const
                       ).map(({ key, label, desc }, i, arr) => (
                         <div key={key}>
@@ -587,7 +703,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                               id={`reset-${key}`}
                               checked={resetSelections[key]}
                               onCheckedChange={(checked) =>
-                                setResetSelections((p) => ({ ...p, [key]: checked === true }))
+                                setResetSelections((p) => ({
+                                  ...p,
+                                  [key]: checked === true,
+                                }))
                               }
                               className="mt-0.5"
                             />
@@ -598,7 +717,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                               >
                                 {label}
                               </Label>
-                              <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {desc}
+                              </p>
                             </div>
                           </div>
                           {i < arr.length - 1 && <Separator />}

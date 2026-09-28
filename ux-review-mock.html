@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCIM Dev Server — UX proposals</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #09090b;
+    --muted-fg: #71717a;
+    --border: #e4e4e7;
+    --subtle: #f4f4f5;
+    --accent: #18181b;
+    --accent-fg: #fafafa;
+    --ring: #a1a1aa;
+    --amber-bg: #fffbeb; --amber-br: #fde68a; --amber-fg: #b45309;
+    --green-bg: #f0fdf4; --green-br: #bbf7d0; --green-fg: #15803d;
+    --red-bg: #fef2f2;   --red-br: #fecaca;   --red-fg: #b91c1c;
+    --blue-bg: #eff6ff;  --blue-br: #bfdbfe;  --blue-fg: #1d4ed8;
+    --page: #fafafa;
+  }
+  html[data-theme="dark"] {
+    --bg: #09090b; --fg: #fafafa; --muted-fg: #a1a1aa; --border: #27272a;
+    --subtle: #18181b; --accent: #fafafa; --accent-fg: #18181b; --ring: #52525b;
+    --amber-bg: #45200310; --amber-br: #92400e; --amber-fg: #fcd34d;
+    --green-bg: #05261510; --green-br: #166534; --green-fg: #86efac;
+    --red-bg: #45050510;   --red-br: #991b1b;   --red-fg: #fca5a5;
+    --blue-bg: #0a1f4410;  --blue-br: #1e40af;  --blue-fg: #93c5fd;
+    --page: #000000;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--fg);
+    font: 14px/1.5 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 24px; letter-spacing: -.02em; margin: 0 0 8px; }
+  h2 { font-size: 17px; letter-spacing: -.01em; margin: 44px 0 6px; }
+  h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
+       color: var(--muted-fg); margin: 22px 0 8px; font-weight: 600; }
+  p.lede { color: var(--muted-fg); margin: 0 0 4px; max-width: 70ch; }
+  code { font: 12px/1.4 ui-monospace, "SF Mono", Menlo, monospace;
+         background: var(--subtle); padding: 1px 5px; border-radius: 4px; }
+
+  .topbar { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
+  .toggle {
+    border:1px solid var(--border); background:var(--bg); color:var(--fg);
+    border-radius:8px; padding:7px 12px; font-size:12px; cursor:pointer; white-space:nowrap;
+  }
+  .toggle:hover { background: var(--subtle); }
+
+  /* ---- mock chrome ---- */
+  .frame {
+    border:1px solid var(--border); border-radius:12px; background:var(--bg);
+    overflow:hidden; margin-top:10px;
+  }
+  .frame-label {
+    display:flex; align-items:center; gap:8px;
+    padding:8px 14px; border-bottom:1px solid var(--border);
+    background:var(--subtle); font-size:11px; font-weight:600;
+    text-transform:uppercase; letter-spacing:.06em; color:var(--muted-fg);
+  }
+  .pill { font-size:10px; font-weight:600; letter-spacing:.04em; padding:1px 7px;
+          border-radius:4px; border:1px solid; text-transform:none; }
+  .pill.now  { background:var(--red-bg);   border-color:var(--red-br);   color:var(--red-fg); }
+  .pill.prop { background:var(--green-bg); border-color:var(--green-br); color:var(--green-fg); }
+  .pill.beta { background:var(--amber-bg); border-color:var(--amber-br); color:var(--amber-fg); }
+  .body { padding:14px; }
+
+  /* ---- toolbar ---- */
+  .toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+  .input {
+    display:flex; align-items:center; gap:7px; flex:1; min-width:210px;
+    border:1px solid var(--border); border-radius:8px; padding:0 10px; height:34px;
+    background:var(--bg); color:var(--muted-fg); font-size:13px;
+  }
+  .input.focus { border-color:var(--ring); box-shadow:0 0 0 3px color-mix(in srgb, var(--ring) 18%, transparent); color:var(--fg); }
+  .btn {
+    height:34px; padding:0 11px; border-radius:8px; border:1px solid var(--border);
+    background:var(--bg); color:var(--fg); font-size:13px; display:inline-flex;
+    align-items:center; gap:6px; cursor:pointer; white-space:nowrap;
+  }
+  .btn:hover { background:var(--subtle); }
+  .btn.primary { background:var(--accent); color:var(--accent-fg); border-color:var(--accent); }
+  .btn.danger { color:var(--red-fg); border-color:var(--red-br); background:var(--red-bg); }
+  .btn.ghost { border-color:transparent; }
+  .kbd { font:10px ui-monospace,monospace; border:1px solid var(--border);
+         border-bottom-width:2px; border-radius:4px; padding:1px 4px; color:var(--muted-fg); }
+  .chip {
+    height:26px; padding:0 8px; border-radius:6px; font-size:12px;
+    border:1px dashed var(--border); color:var(--muted-fg);
+    display:inline-flex; align-items:center; gap:5px; cursor:pointer;
+  }
+  .chip.on { border-style:solid; background:var(--subtle); color:var(--fg); }
+
+  /* ---- table ---- */
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--border); }
+  th { font-size:11px; text-transform:uppercase; letter-spacing:.05em;
+       color:var(--muted-fg); font-weight:600; white-space:nowrap; }
+  th.sortable { cursor:pointer; }
+  th.sortable:hover { color:var(--fg); }
+  tbody tr:hover { background:var(--subtle); }
+  tbody tr:last-child td { border-bottom:0; }
+  .mono { font:12px ui-monospace,monospace; }
+  .dim { color:var(--muted-fg); }
+  .dot { width:6px; height:6px; border-radius:50%; display:inline-block; margin-right:6px; }
+  .dot.a { background:#22c55e; } .dot.i { background:#a1a1aa; }
+  .cb { width:14px; height:14px; border:1px solid var(--ring); border-radius:3px;
+        display:inline-block; vertical-align:middle; }
+  .cb.on { background:var(--accent); border-color:var(--accent); position:relative; }
+  .cb.on::after { content:"✓"; color:var(--accent-fg); font-size:10px; position:absolute;
+                  left:2px; top:-2px; }
+  tr.sel { background: color-mix(in srgb, var(--blue-fg) 8%, transparent); }
+  tr.sel:hover { background: color-mix(in srgb, var(--blue-fg) 12%, transparent); }
+
+  .footer { display:flex; justify-content:space-between; align-items:center;
+            padding-top:12px; font-size:12px; color:var(--muted-fg); flex-wrap:wrap; gap:8px; }
+  .pager { display:flex; gap:4px; align-items:center; }
+  .pg { min-width:28px; height:28px; border:1px solid var(--border); border-radius:6px;
+        display:inline-flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer; }
+  .pg.cur { background:var(--accent); color:var(--accent-fg); border-color:var(--accent); }
+
+  /* ---- bulk bar ---- */
+  .bulkbar {
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:9px 12px; border-radius:8px; margin-bottom:12px; flex-wrap:wrap;
+    background: color-mix(in srgb, var(--blue-fg) 9%, transparent);
+    border:1px solid var(--blue-br); font-size:13px;
+  }
+
+  /* ---- empty state ---- */
+  .empty { text-align:center; padding:46px 20px; }
+  .empty .ico { width:40px; height:40px; border-radius:10px; background:var(--subtle);
+                border:1px solid var(--border); display:inline-flex; align-items:center;
+                justify-content:center; margin-bottom:12px; font-size:18px; }
+  .empty h4 { margin:0 0 5px; font-size:15px; }
+  .empty p { margin:0 auto 16px; color:var(--muted-fg); max-width:44ch; font-size:13px; }
+  .row { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+
+  .note {
+    border-left:3px solid var(--blue-br); background:var(--blue-bg);
+    padding:11px 14px; border-radius:0 8px 8px 0; margin:12px 0 0; font-size:13px;
+  }
+  .note strong { color:var(--blue-fg); }
+  ul.tight { margin:8px 0 0; padding-left:20px; color:var(--muted-fg); font-size:13px; }
+  ul.tight li { margin:3px 0; }
+  ul.tight b { color:var(--fg); font-weight:600; }
+  hr { border:0; border-top:1px solid var(--border); margin:36px 0 0; }
+
+  /* sidebar mock */
+  .sb { width:216px; border-right:1px solid var(--border); padding:10px; }
+  .sbrow { display:flex; align-items:center; gap:9px; padding:6px 8px; border-radius:7px;
+           font-size:13px; color:var(--muted-fg); }
+  .sbrow.on { background:var(--subtle); color:var(--fg); font-weight:500; }
+  .sbrow .ml { margin-left:auto; }
+  .sbgrp { font-size:10px; text-transform:uppercase; letter-spacing:.07em;
+           color:var(--muted-fg); padding:12px 8px 5px; font-weight:600; }
+  .sq { width:15px; text-align:center; opacity:.75; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div>
+      <h1>SCIM Dev Server — UX proposals</h1>
+      <p class="lede">Mockups for the findings from the UI review. Each shows the current behaviour
+      against a proposal. Nothing here is wired up — it is a static reference for deciding what to build.</p>
+    </div>
+    <button class="toggle" onclick="var h=document.documentElement;h.dataset.theme=h.dataset.theme==='dark'?'light':'dark'">
+      Toggle light / dark
+    </button>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2>1 · Users table has no search</h2>
+  <p class="lede">The highest-impact gap. Users paginate server-side at 30 rows per page, so with the
+  mock generator now capable of 5000 users that is <strong>167 pages</strong> with no way to jump to a
+  specific person. The API already supports <code>?filter=userName eq "…"</code>, so the server side exists.</p>
+
+  <div class="frame">
+    <div class="frame-label">Users <span class="pill now">Today</span></div>
+    <div class="body">
+      <div class="toolbar">
+        <div style="flex:1"></div>
+        <button class="btn primary">+ Add User</button>
+      </div>
+      <table>
+        <thead><tr><th>Username</th><th>Display name</th><th>Status</th><th>Created</th><th></th></tr></thead>
+        <tbody>
+          <tr><td class="mono">aaliyah.nolan</td><td>Aaliyah Nolan</td><td><span class="dot a"></span>Active</td><td class="dim">2 Sep 2026</td><td class="dim">⋯</td></tr>
+          <tr><td class="mono">aaron.beier41</td><td>Aaron Beier</td><td><span class="dot a"></span>Active</td><td class="dim">2 Sep 2026</td><td class="dim">⋯</td></tr>
+          <tr><td class="mono">abbey_stiedemann</td><td>Abbey Stiedemann</td><td><span class="dot i"></span>Inactive</td><td class="dim">2 Sep 2026</td><td class="dim">⋯</td></tr>
+        </tbody>
+      </table>
+      <div class="footer">
+        <span>Showing 1–30 of 5000</span>
+        <div class="pager">
+          <span class="pg">‹</span><span class="pg cur">1</span><span class="pg">2</span>
+          <span class="pg">3</span><span class="dim">…</span><span class="pg">167</span><span class="pg">›</span>
+        </div>
+      </div>
+      <div class="note">No search field, no sorting, no way to filter by status. Finding
+      <code>jane.doe</code> means paging through 167 pages by hand.</div>
+    </div>
+  </div>
+
+  <div class="frame">
+    <div class="frame-label">Users <span class="pill prop">Proposed</span></div>
+    <div class="body">
+      <div class="toolbar">
+        <div class="input focus">
+          <span>⌕</span><span>jane.doe</span>
+          <span style="margin-left:auto" class="kbd">⌘K</span>
+        </div>
+        <span class="chip on">Status: Active ✕</span>
+        <span class="chip">+ Group</span>
+        <button class="btn">↧ Export</button>
+        <button class="btn primary">+ Add User</button>
+      </div>
+      <table>
+        <thead><tr>
+          <th style="width:28px"><span class="cb"></span></th>
+          <th class="sortable">Username ↑</th><th class="sortable">Display name</th>
+          <th class="sortable">Status</th><th class="sortable">Created</th><th></th>
+        </tr></thead>
+        <tbody>
+          <tr><td><span class="cb"></span></td><td class="mono"><b>jane.doe</b></td><td>Jane Doe</td><td><span class="dot a"></span>Active</td><td class="dim">2 Sep 2026</td><td class="dim">⋯</td></tr>
+          <tr><td><span class="cb"></span></td><td class="mono"><b>jane.doe</b>rty</td><td>Jane Doerty</td><td><span class="dot a"></span>Active</td><td class="dim">2 Sep 2026</td><td class="dim">⋯</td></tr>
+        </tbody>
+      </table>
+      <div class="footer">
+        <span>2 results for “jane.doe” · <span style="color:var(--blue-fg);cursor:pointer">clear</span></span>
+        <div class="pager"><span class="pg">‹</span><span class="pg cur">1</span><span class="pg">›</span></div>
+      </div>
+      <div class="note"><strong>Adds:</strong> debounced search bound to the existing SCIM filter,
+      sortable columns, a status facet, and <code>⌘K</code> to focus. Row count updates to reflect the query.</div>
+    </div>
+  </div>
+
+  <div class="note" style="border-left-color:var(--amber-br);background:var(--amber-bg)">
+    <strong>One caveat to design around.</strong> The server filter only supports
+    <code>userName eq "…"</code> — exact match on a single attribute, and it truncates the value at
+    <code>@</code>. A search box implies substring matching, so either the filter needs a
+    <code>co</code> (contains) branch server-side, or the box should be labelled
+    “Find by username” to set the right expectation. Shipping a search box over an exact-match
+    backend will read as broken.
+  </div>
+
+  <!-- ============================================================ -->
+  <h2>2 · No bulk actions</h2>
+  <p class="lede">Test data is disposable by nature, but users can only be deleted one row at a time
+  through a per-row menu. After generating 500 users, trimming them down is impractical.</p>
+
+  <div class="frame">
+    <div class="frame-label">Users — selection active <span class="pill prop">Proposed</span></div>
+    <div class="body">
+      <div class="bulkbar">
+        <span><b>3 users selected</b> <span class="dim">· 30 on this page · </span>
+          <span style="color:var(--blue-fg);cursor:pointer">Select all 5000</span></span>
+        <span style="display:flex;gap:6px">
+          <button class="btn">Deactivate</button>
+          <button class="btn">Add to group</button>
+          <button class="btn danger">Delete 3</button>
+          <button class="btn ghost dim">✕</button>
+        </span>
+      </div>
+      <table>
+        <thead><tr>
+          <th style="width:28px"><span class="cb on"></span></th>
+          <th>Username</th><th>Display name</th><th>Status</th><th></th>
+        </tr></thead>
+        <tbody>
+          <tr class="sel"><td><span class="cb on"></span></td><td class="mono">aaliyah.nolan</td><td>Aaliyah Nolan</td><td><span class="dot a"></span>Active</td><td class="dim">⋯</td></tr>
+          <tr class="sel"><td><span class="cb on"></span></td><td class="mono">aaron.beier41</td><td>Aaron Beier</td><td><span class="dot a"></span>Active</td><td class="dim">⋯</td></tr>
+          <tr class="sel"><td><span class="cb on"></span></td><td class="mono">abbey_stiedemann</td><td>Abbey Stiedemann</td><td><span class="dot i"></span>Inactive</td><td class="dim">⋯</td></tr>
+          <tr><td><span class="cb"></span></td><td class="mono">abdiel.hansen</td><td>Abdiel Hansen</td><td><span class="dot a"></span>Active</td><td class="dim">⋯</td></tr>
+        </tbody>
+      </table>
+      <div class="note">Because pagination is server-side, “select all” has to mean
+      <em>all matching the current query</em>, not just the loaded page — otherwise it silently
+      under-deletes. Worth making that distinction explicit in the bar, as above.</div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2>3 · Empty states are mostly missing</h2>
+  <p class="lede">A fresh tenant shows an empty table with “No results found”, which does not tell a
+  first-time user what to do. The single most useful action — generate mock data — lives in the
+  sidebar, away from where the user is looking.</p>
+
+  <div class="frame">
+    <div class="frame-label">Users — empty tenant <span class="pill now">Today</span></div>
+    <div class="body">
+      <table>
+        <thead><tr><th>Username</th><th>Display name</th><th>Status</th><th>Created</th></tr></thead>
+        <tbody><tr><td colspan="4" class="dim" style="text-align:center;padding:34px">No results found.</td></tr></tbody>
+      </table>
+      <div class="footer"><span>No results</span></div>
+    </div>
+  </div>
+
+  <div class="frame">
+    <div class="frame-label">Users — empty tenant <span class="pill prop">Proposed</span></div>
+    <div class="body">
+      <div class="empty">
+        <div class="ico">◯</div>
+        <h4>No users yet</h4>
+        <p>Users appear here once Okta provisions them, or you can seed the tenant
+           with realistic mock data to try things out.</p>
+        <div class="row">
+          <button class="btn primary">✨ Generate mock data</button>
+          <button class="btn">+ Add user manually</button>
+          <button class="btn ghost">Connect Okta ↗</button>
+        </div>
+      </div>
+      <div class="note">Distinguish <b>empty</b> (nothing exists — offer to create) from
+      <b>no matches</b> (a filter excluded everything — offer to clear it). Today both render the
+      same string, so a too-narrow filter looks like data loss.</div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2>4 · Beta marker — as shipped</h2>
+  <p class="lede">Meeting Planner is now marked Beta in the sidebar and on the page heading, via a
+  single shared <code>BetaBadge</code> component so future markers stay consistent. The badge hides
+  when the sidebar collapses to icons.</p>
+
+  <div class="frame">
+    <div class="frame-label">Sidebar — tools group <span class="pill prop">Shipped</span></div>
+    <div style="display:flex">
+      <div class="sb">
+        <div class="sbgrp">SCIM</div>
+        <div class="sbrow"><span class="sq">◫</span>Dashboard</div>
+        <div class="sbrow"><span class="sq">⚿</span>API</div>
+        <div class="sbrow"><span class="sq">☻</span>Users</div>
+        <div class="sbgrp">Tools</div>
+        <div class="sbrow"><span class="sq">⌕</span>HAR Analyser</div>
+        <div class="sbrow"><span class="sq">🔒</span>JWE Decoder</div>
+        <div class="sbrow on"><span class="sq">▤</span>Meeting Planner
+          <span class="ml pill beta">Beta</span></div>
+      </div>
+      <div class="body" style="flex:1">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:17px;font-weight:600">Meeting Planner</span>
+          <span class="pill beta">Beta</span>
+        </div>
+        <p class="dim" style="font-size:13px;margin:4px 0 0">
+          Drag the <b>Start</b> and <b>End</b> handles to select a time range, then schedule.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2>Smaller findings</h2>
+  <ul class="tight">
+    <li><b><code>/icon-preview</code> is publicly reachable.</b> The middleware matcher only covers
+        <code>/scim/*</code> and <code>/meeting-planner/*</code>, so this 373-line design scratch page
+        is served to anyone without login. Either protect it or delete it.</li>
+    <li><b>Dead file.</b> <code>src/app/users/data-table.tsx</code> is orphaned —
+        <code>src/app/users/page.tsx</code> is a 5-line redirect that never imports it.</li>
+    <li><b>Generate Mock lives in the sidebar.</b> A large form with seven fields sits inside the
+        navigation component, which is part of why <code>app-sidebar.tsx</code> is 742 lines. It also
+        makes the app's most useful first action hard to find. Moving it into the empty state and/or a
+        page-level action would help discovery and shrink the component.</li>
+    <li><b><code>src/app/scim/page.tsx</code> is 960 lines.</b> The dashboard mixes data fetching,
+        aggregation and every tile in one file — the kind of file where a bug like the 1000-row user
+        count hides.</li>
+    <li><b>No visible rate-limit feedback.</b> Tenants are capped at 60 req/min and a breach returns
+        <code>429</code>, but the UI gives no indication before or when it happens. A quiet indicator
+        on the dashboard would explain otherwise-mysterious failures.</li>
+  </ul>
+
+  <hr>
+  <p class="dim" style="font-size:12px;margin-top:14px">
+    Static mockup — no JS beyond the theme toggle. Untracked file; delete it whenever.
+  </p>
+</div>
+</body>
+</html>
