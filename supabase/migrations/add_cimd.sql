@@ -32,3 +32,10 @@ CREATE TABLE IF NOT EXISTS cimd_fetch_log (
 
 CREATE INDEX IF NOT EXISTS idx_cimd_fetch_tenant_time
   ON cimd_fetch_log ("tenantId", fetched_at DESC);
+
+-- Added to match the full RFC example shape.
+ALTER TABLE cimd_config ADD COLUMN IF NOT EXISTS logo_uri   TEXT;
+ALTER TABLE cimd_config ADD COLUMN IF NOT EXISTS policy_uri TEXT;
+ALTER TABLE cimd_config ADD COLUMN IF NOT EXISTS tos_uri    TEXT;
+ALTER TABLE cimd_config ADD COLUMN IF NOT EXISTS jwks_uri   TEXT;
+ALTER TABLE cimd_config ADD COLUMN IF NOT EXISTS grant_types JSONB NOT NULL DEFAULT '["authorization_code"]'::jsonb;

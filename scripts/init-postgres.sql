@@ -196,7 +196,12 @@ CREATE TABLE IF NOT EXISTS cimd_config (
   scopes                       TEXT        NOT NULL DEFAULT 'openid profile email',
   token_endpoint_auth_method   TEXT        NOT NULL DEFAULT 'none',
   jwks                         JSONB,
+  jwks_uri                     TEXT,
   client_uri                   TEXT,
+  logo_uri                     TEXT,
+  policy_uri                   TEXT,
+  tos_uri                      TEXT,
+  grant_types                  JSONB       NOT NULL DEFAULT '["authorization_code"]'::jsonb,
   updated_at                   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

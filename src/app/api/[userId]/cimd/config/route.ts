@@ -37,12 +37,17 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
   const svc = new CimdService();
   try {
     const saved = await svc.saveConfig(userId, {
-      clientName:  typeof body.clientName  === "string" ? body.clientName  : undefined,
-      redirectUris: Array.isArray(body.redirectUris) ? body.redirectUris : undefined,
-      scopes:      typeof body.scopes      === "string" ? body.scopes      : undefined,
-      authMethod:  typeof body.authMethod  === "string" ? body.authMethod  : undefined,
-      jwks:        body.jwks ?? undefined,
-      clientUri:   typeof body.clientUri   === "string" ? body.clientUri   : undefined,
+      clientName:   typeof body.clientName   === "string" ? body.clientName   : undefined,
+      redirectUris:  Array.isArray(body.redirectUris) ? body.redirectUris : undefined,
+      scopes:       typeof body.scopes       === "string" ? body.scopes       : undefined,
+      authMethod:   typeof body.authMethod   === "string" ? body.authMethod   : undefined,
+      grantTypes:    Array.isArray(body.grantTypes) ? body.grantTypes : undefined,
+      jwks:         body.jwks ?? undefined,
+      jwksUri:      typeof body.jwksUri      === "string" ? body.jwksUri      : undefined,
+      clientUri:    typeof body.clientUri    === "string" ? body.clientUri    : undefined,
+      logoUri:      typeof body.logoUri      === "string" ? body.logoUri      : undefined,
+      policyUri:    typeof body.policyUri    === "string" ? body.policyUri    : undefined,
+      tosUri:       typeof body.tosUri       === "string" ? body.tosUri       : undefined,
     });
     return NextResponse.json({ config: saved });
   } catch (err) {

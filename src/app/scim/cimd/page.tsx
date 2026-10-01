@@ -45,7 +45,12 @@ export default function CimdPage() {
   const [uris,      setUris]      = useState("");
   const [scopes,    setScopes]    = useState("openid profile email");
   const [method,    setMethod]    = useState("none");
+  const [grants,    setGrants]    = useState("authorization_code");
   const [clientUri, setClientUri] = useState("");
+  const [logoUri,   setLogoUri]   = useState("");
+  const [policyUri, setPolicyUri] = useState("");
+  const [tosUri,    setTosUri]    = useState("");
+  const [jwksUri,   setJwksUri]   = useState("");
 
   const load = useCallback(async () => {
     if (!tenantId) return;
@@ -63,7 +68,12 @@ export default function CimdPage() {
           setUris((data.config.redirectUris ?? []).join("\n"));
           setScopes(data.config.scopes);
           setMethod(data.config.authMethod);
+          setGrants((data.config.grantTypes ?? ["authorization_code"]).join(", "));
           setClientUri(data.config.clientUri ?? "");
+          setLogoUri(data.config.logoUri ?? "");
+          setPolicyUri(data.config.policyUri ?? "");
+          setTosUri(data.config.tosUri ?? "");
+          setJwksUri(data.config.jwksUri ?? "");
         }
       }
       if (fetchRes.ok) setFetches((await fetchRes.json()).fetches ?? []);
@@ -92,11 +102,16 @@ export default function CimdPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          clientName:  name,
-          redirectUris: uris.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean),
+          clientName:   name,
+          redirectUris:  uris.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean),
           scopes,
-          authMethod:  method,
-          clientUri:   clientUri || null,
+          authMethod:   method,
+          grantTypes:    grants.split(/[,\s]+/).map((s) => s.trim()).filter(Boolean),
+          clientUri:    clientUri || null,
+          logoUri:      logoUri || null,
+          policyUri:    policyUri || null,
+          tosUri:       tosUri || null,
+          jwksUri:      jwksUri || null,
         }),
       });
       const data = await res.json();
@@ -189,6 +204,38 @@ export default function CimdPage() {
                   placeholder="none | private_key_jwt"
                   className="h-8 font-mono text-xs" />
                 <Muted>Only secret-free methods are allowed by the spec.</Muted>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Grant types <span className="font-normal">(comma-separated)</span>
+                </Label>
+                <Input value={grants} onChange={(e) => setGrants(e.target.value)}
+                  placeholder="authorization_code, refresh_token"
+                  className="h-8 font-mono text-xs" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">JWKS URI</Label>
+                <Input value={jwksUri} onChange={(e) => setJwksUri(e.target.value)}
+                  placeholder="https://your-app.example.com/.well-known/jwks.json"
+                  className="h-8 font-mono text-xs" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Logo URI</Label>
+                <Input value={logoUri} onChange={(e) => setLogoUri(e.target.value)}
+                  placeholder="https://your-app.example.com/logo.png"
+                  className="h-8 text-xs" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Policy URI</Label>
+                <Input value={policyUri} onChange={(e) => setPolicyUri(e.target.value)}
+                  placeholder="https://your-app.example.com/privacy"
+                  className="h-8 text-xs" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Terms of service URI</Label>
+                <Input value={tosUri} onChange={(e) => setTosUri(e.target.value)}
+                  placeholder="https://your-app.example.com/terms"
+                  className="h-8 text-xs" />
               </div>
             </div>
             <Button size="sm" className="h-8 gap-1.5" onClick={save} disabled={saving}>
