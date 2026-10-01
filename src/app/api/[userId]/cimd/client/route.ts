@@ -25,13 +25,12 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   const svc    = new CimdService();
   const config = await svc.getConfig(userId);
 
-  // Default redirect to the downstream-login callback so a full OIDC flow can
-  // round-trip without extra configuration.
-  const defaultRedirect = `${BASE_URL}/api/${userId}/downstream/callback`;
-
+  // Default to localhost so the OAuth flow redirects to whatever local app the
+  // operator is testing, rather than back to this server. Configurable from the
+  // CIMD page — set redirect_uris there to change it.
   const redirectUris = config?.redirectUris?.length
     ? config.redirectUris
-    : [defaultRedirect];
+    : ["http://localhost:3000/callback", "http://localhost:8080/callback"];
 
   const doc = {
     client_id:                   clientIdUrl,
