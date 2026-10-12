@@ -60,6 +60,27 @@ export class ApiKeyService {
     return !!data;
   }
 
+  public async findKey(
+    rawKey: string
+  ): Promise<{ id: string; name: string } | null> {
+    if (!rawKey) return null;
+
+    const hashedKey = await hashApiKey(rawKey);
+
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .select("id, name")
+      .eq("hashed_key", hashedKey)
+      .single();
+
+    if (error && error.code !== "PGRST116") {
+      console.error("Error validating API key:", error);
+      return null;
+    }
+
+    return data ? { id: data.id, name: data.name } : null;
+  }
+
   public async getKeys(
     userId: string
   ): Promise<

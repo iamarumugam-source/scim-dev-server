@@ -47,6 +47,24 @@ export class ApiKeyService {
     return result.rows.length > 0;
   }
 
+  public async findKey(
+    rawKey: string,
+  ): Promise<{ id: string; name: string } | null> {
+    if (!rawKey) return null;
+
+    const hashedKey = await hashApiKey(rawKey);
+    const pool      = getPool();
+
+    const result = await pool.query(
+      'SELECT id, name FROM api_keys WHERE hashed_key = $1',
+      [hashedKey],
+    );
+
+    return result.rows[0]
+      ? { id: result.rows[0].id, name: result.rows[0].name }
+      : null;
+  }
+
   public async getKeys(
     userId: string,
   ): Promise<{ id: string; name: string; key_prefix: string; created_at: string }[]> {

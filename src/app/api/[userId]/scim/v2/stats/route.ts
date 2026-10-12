@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { protectWithApiKey } from "@/lib/scim/apiHelper";
+import { logUnauthorized } from "@/lib/scim/logging";
 import { StatsService } from "@/lib/scim/services/statsService";
 
 interface RouteParams {
@@ -10,7 +11,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const { userId } = await params;
 
   const unauthorized = await protectWithApiKey(request);
-  if (unauthorized) return unauthorized;
+  if (unauthorized) return logUnauthorized(request, unauthorized, userId);
 
   try {
     const statsService = new StatsService();

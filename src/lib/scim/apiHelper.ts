@@ -3,6 +3,7 @@ import { createRemoteJWKSet, jwtVerify, errors as joseErrors } from "jose";
 import { ApiKeyService } from "./services/apiKeyService";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { setAuthInfo, type AuthInfo } from "./authContext";
 
 const apiKeyService = new ApiKeyService();
 
@@ -75,7 +76,7 @@ async function validateLocalJwt(token: string): Promise<boolean> {
 //
 // Returns null (allow) when ANY of these conditions is true:
 //   1. A valid NextAuth session exists (admin UI login)
-//   2. The Bearer token matches a stored API key
+//   2. The Bearer or SSWS token matches a stored API key
 //   3. The Bearer token is a locally-issued client_credentials JWT
 //   4. The Bearer token is a valid Okta JWT (OAuth flow via /oauth2/authorize)
 //
@@ -86,28 +87,56 @@ export async function protectWithApiKey(
 ): Promise<NextResponse | null> {
   // 1. NextAuth session
   const session = await getServerSession(authOptions);
-  if (session?.user) return null;
+  if (session?.user) {
+    setAuthInfo(request, { method: "session" });
+    return null;
+  }
 
-  const authHeader = request.headers.get("Authorization");
-  if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.slice(7);
+  // Accepts "Bearer <token>" and "SSWS <token>" (case-insensitive scheme).
+  const match = request.headers
+    .get("Authorization")
+    ?.match(/^(Bearer|SSWS)\s+(.+)$/i);
+  let attemptedScheme: string | null = null;
+  const record = (info: AuthInfo) => setAuthInfo(request, info);
 
-    // 2. Stored API key
-    const isApiKey = await apiKeyService.validateKey(token);
-    if (isApiKey) return null;
+  if (match) {
+    const scheme = match[1].toLowerCase() as "bearer" | "ssws";
+    const token  = match[2].trim();
+    attemptedScheme = scheme;
 
-    // 3 & 4. JWT path — only attempt if the token looks like a JWT to avoid
-    //        unnecessary crypto work for opaque API keys.
-    if (token.startsWith("eyJ")) {
+    // 2. Stored API key (Bearer or SSWS)
+    const apiKey = await apiKeyService.findKey(token);
+    if (apiKey) {
+      record({
+        method:     `api_key:${scheme}`,
+        apiKeyId:   apiKey.id,
+        apiKeyName: apiKey.name,
+      });
+      return null;
+    }
+
+    // 3 & 4. JWT path — Bearer only; SSWS tokens are opaque.  Only attempt if
+    //        the token looks like a JWT to avoid unnecessary crypto work.
+    if (scheme === "bearer" && token.startsWith("eyJ")) {
       // 3. Local client-credentials JWT (no network call)
       const isLocal = await validateLocalJwt(token);
-      if (isLocal) return null;
+      if (isLocal) {
+        record({ method: "jwt:local" });
+        return null;
+      }
 
       // 4. Okta JWT (fetches JWKS on first call, cached thereafter)
       const isOktaJwt = await validateOktaJwt(token);
-      if (isOktaJwt) return null;
+      if (isOktaJwt) {
+        record({ method: "jwt:okta" });
+        return null;
+      }
     }
   }
+
+  record({
+    method: attemptedScheme ? `failed:${attemptedScheme}` : "none",
+  });
 
   return NextResponse.json(
     {

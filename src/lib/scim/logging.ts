@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getAuthInfo } from "./authContext";
 
 const APP_HOST = process.env.NEXT_PUBLIC_BASE_URL!;
 
@@ -50,7 +51,13 @@ export async function logExternalRequest(
     const logPayload = {
       timestamp: new Date().toISOString(),
       path: request.nextUrl.pathname,
-      request: serializeRequest(request, payload),
+      request: {
+        ...serializeRequest(request, payload),
+        auth: {
+          ...(getAuthInfo(request) ?? { method: "unknown" }),
+          authorizationHeader: request.headers.get("authorization") ?? undefined,
+        },
+      },
       responseStatus: {
         status: response.status,
         statusText: response.statusText,
@@ -68,6 +75,18 @@ export async function logExternalRequest(
       console.error("Failed to send log to internal endpoint:", err);
     });
   }
+}
+
+// Logs a 401 produced by protectWithApiKey and hands it back, for routes that
+// return the guard's response directly instead of using createAndLogResponse.
+export async function logUnauthorized(
+  request: NextRequest,
+  unauthorized: NextResponse,
+  userId: string,
+): Promise<NextResponse> {
+  const body = await unauthorized.clone().json().catch(() => ({}));
+  logExternalRequest(request, unauthorized, body, userId);
+  return unauthorized;
 }
 
 // Headers to include from Vercel infrastructure (useful for debugging)

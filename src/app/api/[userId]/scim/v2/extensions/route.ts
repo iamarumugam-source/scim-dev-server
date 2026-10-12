@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { protectWithApiKey } from "@/lib/scim/apiHelper";
+import { logUnauthorized } from "@/lib/scim/logging";
 import { extensionService } from "@/lib/scim/services/extensionService";
 
 interface RouteParams { params: { userId: string } }
@@ -7,7 +8,7 @@ interface RouteParams { params: { userId: string } }
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { userId } = await params;
   const unauthorized = await protectWithApiKey(request);
-  if (unauthorized) return unauthorized;
+  if (unauthorized) return logUnauthorized(request, unauthorized, userId);
 
   try {
     const extensions = await extensionService.getExtensions(userId);
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const { userId } = await params;
   const unauthorized = await protectWithApiKey(request);
-  if (unauthorized) return unauthorized;
+  if (unauthorized) return logUnauthorized(request, unauthorized, userId);
 
   try {
     const body = await request.clone().json();

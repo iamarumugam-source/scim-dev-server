@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { protectWithApiKey } from "@/lib/scim/apiHelper";
+import { logUnauthorized } from "@/lib/scim/logging";
 import { extensionService } from "@/lib/scim/services/extensionService";
 
 interface RouteParams { params: { userId: string; id: string } }
@@ -7,7 +8,7 @@ interface RouteParams { params: { userId: string; id: string } }
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { userId, id } = await params;
   const unauthorized = await protectWithApiKey(request);
-  if (unauthorized) return unauthorized;
+  if (unauthorized) return logUnauthorized(request, unauthorized, userId);
 
   const ext = await extensionService.getExtensionById(id);
   if (!ext || ext.tenantId !== userId)
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   const { userId, id } = await params;
   const unauthorized = await protectWithApiKey(request);
-  if (unauthorized) return unauthorized;
+  if (unauthorized) return logUnauthorized(request, unauthorized, userId);
 
   try {
     const body    = await request.clone().json();
@@ -38,7 +39,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const { userId, id } = await params;
   const unauthorized = await protectWithApiKey(request);
-  if (unauthorized) return unauthorized;
+  if (unauthorized) return logUnauthorized(request, unauthorized, userId);
 
   try {
     const deleted = await extensionService.deleteExtension(id, userId);
