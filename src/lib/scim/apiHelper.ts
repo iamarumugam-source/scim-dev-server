@@ -76,7 +76,7 @@ async function validateLocalJwt(token: string): Promise<boolean> {
 //
 // Returns null (allow) when ANY of these conditions is true:
 //   1. A valid NextAuth session exists (admin UI login)
-//   2. The Bearer or SSWS token matches a stored API key
+//   2. The Bearer, SSWS or bare (no scheme) token matches a stored API key
 //   3. The Bearer token is a locally-issued client_credentials JWT
 //   4. The Bearer token is a valid Okta JWT (OAuth flow via /oauth2/authorize)
 //
@@ -92,19 +92,19 @@ export async function protectWithApiKey(
     return null;
   }
 
-  // Accepts "Bearer <token>" and "SSWS <token>" (case-insensitive scheme).
-  const match = request.headers
-    .get("Authorization")
-    ?.match(/^(Bearer|SSWS)\s+(.+)$/i);
+  // Accepts "Bearer <token>", "SSWS <token>" (case-insensitive scheme), or a
+  // bare API key with no scheme prefix ("raw").
+  const headerValue = request.headers.get("Authorization")?.trim() ?? "";
+  const match = headerValue.match(/^(Bearer|SSWS)\s+(.+)$/i);
   let attemptedScheme: string | null = null;
   const record = (info: AuthInfo) => setAuthInfo(request, info);
 
-  if (match) {
-    const scheme = match[1].toLowerCase() as "bearer" | "ssws";
-    const token  = match[2].trim();
+  if (headerValue) {
+    const scheme = match ? (match[1].toLowerCase() as "bearer" | "ssws") : "raw";
+    const token  = match ? match[2].trim() : headerValue;
     attemptedScheme = scheme;
 
-    // 2. Stored API key (Bearer or SSWS)
+    // 2. Stored API key (Bearer, SSWS or raw)
     const apiKey = await apiKeyService.findKey(token);
     if (apiKey) {
       record({
