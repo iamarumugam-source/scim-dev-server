@@ -8,8 +8,6 @@ export interface AuthInfo {
   /** Present for API key authentication only. */
   apiKeyId?: string;
   apiKeyName?: string;
-  /** The full Authorization header exactly as received (dev/testing only). Absent when none was sent. */
-  authorizationHeader?: string;
 }
 
 const authInfoByRequest = new WeakMap<object, AuthInfo>();

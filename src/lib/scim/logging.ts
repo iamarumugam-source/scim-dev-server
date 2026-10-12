@@ -53,10 +53,7 @@ export async function logExternalRequest(
       path: request.nextUrl.pathname,
       request: {
         ...serializeRequest(request, payload),
-        auth: {
-          ...(getAuthInfo(request) ?? { method: "unknown" }),
-          authorizationHeader: request.headers.get("authorization") ?? undefined,
-        },
+        auth: getAuthInfo(request) ?? { method: "unknown" },
       },
       responseStatus: {
         status: response.status,
@@ -99,14 +96,7 @@ const VERCEL_HEADERS_TO_KEEP = new Set([
 export function serializeRequest(request: NextRequest, body: any) {
   const headers: { [key: string]: string } = {};
   request.headers.forEach((value, key) => {
-    if (key === "authorization") {
-      // Keep the auth scheme so the auth method is visible; redact the credential
-      const spaceIdx = value.indexOf(" ");
-      headers[key] =
-        spaceIdx !== -1
-          ? `${value.slice(0, spaceIdx)} [REDACTED]`
-          : "[REDACTED]";
-    } else if (!key.startsWith("vercel") || VERCEL_HEADERS_TO_KEEP.has(key)) {
+    if (!key.startsWith("vercel") || VERCEL_HEADERS_TO_KEEP.has(key)) {
       headers[key] = value;
     }
   });
