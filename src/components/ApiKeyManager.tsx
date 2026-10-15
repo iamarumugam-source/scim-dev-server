@@ -30,6 +30,7 @@ interface ApiKey {
   id: string;
   name: string;
   key_prefix: string;
+  raw_key: string | null;
   created_at: string;
 }
 
@@ -96,7 +97,7 @@ export default function ApiKeyManager() {
       }
       const data = await res.json();
       setGeneratedKey(data.rawKey);
-      toast.success("API Key generated. Copy it now — it won't be shown again.");
+      toast.success("API Key generated. You can view it again in the key list.");
       await fetchKeys();
     } catch (e: any) {
       toast.error(e.message);
@@ -162,7 +163,7 @@ export default function ApiKeyManager() {
                 <div className="space-y-3 mt-2">
                   <div className="rounded-md border border-border bg-muted/50 px-3 py-2.5">
                     <p className="text-xs text-foreground/70 font-medium">
-                      Copy this key now — it will not be shown again.
+                      Keys can be viewed again in the list below.
                     </p>
                   </div>
                   <div className="flex items-center gap-2 rounded-md border bg-muted px-3 py-2">
@@ -201,7 +202,7 @@ export default function ApiKeyManager() {
               <TableHeader className="bg-muted dark:bg-white/[0.04]">
                 <TableRow>
                   <TableHead className="text-xs font-semibold uppercase tracking-wide">Name</TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wide">Prefix</TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wide">API Key</TableHead>
                   <TableHead className="text-xs font-semibold uppercase tracking-wide hidden sm:table-cell">Created</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
@@ -239,9 +240,21 @@ export default function ApiKeyManager() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <code className="bg-muted text-foreground font-mono text-xs px-2 py-0.5 rounded border border-border/60">
-                          {key.key_prefix}…
-                        </code>
+                        {key.raw_key ? (
+                          <div className="flex items-center gap-1">
+                            <code className="bg-muted text-foreground font-mono text-xs px-2 py-0.5 rounded border border-border/60 break-all">
+                              {key.raw_key}
+                            </code>
+                            <CopyButton text={key.raw_key} />
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <code className="bg-muted text-foreground font-mono text-xs px-2 py-0.5 rounded border border-border/60">
+                              {key.key_prefix}…
+                            </code>
+                            <span className="text-[11px] text-muted-foreground">not recoverable</span>
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
                         {new Date(key.created_at).toLocaleDateString(undefined, {

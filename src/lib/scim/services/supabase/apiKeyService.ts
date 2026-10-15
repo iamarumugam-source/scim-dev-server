@@ -29,6 +29,7 @@ export class ApiKeyService {
         name,
         hashed_key: hashedKey,
         key_prefix: keyPrefix,
+        raw_key: rawKey,
         tenantId: userId,
       })
       .select("id")
@@ -84,11 +85,11 @@ export class ApiKeyService {
   public async getKeys(
     userId: string
   ): Promise<
-    { id: string; name: string; key_prefix: string; created_at: string }[]
+    { id: string; name: string; key_prefix: string; raw_key: string | null; created_at: string }[]
   > {
     const { data, error } = await supabase
       .from(TABLE_NAME)
-      .select("id, name, key_prefix, created_at")
+      .select("id, name, key_prefix, raw_key, created_at")
       .eq("tenantId", userId)
       .order("created_at", { ascending: false });
 

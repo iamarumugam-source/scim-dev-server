@@ -24,10 +24,10 @@ export class ApiKeyService {
 
     const pool   = getPool();
     const result = await pool.query(
-      `INSERT INTO api_keys (name, hashed_key, key_prefix, "tenantId")
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO api_keys (name, hashed_key, key_prefix, raw_key, "tenantId")
+       VALUES ($1, $2, $3, $4, $5)
        RETURNING id`,
-      [name, hashedKey, keyPrefix, userId],
+      [name, hashedKey, keyPrefix, rawKey, userId],
     );
 
     return { rawKey, id: result.rows[0].id };
@@ -67,11 +67,11 @@ export class ApiKeyService {
 
   public async getKeys(
     userId: string,
-  ): Promise<{ id: string; name: string; key_prefix: string; created_at: string }[]> {
+  ): Promise<{ id: string; name: string; key_prefix: string; raw_key: string | null; created_at: string }[]> {
     const pool = getPool();
 
     const result = await pool.query(
-      `SELECT id, name, key_prefix, created_at
+      `SELECT id, name, key_prefix, raw_key, created_at
        FROM api_keys
        WHERE "tenantId" = $1
        ORDER BY created_at DESC`,
