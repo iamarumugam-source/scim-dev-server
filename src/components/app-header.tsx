@@ -45,9 +45,10 @@ const BREADCRUMBS: Record<string, Crumb[]> = {
   "/scim/extensions": [TOOLS, SCIM, { label: "Extensions" }],
   "/scim/entitlements": [TOOLS, SCIM, { label: "Entitlements" }],
   "/scim/roles": [TOOLS, SCIM, { label: "Roles" }],
-  "/scim/cimd": [TOOLS, SCIM, { label: "CIMD" }],
   "/har-analyser": [TOOLS, { label: "HAR Analyser" }],
   "/jwe": [TOOLS, { label: "JWE Decoder" }],
+  "/cimd": [TOOLS, { label: "CIMD" }],
+  "/network-zones": [TOOLS, { label: "Network Zones" }],
   "/changelog": [TOOLS, { label: "Changelog" }],
   "/meeting-planner": [TOOLS, { label: "Meeting Planner" }],
   // Archived pages. Listed so they get a breadcrumb if someone navigates to them

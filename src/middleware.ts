@@ -114,6 +114,8 @@ export const config = {
   matcher: [
     // Protected pages (auth required)
     "/scim/:path*",
+    "/cimd/:path*",
+    "/network-zones/:path*",
     "/meeting-planner/:path*",
     // SCIM API routes (for rate limiting only — no token check)
     "/api/:userId/scim/:path*",

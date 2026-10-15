@@ -20,6 +20,7 @@ import {
   Plus,
   CalendarCheck,
   Fingerprint,
+  ShieldCheck,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -108,7 +109,6 @@ const items = [
   { title: "Roles", url: "/scim/roles", icon: Crown },
   { title: "Logs", url: "/scim/logs", icon: ScrollText },
   { title: "Extensions", url: "/scim/extensions", icon: Puzzle },
-  { title: "CIMD", url: "/scim/cimd", icon: Fingerprint },
 ];
 
 const otherTools: {
@@ -119,6 +119,8 @@ const otherTools: {
 }[] = [
   { title: "HAR Analyser", url: "/har-analyser", icon: ScanSearch },
   { title: "JWE Decoder", url: "/jwe", icon: LockKeyhole },
+  { title: "CIMD", url: "/cimd", icon: Fingerprint },
+  { title: "Network Zones", url: "/network-zones", icon: ShieldCheck },
   {
     title: "Meeting Planner",
     url: "/meeting-planner",
