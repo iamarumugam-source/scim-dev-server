@@ -49,6 +49,7 @@ const BREADCRUMBS: Record<string, Crumb[]> = {
   "/jwe": [TOOLS, { label: "JWE Decoder" }],
   "/cimd": [TOOLS, { label: "CIMD" }],
   "/network-zones": [TOOLS, { label: "Network Zones" }],
+  "/service-app-tester": [TOOLS, { label: "Service App Tester" }],
   "/changelog": [TOOLS, { label: "Changelog" }],
   "/meeting-planner": [TOOLS, { label: "Meeting Planner" }],
   // Archived pages. Listed so they get a breadcrumb if someone navigates to them

@@ -21,6 +21,7 @@ import {
   CalendarCheck,
   Fingerprint,
   ShieldCheck,
+  KeyRound,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -121,6 +122,7 @@ const otherTools: {
   { title: "JWE Decoder", url: "/jwe", icon: LockKeyhole },
   { title: "CIMD", url: "/cimd", icon: Fingerprint },
   { title: "Network Zones", url: "/network-zones", icon: ShieldCheck },
+  { title: "Service App Tester", url: "/service-app-tester", icon: KeyRound },
   {
     title: "Meeting Planner",
     url: "/meeting-planner",
