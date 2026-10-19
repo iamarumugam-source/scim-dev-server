@@ -21,7 +21,6 @@ import {
   CalendarCheck,
   Fingerprint,
   ShieldCheck,
-  KeyRound,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
